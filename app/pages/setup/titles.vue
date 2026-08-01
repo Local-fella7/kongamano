@@ -51,6 +51,9 @@
             <td class="text-muted fs-7">{{ title.created_at ? formatDate(title.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
+                <button class="btn-icon-action btn-view" @click="openView(title)" title="View Details">
+                  <i class="bi bi-eye-fill"></i>
+                </button>
                 <button class="btn-icon-action btn-edit" @click="openEdit(title)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
@@ -95,6 +98,41 @@
       </form>
     </CommonModal>
 
+    <!-- View Details Modal -->
+    <CommonModal
+      v-model="showViewModal"
+      title="Title Details"
+      icon="bi-person-badge"
+      size="sm"
+    >
+      <div v-if="viewingTitle" class="p-1">
+        <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
+          <div class="title-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-person-lines-fill"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingTitle.name }}</h6>
+            <small class="text-muted fs-8">ID: #{{ viewingTitle.id }}</small>
+          </div>
+        </div>
+
+        <div class="row g-2 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Created At</span>
+            <span class="fw-semibold">{{ viewingTitle.created_at ? formatDate(viewingTitle.created_at) : '—' }}</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Updated At</span>
+            <span class="fw-semibold">{{ viewingTitle.updated_at ? formatDate(viewingTitle.updated_at) : '—' }}</span>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button class="btn-cancel" @click="showViewModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
+
     <!-- Delete Confirm Modal -->
     <CommonModal
       v-model="showDeleteModal"
@@ -129,9 +167,16 @@ const crud = useCrudApi<Title>({ endpoint: '/api/titles', dataKey: 'titles' });
 
 // Modal state
 const showModal = ref(false);
+const showViewModal = ref(false);
 const showDeleteModal = ref(false);
+const viewingTitle = ref<Title | null>(null);
 const editingTitle = ref<Title | null>(null);
 const deletingTitle = ref<Title | null>(null);
+
+function openView(title: Title) {
+  viewingTitle.value = title;
+  showViewModal.value = true;
+}
 
 const form = reactive({ name: '' });
 const formError = ref('');
@@ -337,6 +382,17 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.18s;
   background: transparent;
+}
+
+.btn-view {
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-700);
+}
+
+.btn-view:hover {
+  background: var(--slate-700);
+  color: #fff;
+  border-color: var(--slate-700);
 }
 
 .btn-edit {

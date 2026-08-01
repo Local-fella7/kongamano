@@ -66,6 +66,9 @@
             <td class="text-muted fs-7">{{ service.created_at ? formatDate(service.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
+                <button class="btn-icon-action btn-view" @click="openView(service)" title="View Details">
+                  <i class="bi bi-eye-fill"></i>
+                </button>
                 <button class="btn-icon-action btn-edit" @click="openEdit(service)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
@@ -136,6 +139,51 @@
       </form>
     </CommonModal>
 
+    <!-- View Details Modal -->
+    <CommonModal
+      v-model="showViewModal"
+      title="Service Details"
+      icon="bi-gear-fill"
+      size="md"
+    >
+      <div v-if="viewingService" class="p-1">
+        <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
+          <div class="service-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-gear-wide-connected"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingService.name }}</h6>
+            <small class="text-muted fs-8">ID: #{{ viewingService.id }}</small>
+          </div>
+        </div>
+
+        <div class="row g-3 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Operating Hours</span>
+            <span class="fw-semibold">{{ viewingService.start_time || '—' }} - {{ viewingService.end_time || '—' }}</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">QR Scan Verification</span>
+            <span class="badge" :class="viewingService.requires_qr_scan ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'">
+              {{ viewingService.requires_qr_scan ? 'Required' : 'Disabled' }}
+            </span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Created At</span>
+            <span class="fw-semibold">{{ viewingService.created_at ? formatDate(viewingService.created_at) : '—' }}</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Updated At</span>
+            <span class="fw-semibold">{{ viewingService.updated_at ? formatDate(viewingService.updated_at) : '—' }}</span>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button class="btn-cancel" @click="showViewModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
+
     <!-- Delete Confirm Modal -->
     <CommonModal
       v-model="showDeleteModal"
@@ -170,9 +218,16 @@ const crud = useCrudApi<Service>({ endpoint: '/api/services', dataKey: 'services
 
 // Modal state
 const showModal = ref(false);
+const showViewModal = ref(false);
 const showDeleteModal = ref(false);
+const viewingService = ref<Service | null>(null);
 const editingService = ref<Service | null>(null);
 const deletingService = ref<Service | null>(null);
+
+function openView(service: Service) {
+  viewingService.value = service;
+  showViewModal.value = true;
+}
 
 const form = reactive({
   name: '',
@@ -400,6 +455,17 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.18s;
   background: transparent;
+}
+
+.btn-view {
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-700);
+}
+
+.btn-view:hover {
+  background: var(--slate-700);
+  color: #fff;
+  border-color: var(--slate-700);
 }
 
 .btn-edit {

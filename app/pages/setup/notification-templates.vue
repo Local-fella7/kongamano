@@ -53,6 +53,9 @@
             <td class="text-muted fs-7">{{ item.created_at ? formatDate(item.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
+                <button class="btn-icon-action btn-view" @click="openView(item)" title="View Details">
+                  <i class="bi bi-eye-fill"></i>
+                </button>
                 <button class="btn-icon-action btn-edit" @click="openEdit(item)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
@@ -109,6 +112,51 @@
       </form>
     </CommonModal>
 
+    <!-- View Details Modal -->
+    <CommonModal
+      v-model="showViewModal"
+      title="Template Details"
+      icon="bi-envelope-fill"
+      size="md"
+    >
+      <div v-if="viewingItem" class="p-1">
+        <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
+          <div class="template-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-chat-text-fill"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingItem.name }}</h6>
+            <span class="badge bg-slate-200 text-slate-700 font-monospace fs-8">{{ viewingItem.key }}</span>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-slate-700 fs-7 mb-1">Subject</label>
+          <div class="p-2.5 bg-white border rounded-3 text-slate-900 fs-7 fw-medium">{{ viewingItem.subject || '—' }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-slate-700 fs-7 mb-1">Body Content</label>
+          <div class="p-3 bg-light-subtle border rounded-3 text-slate-800 fs-7 font-monospace whitespace-pre-wrap max-vh-30 overflow-y-auto">{{ viewingItem.body || '—' }}</div>
+        </div>
+
+        <div class="row g-2 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Created At</span>
+            <span class="fw-semibold">{{ viewingItem.created_at ? formatDate(viewingItem.created_at) : '—' }}</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Updated At</span>
+            <span class="fw-semibold">{{ viewingItem.updated_at ? formatDate(viewingItem.updated_at) : '—' }}</span>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button class="btn-cancel" @click="showViewModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
+
     <!-- Delete Confirm Modal -->
     <CommonModal
       v-model="showDeleteModal"
@@ -143,9 +191,16 @@ const crud = useCrudApi<NotificationTemplate>({ endpoint: '/api/notification-tem
 
 // Modal state
 const showModal = ref(false);
+const showViewModal = ref(false);
 const showDeleteModal = ref(false);
+const viewingItem = ref<NotificationTemplate | null>(null);
 const editingItem = ref<NotificationTemplate | null>(null);
 const deletingItem = ref<NotificationTemplate | null>(null);
+
+function openView(item: NotificationTemplate) {
+  viewingItem.value = item;
+  showViewModal.value = true;
+}
 
 const form = reactive({
   name: '',
@@ -362,6 +417,17 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.18s;
   background: transparent;
+}
+
+.btn-view {
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-700);
+}
+
+.btn-view:hover {
+  background: var(--slate-700);
+  color: #fff;
+  border-color: var(--slate-700);
 }
 
 .btn-edit {

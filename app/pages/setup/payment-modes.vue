@@ -51,6 +51,9 @@
             <td class="text-muted fs-7">{{ mode.created_at ? formatDate(mode.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
+                <button class="btn-icon-action btn-view" @click="openView(mode)" title="View Details">
+                  <i class="bi bi-eye-fill"></i>
+                </button>
                 <button class="btn-icon-action btn-edit" @click="openEdit(mode)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
@@ -95,6 +98,41 @@
       </form>
     </CommonModal>
 
+    <!-- View Details Modal -->
+    <CommonModal
+      v-model="showViewModal"
+      title="Payment Mode Details"
+      icon="bi-wallet2"
+      size="sm"
+    >
+      <div v-if="viewingMode" class="p-1">
+        <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
+          <div class="mode-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-credit-card-fill"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingMode.name }}</h6>
+            <small class="text-muted fs-8">ID: #{{ viewingMode.id }}</small>
+          </div>
+        </div>
+
+        <div class="row g-2 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Created At</span>
+            <span class="fw-semibold">{{ viewingMode.created_at ? formatDate(viewingMode.created_at) : '—' }}</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Updated At</span>
+            <span class="fw-semibold">{{ viewingMode.updated_at ? formatDate(viewingMode.updated_at) : '—' }}</span>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button class="btn-cancel" @click="showViewModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
+
     <!-- Delete Confirm Modal -->
     <CommonModal
       v-model="showDeleteModal"
@@ -129,9 +167,16 @@ const crud = useCrudApi<PaymentMode>({ endpoint: '/api/payment-modes', dataKey: 
 
 // Modal state
 const showModal = ref(false);
+const showViewModal = ref(false);
 const showDeleteModal = ref(false);
+const viewingMode = ref<PaymentMode | null>(null);
 const editingMode = ref<PaymentMode | null>(null);
 const deletingMode = ref<PaymentMode | null>(null);
+
+function openView(mode: PaymentMode) {
+  viewingMode.value = mode;
+  showViewModal.value = true;
+}
 
 const form = reactive({ name: '' });
 const formError = ref('');
@@ -337,6 +382,17 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.18s;
   background: transparent;
+}
+
+.btn-view {
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-700);
+}
+
+.btn-view:hover {
+  background: var(--slate-700);
+  color: #fff;
+  border-color: var(--slate-700);
 }
 
 .btn-edit {

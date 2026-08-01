@@ -51,6 +51,9 @@
             <td class="text-muted fs-7">{{ type.created_at ? formatDate(type.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
+                <button class="btn-icon-action btn-view" @click="openView(type)" title="View Details">
+                  <i class="bi bi-eye-fill"></i>
+                </button>
                 <button class="btn-icon-action btn-edit" @click="openEdit(type)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
@@ -95,7 +98,40 @@
       </form>
     </CommonModal>
 
-    <!-- Delete Confirm Modal -->
+    <!-- View Details Modal -->
+    <CommonModal
+      v-model="showViewModal"
+      title="Event Type Details"
+      icon="bi-tag-fill"
+      size="sm"
+    >
+      <div v-if="viewingType" class="p-1">
+        <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
+          <div class="type-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-tag"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingType.name }}</h6>
+            <small class="text-muted fs-8">ID: #{{ viewingType.id }}</small>
+          </div>
+        </div>
+
+        <div class="row g-2 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Created At</span>
+            <span class="fw-semibold">{{ viewingType.created_at ? formatDate(viewingType.created_at) : '—' }}</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Updated At</span>
+            <span class="fw-semibold">{{ viewingType.updated_at ? formatDate(viewingType.updated_at) : '—' }}</span>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button class="btn-cancel" @click="showViewModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
     <CommonModal
       v-model="showDeleteModal"
       title="Delete Event Type"
@@ -129,9 +165,16 @@ const crud = useCrudApi<EventType>({ endpoint: '/api/event-types', dataKey: 'eve
 
 // Modal state
 const showModal = ref(false);
+const showViewModal = ref(false);
 const showDeleteModal = ref(false);
+const viewingType = ref<EventType | null>(null);
 const editingType = ref<EventType | null>(null);
 const deletingType = ref<EventType | null>(null);
+
+function openView(type: EventType) {
+  viewingType.value = type;
+  showViewModal.value = true;
+}
 
 const form = reactive({ name: '' });
 const formError = ref('');
@@ -337,6 +380,17 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.18s;
   background: transparent;
+}
+
+.btn-view {
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-700);
+}
+
+.btn-view:hover {
+  background: var(--slate-700);
+  color: #fff;
+  border-color: var(--slate-700);
 }
 
 .btn-edit {

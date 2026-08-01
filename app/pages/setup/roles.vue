@@ -51,6 +51,9 @@
             <td class="text-muted fs-7">{{ role.created_at ? formatDate(role.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
+                <button class="btn-icon-action btn-view" @click="openView(role)" title="View Details">
+                  <i class="bi bi-eye-fill"></i>
+                </button>
                 <button class="btn-icon-action btn-edit" @click="openEdit(role)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
@@ -95,7 +98,40 @@
       </form>
     </CommonModal>
 
-    <!-- Delete Confirm Modal -->
+    <!-- View Details Modal -->
+    <CommonModal
+      v-model="showViewModal"
+      title="Role Details"
+      icon="bi-shield-check"
+      size="sm"
+    >
+      <div v-if="viewingRole" class="p-1">
+        <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
+          <div class="role-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-shield-fill-check"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingRole.name }}</h6>
+            <small class="text-muted fs-8">ID: #{{ viewingRole.id }}</small>
+          </div>
+        </div>
+
+        <div class="row g-2 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Created At</span>
+            <span class="fw-semibold">{{ viewingRole.created_at ? formatDate(viewingRole.created_at) : '—' }}</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Updated At</span>
+            <span class="fw-semibold">{{ viewingRole.updated_at ? formatDate(viewingRole.updated_at) : '—' }}</span>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button class="btn-cancel" @click="showViewModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
     <CommonModal
       v-model="showDeleteModal"
       title="Delete Role"
@@ -130,9 +166,16 @@ const crud = useCrudApi<Role>({ endpoint: '/api/roles', dataKey: 'roles' });
 
 // Modal state
 const showModal = ref(false);
+const showViewModal = ref(false);
 const showDeleteModal = ref(false);
+const viewingRole = ref<Role | null>(null);
 const editingRole = ref<Role | null>(null);
 const deletingRole = ref<Role | null>(null);
+
+function openView(role: Role) {
+  viewingRole.value = role;
+  showViewModal.value = true;
+}
 
 const form = reactive({ name: '' });
 const formError = ref('');
@@ -328,6 +371,17 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.18s;
   background: transparent;
+}
+
+.btn-view {
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-700);
+}
+
+.btn-view:hover {
+  background: var(--slate-700);
+  color: #fff;
+  border-color: var(--slate-700);
 }
 
 .btn-edit {
