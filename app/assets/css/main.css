@@ -92,3 +92,14 @@ h1, h2, h3, h4, h5, h6, .page-heading, .card-title {
 .text-kongamano-red {
   color: var(--red-500) !important;
 }
+
+/* Center Notivue Toast Container in the middle of the screen */
+.notivue__container {
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  z-index: 99999 !important;
+}
+

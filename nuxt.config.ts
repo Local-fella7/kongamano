@@ -25,7 +25,7 @@ export default defineNuxtConfig({
     }
   },
   notivue: {
-    position: 'top-right',
+    position: 'top-center',
     limit: 4,
   }
 })
