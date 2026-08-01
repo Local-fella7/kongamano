@@ -2,19 +2,51 @@
   <div class="roles-page">
 
     <!-- Page Header -->
-    <div class="page-header">
-      <div>
-        <h2 class="page-heading">Roles</h2>
-        <p class="page-subheading">Manage system roles assigned to users.</p>
+    <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+      <div class="d-flex align-items-center gap-3">
+        <div class="header-icon-box">
+          <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <div>
+          <h2 class="page-heading">Roles Management</h2>
+          <p class="page-subheading">Configure user access roles, security levels, and administrative privileges.</p>
+        </div>
       </div>
       <button class="btn-create" @click="openCreate">
-        <i class="bi bi-plus-lg"></i>
+        <i class="bi bi-plus-lg fs-6"></i>
         <span>New Role</span>
       </button>
     </div>
 
-    <!-- Table Card -->
-    <div class="table-card">
+    <!-- Table Card Container -->
+    <div class="table-card shadow-sm rounded-4 border-0">
+
+      <!-- Table Header Toolbar / Search -->
+      <div class="table-toolbar d-flex align-items-center justify-content-between p-3 border-bottom flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-green-subtle text-green-700 rounded-pill px-3 py-2 fs-7 fw-semibold">
+            <i class="bi bi-layers-fill me-1"></i> {{ filteredRoles.length }} Total Roles
+          </span>
+        </div>
+
+        <div class="search-box position-relative">
+          <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-7"></i>
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="form-control form-control-sm ps-5 pe-4 py-2 rounded-pill border-slate-200 search-input"
+            placeholder="Search roles..."
+          />
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted text-decoration-none pe-3 py-0"
+            style="font-size: 0.8rem;"
+          >
+            <i class="bi bi-x-circle-fill"></i>
+          </button>
+        </div>
+      </div>
 
       <!-- Loading -->
       <div v-if="loading" class="state-box">
@@ -23,64 +55,120 @@
       </div>
 
       <!-- Empty -->
-      <div v-else-if="roles.length === 0" class="state-box">
+      <div v-else-if="filteredRoles.length === 0" class="state-box">
         <i class="bi bi-shield-exclamation empty-icon"></i>
         <p class="mt-3 fw-semibold text-slate-700">No roles found</p>
-        <p class="text-muted fs-7">Create your first role to get started.</p>
-        <button class="btn-create mt-2" @click="openCreate">
+        <p class="text-muted fs-7">
+          {{ searchQuery ? 'Try adjusting your search criteria.' : 'Create your first role to get started.' }}
+        </p>
+        <button v-if="!searchQuery" class="btn-create mt-2" @click="openCreate">
           <i class="bi bi-plus-lg"></i> New Role
+        </button>
+        <button v-else class="btn btn-outline-secondary btn-sm mt-2 rounded-3 px-3" @click="searchQuery = ''">
+          Clear Search
         </button>
       </div>
 
       <!-- Table -->
-      <table v-else class="data-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Role Name</th>
-            <th>Created At</th>
-            <th class="text-end">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(role, index) in roles" :key="role.id">
-            <td class="row-index">{{ index + 1 }}</td>
-            <td>
-              <div class="role-name-cell">
-                <span class="role-badge">
-                  <i class="bi bi-shield-fill-check"></i>
-                </span>
-                <span class="fw-semibold text-slate-900">{{ role.name }}</span>
-              </div>
-            </td>
-            <td class="text-muted fs-7">{{ role.created_at ? formatDate(role.created_at) : '—' }}</td>
-            <td class="text-end">
-              <div class="action-btns">
-                <button class="btn-icon-action btn-edit" @click="openEdit(role)" title="Edit">
-                  <i class="bi bi-pencil-fill"></i>
+      <div v-else class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Role Name</th>
+              <th>Created At</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(role, index) in paginatedRoles" :key="role.id">
+              <td class="row-index">{{ (currentPage - 1) * perPage + index + 1 }}</td>
+              <td>
+                <div class="role-name-cell">
+                  <span class="role-badge">
+                    <i class="bi bi-shield-fill-check"></i>
+                  </span>
+                  <span class="fw-semibold text-slate-900">{{ role.name }}</span>
+                </div>
+              </td>
+              <td class="text-muted fs-7">{{ role.created_at ? formatDate(role.created_at) : '—' }}</td>
+              <td class="text-end">
+                <div class="action-btns">
+                  <button class="btn-icon-action btn-edit" @click="openEdit(role)" title="Edit">
+                    <i class="bi bi-pencil-fill"></i>
+                  </button>
+                  <button class="btn-icon-action btn-delete" @click="confirmDelete(role)" title="Delete">
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div v-if="filteredRoles.length > 0" class="pagination-footer d-flex align-items-center justify-content-between flex-wrap gap-3 px-4 py-3 border-top bg-light-subtle">
+        <div class="fs-7 text-muted fw-medium">
+          Showing <span class="fw-bold text-slate-900">{{ startIndex + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(endIndex, filteredRoles.length) }}</span> of <span class="fw-bold text-slate-900">{{ filteredRoles.length }}</span> entries
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+          <!-- Items Per Page Dropdown -->
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-7 text-muted fw-medium text-nowrap">Show:</span>
+            <select v-model="perPage" class="form-select form-select-sm rounded-pill fs-7 border-slate-200 shadow-2xs cursor-pointer px-3" style="width: auto;">
+              <option :value="5">5 rows</option>
+              <option :value="10">10 rows</option>
+              <option :value="25">25 rows</option>
+              <option :value="50">50 rows</option>
+            </select>
+          </div>
+
+          <!-- Page Navigation -->
+          <nav v-if="totalPages > 1" aria-label="Page navigation">
+            <ul class="pagination pagination-sm mb-0 gap-1">
+              <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                <button class="page-link rounded-circle border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 30px; height: 30px;" @click="currentPage--" :disabled="currentPage === 1">
+                  <i class="bi bi-chevron-left fs-8"></i>
                 </button>
-                <button class="btn-icon-action btn-delete" @click="confirmDelete(role)" title="Delete">
-                  <i class="bi bi-trash-fill"></i>
+              </li>
+              <li
+                v-for="page in totalPages"
+                :key="page"
+                class="page-item"
+                :class="{ active: currentPage === page }"
+              >
+                <button class="page-link rounded-circle border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 30px; height: 30px;" @click="currentPage = page">
+                  {{ page }}
                 </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </li>
+              <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                <button class="page-link rounded-circle border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 30px; height: 30px;" @click="currentPage++" :disabled="currentPage === totalPages">
+                  <i class="bi bi-chevron-right fs-8"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
     </div>
 
     <!-- Create / Edit Modal -->
     <Teleport to="body">
       <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-        <div class="modal-box">
-          <div class="modal-header-row">
-            <h5 class="modal-title">{{ editingRole ? 'Edit Role' : 'New Role' }}</h5>
-            <button class="modal-close" @click="closeModal">
+        <div class="modal-box p-0 overflow-hidden position-relative">
+          <div class="modal-header-row modal-header-gradient text-white p-3 px-4 mb-0 d-flex align-items-center justify-content-center">
+            <h5 class="modal-title text-white fw-bold d-flex align-items-center justify-content-center gap-2 mb-0">
+              <i :class="['bi', editingRole ? 'bi-pencil-square' : 'bi-plus-circle-fill']"></i>
+              <span>{{ editingRole ? 'Edit Role' : 'New Role' }}</span>
+            </h5>
+            <button class="modal-close text-white opacity-75 hover-opacity-100 position-absolute end-0 me-3" @click="closeModal">
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
 
-          <form @submit.prevent="handleSubmit">
+          <form @submit.prevent="handleSubmit" class="p-4">
             <div class="mb-4">
               <label class="form-label fw-semibold text-slate-700">Role Name <span class="text-danger">*</span></label>
               <input
@@ -146,6 +234,11 @@ const roles = ref<Role[]>([]);
 const loading = ref(true);
 const saving = ref(false);
 
+// Search, Filter & Pagination State
+const searchQuery = ref('');
+const currentPage = ref(1);
+const perPage = ref(10);
+
 // Modal state
 const showModal = ref(false);
 const showDeleteModal = ref(false);
@@ -154,6 +247,43 @@ const deletingRole = ref<Role | null>(null);
 
 const form = reactive({ name: '' });
 const formError = ref('');
+
+// Reset pagination when search query or perPage changes
+watch([searchQuery, perPage], () => {
+  currentPage.value = 1;
+});
+
+// ── Computed Properties ─────────────────────────────
+const filteredRoles = computed(() => {
+  let list = [...roles.value];
+
+  // Search filter
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    list = list.filter((r) => r.name.toLowerCase().includes(q));
+  }
+
+  // Sort descending by ID (newest first)
+  list.sort((a, b) => b.id - a.id);
+
+  return list;
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredRoles.value.length / perPage.value) || 1;
+});
+
+const startIndex = computed(() => {
+  return (currentPage.value - 1) * perPage.value;
+});
+
+const endIndex = computed(() => {
+  return startIndex.value + perPage.value;
+});
+
+const paginatedRoles = computed(() => {
+  return filteredRoles.value.slice(startIndex.value, endIndex.value);
+});
 
 // ── Helpers ──────────────────────────────────────────
 function authHeaders() {
@@ -173,12 +303,22 @@ function formatDate(dateStr: string) {
 async function fetchRoles() {
   loading.value = true;
   try {
-    const res = await $fetch<ApiResponse<Role[]>>('/api/roles', {
+    const res = await $fetch<any>('/api/roles', {
       headers: authHeaders(),
     });
-    roles.value = res.data || [];
+
+    if (Array.isArray(res?.data?.roles)) {
+      roles.value = res.data.roles;
+    } else if (Array.isArray(res?.data)) {
+      roles.value = res.data;
+    } else if (Array.isArray(res)) {
+      roles.value = res;
+    } else {
+      roles.value = [];
+    }
   } catch (err: any) {
-    push.error({ title: 'Error', message: 'Failed to load roles.' });
+    console.error('[Roles] Fetch error:', err);
+    push.error({ title: 'Error', message: err?.data?.message || 'Failed to load roles.' });
   } finally {
     loading.value = false;
   }
@@ -272,19 +412,37 @@ onMounted(fetchRoles);
 </script>
 
 <style scoped>
-/* ── Page ──────────────────────────────────────────── */
-.roles-page {
+/* ── Header Icon Box ──────────────────────────────── */
+.header-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--green-50);
+  color: var(--green-500);
   display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: inset 0 0 0 1px rgba(46, 125, 34, 0.15);
 }
 
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
+.search-input {
+  width: 260px;
+  transition: width 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input:focus {
+  width: 320px;
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(46, 125, 34, 0.15);
+}
+
+.bg-green-subtle {
+  background-color: var(--green-50);
+}
+
+.text-green-700 {
+  color: var(--green-700);
 }
 
 .page-heading {
@@ -326,6 +484,14 @@ onMounted(fetchRoles);
   border-radius: 14px;
   border: 1px solid var(--color-border);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.data-table-wrapper {
+  flex: 1;
+  overflow-x: auto;
 }
 
 .state-box {
@@ -414,17 +580,17 @@ onMounted(fetchRoles);
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.18s;
+  background: transparent;
 }
 
 .btn-edit {
-  background: var(--green-50);
+  border: 1.5px solid var(--green-500);
   color: var(--green-600);
 }
 
@@ -434,7 +600,7 @@ onMounted(fetchRoles);
 }
 
 .btn-delete {
-  background: var(--red-50);
+  border: 1.5px solid var(--red-500);
   color: var(--red-500);
 }
 
@@ -443,7 +609,38 @@ onMounted(fetchRoles);
   color: #fff;
 }
 
+/* ── Pagination Styling ───────────────────────────── */
+.pagination .page-item .page-link {
+  color: var(--slate-700);
+  background-color: #fff;
+  border: 1px solid var(--color-border);
+  font-weight: 500;
+  transition: all 0.18s ease;
+}
+
+.pagination .page-item .page-link:hover:not(:disabled) {
+  background-color: var(--green-50);
+  color: var(--green-700);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--green-500) !important;
+  color: #fff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(46, 125, 34, 0.3);
+}
+
+.pagination .page-item.disabled .page-link {
+  color: var(--slate-300);
+  background-color: transparent;
+  opacity: 0.5;
+}
+
 /* ── Modal ─────────────────────────────────────────── */
+.modal-header-gradient {
+  background: linear-gradient(135deg, var(--green-600) 0%, var(--green-500) 50%, var(--green-700) 100%);
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -459,7 +656,6 @@ onMounted(fetchRoles);
 .modal-box {
   background: #fff;
   border-radius: 16px;
-  padding: 1.75rem;
   width: 100%;
   max-width: 440px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
@@ -479,18 +675,16 @@ onMounted(fetchRoles);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
 }
 
 .modal-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--slate-900);
   margin: 0;
 }
 
 .modal-close {
-  background: var(--slate-50);
+  background: rgba(255, 255, 255, 0.15);
   border: none;
   border-radius: 8px;
   width: 32px;
@@ -499,13 +693,12 @@ onMounted(fetchRoles);
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--slate-500);
+  color: #fff;
   transition: all 0.18s;
 }
 
 .modal-close:hover {
-  background: var(--red-50);
-  color: var(--red-500);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .modal-footer-row {

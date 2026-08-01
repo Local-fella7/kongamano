@@ -21,18 +21,57 @@
         <div v-if="!isCollapsed" class="nav-section-label">{{ group.title }}</div>
         <div v-else class="nav-section-divider"></div>
 
-        <NuxtLink
-          v-for="item in group.items"
-          :key="item.to"
-          :to="item.to"
-          class="nav-item"
-          :title="isCollapsed ? item.name : undefined"
-          active-class="nav-item--active"
-          exact-active-class="nav-item--active"
-        >
-          <i :class="['bi', item.icon, 'nav-item-icon']"></i>
-          <span v-if="!isCollapsed" class="nav-item-label">{{ item.name }}</span>
-        </NuxtLink>
+        <template v-for="item in group.items" :key="item.name">
+
+          <!-- Expandable parent item -->
+          <template v-if="item.children">
+            <button
+              class="nav-item nav-item--parent"
+              :class="{ 'nav-item--open': setupOpen, 'nav-item--child-active': isChildActive(item) }"
+              @click="setupOpen = !setupOpen"
+              :title="isCollapsed ? item.name : undefined"
+            >
+              <i :class="['bi', item.icon, 'nav-item-icon']"></i>
+              <span v-if="!isCollapsed" class="nav-item-label">{{ item.name }}</span>
+              <i
+                v-if="!isCollapsed"
+                class="bi nav-chevron"
+                :class="setupOpen ? 'bi-chevron-up' : 'bi-chevron-down'"
+              ></i>
+            </button>
+
+            <!-- Dropdown children — inline, no indent, no border -->
+            <Transition name="dropdown">
+              <div v-if="!isCollapsed && setupOpen" class="setup-dropdown">
+                <NuxtLink
+                  v-for="child in item.children"
+                  :key="child.to"
+                  :to="child.to"
+                  class="nav-item nav-item--child"
+                  active-class="nav-item--active"
+                >
+                  <span class="child-dot"></span>
+                  <i :class="['bi', child.icon, 'nav-item-icon child-icon']"></i>
+                  <span class="nav-item-label">{{ child.name }}</span>
+                </NuxtLink>
+              </div>
+            </Transition>
+          </template>
+
+          <!-- Regular item -->
+          <NuxtLink
+            v-else
+            :to="item.to"
+            class="nav-item"
+            :title="isCollapsed ? item.name : undefined"
+            active-class="nav-item--active"
+            exact-active-class="nav-item--active"
+          >
+            <i :class="['bi', item.icon, 'nav-item-icon']"></i>
+            <span v-if="!isCollapsed" class="nav-item-label">{{ item.name }}</span>
+          </NuxtLink>
+
+        </template>
       </div>
     </nav>
 
@@ -60,12 +99,24 @@ defineProps<{ isCollapsed: boolean }>();
 defineEmits(['toggle']);
 
 const authStore = useAuthStore();
+const route = useRoute();
 
 const userInitials = computed(() => {
   const f = authStore.user?.first_name?.[0] || 'A';
   const l = authStore.user?.last_name?.[0] || 'U';
   return `${f}${l}`.toUpperCase();
 });
+
+// Setup dropdown open state — auto-open if on a setup page
+const setupOpen = ref(route.path.startsWith('/setup'));
+
+watch(() => route.path, (p) => {
+  if (p.startsWith('/setup')) setupOpen.value = true;
+});
+
+function isChildActive(item: any): boolean {
+  return item.children?.some((c: any) => route.path.startsWith(c.to));
+}
 
 const navGroups = [
   {
@@ -87,7 +138,21 @@ const navGroups = [
     title: 'System',
     items: [
       { name: 'Users & Staff', to: '/users', icon: 'bi-shield-lock-fill' },
-      { name: 'Setup', to: '/setup/roles', icon: 'bi-gear-wide-connected' },
+      {
+        name: 'Setup',
+        icon: 'bi-gear-wide-connected',
+        children: [
+          { name: 'Roles', to: '/setup/roles', icon: 'bi-shield-fill-check' },
+          { name: 'Event Types', to: '/setup/event-types', icon: 'bi-tag-fill' },
+          { name: 'Payment Modes', to: '/setup/payment-modes', icon: 'bi-wallet2' },
+          { name: 'Titles', to: '/setup/titles', icon: 'bi-person-badge' },
+          { name: 'Services', to: '/setup/services', icon: 'bi-lightning-fill' },
+          { name: 'Accommodations', to: '/setup/accommodations', icon: 'bi-building' },
+          { name: 'Notification Templates', to: '/setup/notification-templates', icon: 'bi-bell-fill' },
+          { name: 'Features', to: '/setup/features', icon: 'bi-toggles' },
+          { name: 'Role Features', to: '/setup/role-features', icon: 'bi-key-fill' },
+        ],
+      },
     ],
   },
 ];
@@ -204,6 +269,7 @@ const navGroups = [
   margin: 0.5rem 0.4rem;
 }
 
+/* ─── Nav Item ───────────────────────────────────────── */
 .nav-item {
   display: flex;
   align-items: center;
@@ -217,6 +283,11 @@ const navGroups = [
   transition: all 0.18s ease;
   white-space: nowrap;
   overflow: hidden;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
 }
 
 .nav-item:hover {
@@ -231,6 +302,41 @@ const navGroups = [
   box-shadow: 0 3px 12px rgba(46, 125, 34, 0.45);
 }
 
+/* Parent open or has active child */
+.nav-item--open,
+.nav-item--child-active {
+  background: rgba(155, 203, 143, 0.1);
+  color: #ffffff;
+}
+
+/* Child items — indented, with dot */
+.nav-item--child {
+  font-size: 0.83rem;
+  padding: 0.5rem 0.85rem 0.5rem 1.4rem;
+  color: rgba(195, 226, 188, 0.65);
+}
+
+.child-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(155, 203, 143, 0.4);
+  flex-shrink: 0;
+  transition: background 0.18s;
+}
+
+.nav-item--child:hover .child-dot {
+  background: rgba(155, 203, 143, 0.9);
+}
+
+.nav-item--active .child-dot {
+  background: #ffffff !important;
+}
+
+.child-icon {
+  font-size: 0.85rem !important;
+}
+
 .nav-item-icon {
   font-size: 1rem;
   flex-shrink: 0;
@@ -241,6 +347,36 @@ const navGroups = [
 .nav-item-label {
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+}
+
+.nav-chevron {
+  font-size: 0.7rem;
+  color: rgba(155, 203, 143, 0.6);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+/* ─── Setup Dropdown ─────────────────────────────────── */
+.setup-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  overflow: hidden;
+}
+
+/* ─── Dropdown Transition ────────────────────────────── */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.22s ease;
+  max-height: 600px;
+  opacity: 1;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  max-height: 0;
+  opacity: 0;
 }
 
 /* ─── Footer ─────────────────────────────────────────── */
