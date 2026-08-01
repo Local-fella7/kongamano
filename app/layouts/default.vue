@@ -39,41 +39,58 @@
           </div>
 
           <!-- User dropdown -->
-          <div class="dropdown">
+          <div class="dropdown position-relative" ref="userDropdownRef">
             <button
               class="user-btn"
               type="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
+              @click="isUserMenuOpen = !isUserMenuOpen"
             >
               <div class="header-avatar">{{ userInitials }}</div>
               <span class="d-none d-sm-inline user-btn-name">
                 {{ authStore.user?.first_name || 'Admin' }}
               </span>
-              <i class="bi bi-chevron-down header-chevron"></i>
+              <i class="bi bi-chevron-down header-chevron" :class="{ 'rotate-180': isUserMenuOpen }"></i>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end header-dropdown shadow border-0 mt-2 p-2">
-              <li class="dropdown-header-info">
-                <span class="dh-name">{{ authStore.user?.first_name }} {{ authStore.user?.last_name }}</span>
-                <small class="dh-username">@{{ authStore.user?.username }}</small>
-              </li>
-              <li><hr class="dropdown-divider my-1"></li>
-              <li>
-                <NuxtLink to="/setup" class="dropdown-item rounded-2 py-2 fs-7 d-flex align-items-center gap-2">
-                  <i class="bi bi-gear text-muted"></i>
-                  <span>Settings</span>
-                </NuxtLink>
-              </li>
-              <li>
-                <button
-                  @click="authStore.logout()"
-                  class="dropdown-item rounded-2 py-2 fs-7 text-danger d-flex align-items-center gap-2"
-                >
-                  <i class="bi bi-box-arrow-right"></i>
-                  <span>Sign Out</span>
-                </button>
-              </li>
-            </ul>
+
+            <!-- Dropdown Menu -->
+            <div
+              v-if="isUserMenuOpen"
+              class="header-dropdown-menu shadow-lg border-0 p-2 position-absolute end-0 mt-2"
+            >
+              <div class="dropdown-header-info p-2 mb-1 rounded-3 bg-light">
+                <span class="dh-name d-block fw-bold text-slate-900 fs-7">
+                  {{ authStore.user?.first_name || 'Admin' }} {{ authStore.user?.last_name || 'User' }}
+                </span>
+                <small class="dh-username text-muted fs-8">
+                  @{{ authStore.user?.username || 'admin' }}
+                </small>
+              </div>
+              <hr class="dropdown-divider my-1">
+              <NuxtLink
+                to="/profile"
+                class="dropdown-menu-item rounded-2 py-2 px-3 fs-7 d-flex align-items-center gap-2 text-decoration-none text-slate-700"
+                @click="isUserMenuOpen = false"
+              >
+                <i class="bi bi-person-circle text-green-500"></i>
+                <span>My Profile</span>
+              </NuxtLink>
+              <NuxtLink
+                to="/setup/roles"
+                class="dropdown-menu-item rounded-2 py-2 px-3 fs-7 d-flex align-items-center gap-2 text-decoration-none text-slate-700"
+                @click="isUserMenuOpen = false"
+              >
+                <i class="bi bi-gear text-slate-500"></i>
+                <span>Settings</span>
+              </NuxtLink>
+              <hr class="dropdown-divider my-1">
+              <button
+                @click="handleLogout"
+                class="dropdown-menu-item btn-logout-item w-100 rounded-2 py-2 px-3 fs-7 text-danger border-0 bg-transparent text-start d-flex align-items-center gap-2"
+              >
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Sign Out</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -101,11 +118,26 @@ import { useAuthStore } from '~/stores/auth';
 const authStore = useAuthStore();
 const route = useRoute();
 const isSidebarCollapsed = ref(false);
+const isUserMenuOpen = ref(false);
+const userDropdownRef = ref<HTMLElement | null>(null);
+
+function handleClickOutside(event: MouseEvent) {
+  if (userDropdownRef.value && !userDropdownRef.value.contains(event.target as Node)) {
+    isUserMenuOpen.value = false;
+  }
+}
 
 onMounted(() => {
   if (import.meta.client) {
     const saved = localStorage.getItem('kongamano_sidebar_collapsed');
     if (saved !== null) isSidebarCollapsed.value = JSON.parse(saved);
+    document.addEventListener('click', handleClickOutside);
+  }
+});
+
+onUnmounted(() => {
+  if (import.meta.client) {
+    document.removeEventListener('click', handleClickOutside);
   }
 });
 
@@ -114,6 +146,11 @@ function toggleSidebar() {
   if (import.meta.client) {
     localStorage.setItem('kongamano_sidebar_collapsed', JSON.stringify(isSidebarCollapsed.value));
   }
+}
+
+function handleLogout() {
+  isUserMenuOpen.value = false;
+  authStore.logout();
 }
 
 const userInitials = computed(() => {
@@ -359,5 +396,31 @@ const currentPageTitle = computed(() => {
   flex: 1;
   padding: 1.75rem;
   overflow-y: auto;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.header-dropdown-menu {
+  min-width: 220px;
+  background: #ffffff;
+  border-radius: 12px;
+  z-index: 1100;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+.dropdown-menu-item {
+  transition: all 0.18s ease;
+  font-weight: 500;
+}
+
+.dropdown-menu-item:hover {
+  background-color: var(--slate-50);
+}
+
+.btn-logout-item:hover {
+  background-color: var(--red-50) !important;
+  color: var(--red-500) !important;
 }
 </style>
