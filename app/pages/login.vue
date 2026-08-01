@@ -3,17 +3,20 @@
     <div class="row g-0 min-vh-100">
       <!-- Left Hero Banner -->
       <div class="col-lg-6 d-none d-lg-flex flex-column justify-content-between p-5 hero-banner">
-        <div class="brand-header d-flex align-items-center gap-2">
-          <div class="brand-logo shadow-sm">
-            <i class="bi bi-calendar-event-fill fs-4 text-white"></i>
+        <div class="brand-header d-flex align-items-center justify-content-center gap-3 mt-5 pt-4">
+          <img src="/mana ministries.png" alt="Mana Ministries Logo" class="brand-logo shadow-sm" style="width: 76px; height: 76px; object-fit: contain; background: white; padding: 7px; border-radius: 18px;" />
+          <div class="text-start">
+            <span class="fs-2 fw-bold text-white tracking-wide d-block mb-0" style="line-height: 1.1;">Kongamano</span>
+            <small class="text-slate-300 fs-6">Mana Ministries</small>
           </div>
-          <span class="fs-4 fw-bold text-white tracking-wide">Kongamano</span>
         </div>
 
-        <div class="hero-content text-white my-auto py-5">
-          <span class="badge bg-green-accent mb-3 px-3 py-2 rounded-pill fs-7">
-            <i class="bi bi-shield-check me-1"></i> Event Management System
-          </span>
+        <div class="hero-content text-white text-start my-auto py-5 ps-2">
+          <div class="d-flex justify-content-center mb-3">
+            <span class="badge bg-green-accent px-3 py-2 rounded-pill fs-7">
+              <i class="bi bi-shield-check me-1"></i> Event Management System
+            </span>
+          </div>
           <h1 class="display-4 fw-extrabold mb-3">Manage Events & Attendees Seamlessly.</h1>
           <p class="lead text-slate-300 max-w-lg mb-4">
             Unified portal for event scheduling, registration tracking, attendance scanning, and payment management.
@@ -31,7 +34,7 @@
           </div>
         </div>
 
-        <div class="hero-footer text-slate-300 fs-7">
+        <div class="hero-footer text-slate-300 fs-7 ps-2">
           &copy; {{ new Date().getFullYear() }} Kongamano Platform. All rights reserved.
         </div>
       </div>
@@ -40,11 +43,12 @@
       <div class="col-lg-6 d-flex align-items-center justify-content-center bg-white p-4 p-md-5">
         <div class="form-wrapper w-100" style="max-width: 440px;">
           <!-- Mobile Brand Logo -->
-          <div class="d-flex d-lg-none align-items-center gap-2 mb-4">
-            <div class="brand-logo sm bg-green-500 text-white p-2 rounded-3">
-              <i class="bi bi-calendar-event-fill fs-5"></i>
+          <div class="d-flex d-lg-none align-items-center gap-3 mb-4">
+            <img src="/mana ministries.png" alt="Mana Ministries Logo" class="brand-logo sm shadow-sm" style="width: 52px; height: 52px; object-fit: contain; background: white; padding: 4px; border-radius: 12px; border: 1px solid #e2e8f0;" />
+            <div>
+              <span class="fs-4 fw-bold text-slate-900 d-block">Kongamano</span>
+              <small class="text-slate-500 fs-7">Mana Ministries</small>
             </div>
-            <span class="fs-4 fw-bold text-slate-900">Kongamano</span>
           </div>
 
           <div class="mb-4">
@@ -99,6 +103,8 @@
                   :class="{ 'is-invalid': errors.pin }"
                   placeholder="Enter numeric PIN (e.g. 1234)"
                   @input="filterNumericInput"
+                  @keyup="checkCapsLock"
+                  @keydown="checkCapsLock"
                   autocomplete="current-password"
                   required
                 />
@@ -111,6 +117,10 @@
                   <i :class="['bi', showPin ? 'bi-eye-fill' : 'bi-eye-slash-fill']"></i>
                 </button>
               </div>
+              <div v-if="isCapsLockOn" class="text-warning d-flex align-items-center gap-1 mt-1 fs-7 fw-semibold">
+                <i class="bi bi-capslock-fill"></i>
+                <span>Caps Lock is ON</span>
+              </div>
               <div v-if="errors.pin" class="invalid-feedback d-block mt-1 fs-7">
                 {{ errors.pin }}
               </div>
@@ -120,7 +130,7 @@
             <div class="d-flex align-items-center justify-content-between mb-4">
               <div class="form-check">
                 <input id="remember" type="checkbox" class="form-check-input" v-model="rememberMe" />
-                <label for="remember" class="form-check-label text-slate-600 fs-7">
+                <label for="remember" class="form-check-label text-slate-600 fs-7 select-none" style="cursor: pointer;">
                   Remember username
                 </label>
               </div>
@@ -143,6 +153,16 @@
               <i v-if="!loading" class="bi bi-arrow-right"></i>
             </button>
           </form>
+
+          <!-- Support Footer -->
+          <div class="mt-4 pt-3 text-center border-top">
+            <p class="text-slate-500 fs-7 mb-0">
+              Need assistance?
+              <a href="mailto:support@kongamano.org" class="text-green-500 text-decoration-none fw-semibold ms-1">
+                Contact System Administrator
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -167,8 +187,23 @@ const pin = ref('');
 const showPin = ref(false);
 const rememberMe = ref(false);
 const loading = ref(false);
+const isCapsLockOn = ref(false);
 const errorMessage = ref('');
 const errors = ref<{ username?: string; pin?: string }>({});
+
+onMounted(() => {
+  if (import.meta.client) {
+    const savedUsername = localStorage.getItem('kongamano_saved_username');
+    if (savedUsername) {
+      username.value = savedUsername;
+      rememberMe.value = true;
+    }
+  }
+});
+
+function checkCapsLock(event: KeyboardEvent) {
+  isCapsLockOn.value = event.getModifierState && event.getModifierState('CapsLock');
+}
 
 // Zod Validation Schema for Login
 const loginSchema = z.object({
@@ -189,6 +224,15 @@ function filterNumericInput(event: Event) {
 async function handleLogin() {
   errorMessage.value = '';
   errors.value = {};
+
+  // Handle Remember Username persistence
+  if (import.meta.client) {
+    if (rememberMe.value && username.value) {
+      localStorage.setItem('kongamano_saved_username', username.value);
+    } else {
+      localStorage.removeItem('kongamano_saved_username');
+    }
+  }
 
   // Validate with Zod
   const validation = loginSchema.safeParse({ username: username.value, pin: pin.value });

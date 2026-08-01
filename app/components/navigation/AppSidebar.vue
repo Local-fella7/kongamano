@@ -1,7 +1,8 @@
 <template>
   <aside class="sidebar">
-    <div class="brand">
-      <h2>Kongamano</h2>
+    <div class="brand d-flex align-items-center gap-2 mb-4">
+      <img src="/mana ministries.png" alt="Mana Ministries Logo" style="width: 32px; height: 32px; object-fit: contain; background: white; padding: 2px; border-radius: 6px;" />
+      <h2 class="mb-0 fs-4 fw-bold">Kongamano</h2>
     </div>
     <nav class="nav-links">
       <NuxtLink to="/">Dashboard</NuxtLink>
