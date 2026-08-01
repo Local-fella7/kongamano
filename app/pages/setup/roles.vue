@@ -109,47 +109,46 @@
 
       <!-- Pagination Footer -->
       <div v-if="filteredRoles.length > 0" class="pagination-footer d-flex align-items-center justify-content-between flex-wrap gap-3 px-4 py-3 border-top bg-light-subtle">
+        <!-- Left: Range Info -->
         <div class="fs-7 text-muted fw-medium">
           Showing <span class="fw-bold text-slate-900">{{ startIndex + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(endIndex, filteredRoles.length) }}</span> of <span class="fw-bold text-slate-900">{{ filteredRoles.length }}</span> entries
         </div>
 
-        <div class="d-flex align-items-center gap-3">
-          <!-- Items Per Page Dropdown -->
-          <div class="d-flex align-items-center gap-2">
-            <span class="fs-7 text-muted fw-medium text-nowrap">Show:</span>
-            <select v-model="perPage" class="form-select form-select-sm rounded-pill fs-7 border-slate-200 shadow-2xs cursor-pointer px-3" style="width: auto;">
-              <option :value="5">5 rows</option>
-              <option :value="10">10 rows</option>
-              <option :value="25">25 rows</option>
-              <option :value="50">50 rows</option>
-            </select>
-          </div>
+        <!-- Center: Page Numbers [ ‹ ] [ 1 ] [ 2 ] [ › ] -->
+        <nav v-if="totalPages > 1" aria-label="Page navigation">
+          <ul class="pagination pagination-sm mb-0 gap-1">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }">
+              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage--" :disabled="currentPage === 1">
+                <i class="bi bi-chevron-left fs-8"></i>
+              </button>
+            </li>
+            <li
+              v-for="page in totalPages"
+              :key="page"
+              class="page-item"
+              :class="{ active: currentPage === page }"
+            >
+              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage = page">
+                {{ page }}
+              </button>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage++" :disabled="currentPage === totalPages">
+                <i class="bi bi-chevron-right fs-8"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
 
-          <!-- Page Navigation -->
-          <nav v-if="totalPages > 1" aria-label="Page navigation">
-            <ul class="pagination pagination-sm mb-0 gap-1">
-              <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                <button class="page-link rounded-circle border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 30px; height: 30px;" @click="currentPage--" :disabled="currentPage === 1">
-                  <i class="bi bi-chevron-left fs-8"></i>
-                </button>
-              </li>
-              <li
-                v-for="page in totalPages"
-                :key="page"
-                class="page-item"
-                :class="{ active: currentPage === page }"
-              >
-                <button class="page-link rounded-circle border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 30px; height: 30px;" @click="currentPage = page">
-                  {{ page }}
-                </button>
-              </li>
-              <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                <button class="page-link rounded-circle border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 30px; height: 30px;" @click="currentPage++" :disabled="currentPage === totalPages">
-                  <i class="bi bi-chevron-right fs-8"></i>
-                </button>
-              </li>
-            </ul>
-          </nav>
+        <!-- Right: Items Per Page Selector -->
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-7 text-muted fw-medium text-nowrap">Per Page:</span>
+          <select v-model="perPage" class="form-select form-select-sm rounded-3 fs-7 border-slate-200 shadow-2xs cursor-pointer px-3" style="width: auto;">
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+          </select>
         </div>
       </div>
     </div>
