@@ -165,13 +165,30 @@ const navGroups = [
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, var(--green-900) 0%, #152414 60%, var(--slate-900) 100%);
-  transition: width 0.25s ease;
+  transition: width 0.25s ease, transform 0.25s ease;
   flex-shrink: 0;
   border-right: 1px solid rgba(255,255,255,0.06);
 }
 
 .app-sidebar.is-collapsed {
   width: 72px;
+}
+
+/* ── Mobile Responsive Drawer ────────────────────── */
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1050;
+    transform: translateX(0);
+  }
+
+  .app-sidebar.is-collapsed {
+    transform: translateX(-100%);
+    width: 256px;
+  }
 }
 
 /* ─── Brand ─────────────────────────────────────────── */

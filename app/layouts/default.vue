@@ -6,11 +6,21 @@
       @toggle="toggleSidebar"
     />
 
+    <!-- Mobile Backdrop Overlay -->
+    <div
+      v-if="!isSidebarCollapsed"
+      class="sidebar-backdrop d-lg-none"
+      @click="isSidebarCollapsed = true"
+    ></div>
+
     <div class="main-wrapper">
 
       <!-- Top Header -->
       <header class="app-header">
         <div class="header-left">
+          <button @click="toggleSidebar" class="menu-btn d-lg-none" title="Toggle Menu">
+            <i class="bi bi-list"></i>
+          </button>
           <div class="page-info">
             <h1 class="page-title">{{ currentPageTitle }}</h1>
             <span class="page-sub">Kongamano · Mana Ministries</span>
@@ -287,6 +297,44 @@ const currentPageTitle = computed(() => {
 .header-dropdown {
   min-width: 200px;
   border-radius: 12px !important;
+}
+
+.menu-btn {
+  background: transparent;
+  border: 1.5px solid var(--color-border);
+  border-radius: 9px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--green-500);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.menu-btn:hover {
+  background: var(--green-500);
+  color: #ffffff;
+  border-color: var(--green-500);
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1040;
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 575.98px) {
+  .page-content {
+    padding: 1rem !important;
+  }
+  .app-header {
+    padding: 0 1rem !important;
+  }
 }
 
 .dropdown-header-info {
