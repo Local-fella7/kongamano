@@ -1,0 +1,82 @@
+:root {
+  /* Green - PRIMARY */
+  --green-50:  #E9F4E7;
+  --green-100: #C3E2BC;
+  --green-200: #9BCB8F;
+  --green-300: #5FA352;
+  --green-400: #3E8E31;
+  --green-500: #2E7D22;  /* base — primary brand color */
+  --green-600: #256B1B;
+  --green-700: #1F5A17;
+  --green-800: #17420F;
+  --green-900: #123A0D;
+
+  /* Red - ACCENT (used sparingly: alerts, highlights, icons) */
+  --red-50:  #FDECEC;
+  --red-100: #F9C9C9;
+  --red-300: #E06A6A;
+  --red-500: #C41E1E;  /* base */
+  --red-700: #8F1616;
+  --red-900: #5C0E0E;
+
+  /* Slate - Text/Support */
+  --slate-50:  #EFEFF2;
+  --slate-100: #DCDCE3;
+  --slate-300: #8686A0;
+  --slate-500: #4B4B5C;  /* base */
+  --slate-700: #33333F;
+  --slate-900: #1C1C24;
+
+  /* Semantic aliases */
+  --color-primary: var(--green-500);
+  --color-primary-hover: var(--green-600);
+  --color-accent-red: var(--red-500);
+  --color-bg-light: var(--slate-50);
+  --color-surface: #ffffff;
+  --color-text: var(--slate-900);
+  --color-text-muted: var(--slate-500);
+  --color-border: var(--slate-100);
+}
+
+body {
+  background-color: var(--color-bg-light);
+  color: var(--color-text);
+}
+
+/* Bootstrap Overrides using the exact new tokens */
+.btn-primary {
+  background-color: var(--green-500) !important;
+  border-color: var(--green-500) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--green-600) !important;
+  border-color: var(--green-600) !important;
+}
+
+.btn-danger {
+  background-color: var(--red-500) !important;
+  border-color: var(--red-500) !important;
+}
+
+.btn-danger:hover {
+  background-color: var(--red-700) !important;
+  border-color: var(--red-700) !important;
+}
+
+.bg-kongamano-primary {
+  background-color: var(--green-500) !important;
+}
+
+.bg-kongamano-dark {
+  background-color: var(--slate-900) !important;
+}
+
+.text-kongamano-green {
+  color: var(--green-500) !important;
+}
+
+.text-kongamano-red {
+  color: var(--red-500) !important;
+}
