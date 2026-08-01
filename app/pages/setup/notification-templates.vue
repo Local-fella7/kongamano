@@ -32,7 +32,7 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Template Key / Code</th>
+            <th>Template Name</th>
             <th>Display Title</th>
             <th>Created At</th>
             <th class="text-end">Actions</th>
@@ -46,7 +46,7 @@
                 <span class="item-badge">
                   <i class="bi bi-chat-text-fill"></i>
                 </span>
-                <code class="fw-semibold text-green-700 bg-green-subtle px-2 py-1 rounded-2 fs-7">{{ item.name }}</code>
+                <span class="fw-semibold text-slate-900 fs-7">{{ item.name }}</span>
               </div>
             </td>
             <td class="fw-medium text-slate-900 fs-7">{{ item.title }}</td>
@@ -77,17 +77,16 @@
     >
       <form @submit.prevent="handleSubmit">
         <div class="mb-3">
-          <label class="form-label fw-semibold text-slate-700">Template Key / Code <span class="text-danger">*</span></label>
+          <label class="form-label fw-semibold text-slate-700">Template Name <span class="text-danger">*</span></label>
           <input
             v-model="form.name"
             type="text"
-            class="form-control font-monospace"
+            class="form-control"
             :class="{ 'is-invalid': formError }"
-            placeholder="e.g. welcome_email, payment_sms"
+            placeholder="e.g. Welcome Email Template"
             required
             autofocus
           />
-          <small class="text-muted fs-8 d-block mt-1">Unique machine identifier without spaces (e.g. welcome_email)</small>
         </div>
 
         <div class="mb-4">
@@ -117,7 +116,7 @@
       v-model="showViewModal"
       title="Template Details"
       icon="bi-envelope-fill"
-      size="md"
+      size="sm"
     >
       <div v-if="viewingItem" class="p-1">
         <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
@@ -126,18 +125,8 @@
           </div>
           <div>
             <h6 class="fw-bold text-slate-900 mb-0">{{ viewingItem.name }}</h6>
-            <span class="badge bg-slate-200 text-slate-700 font-monospace fs-8">{{ viewingItem.key }}</span>
+            <span class="fs-7 text-muted fw-medium">{{ viewingItem.title }}</span>
           </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label fw-semibold text-slate-700 fs-7 mb-1">Subject</label>
-          <div class="p-2.5 bg-white border rounded-3 text-slate-900 fs-7 fw-medium">{{ viewingItem.subject || '—' }}</div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label fw-semibold text-slate-700 fs-7 mb-1">Body Content</label>
-          <div class="p-3 bg-light-subtle border rounded-3 text-slate-800 fs-7 font-monospace whitespace-pre-wrap max-vh-30 overflow-y-auto">{{ viewingItem.body || '—' }}</div>
         </div>
 
         <div class="row g-2 text-slate-700 fs-7">
