@@ -1,19 +1,19 @@
 <template>
-  <div class="roles-page">
+  <div class="notification-templates-page">
     <!-- Page Header -->
     <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <div class="d-flex align-items-center gap-3">
         <div class="header-icon-box">
-          <i class="bi bi-shield-lock-fill"></i>
+          <i class="bi bi-bell-fill"></i>
         </div>
         <div>
-          <h2 class="page-heading">Roles Management</h2>
-          <p class="page-subheading">Configure user access roles, security levels, and administrative privileges.</p>
+          <h2 class="page-heading">Notification Templates</h2>
+          <p class="page-subheading">Manage automated SMS and email communication templates for delegates.</p>
         </div>
       </div>
       <button class="btn-create" @click="openCreate">
         <i class="bi bi-plus-lg fs-6"></i>
-        <span>New Role</span>
+        <span>New Template</span>
       </button>
     </div>
 
@@ -32,32 +32,34 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Role Name</th>
+            <th>Template Name</th>
+            <th>Display Title</th>
             <th>Created At</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(role, index) in crud.paginatedItems.value" :key="role.id">
+          <tr v-for="(item, index) in crud.paginatedItems.value" :key="item.id">
             <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
             <td>
-              <div class="role-name-cell">
-                <span class="role-badge">
-                  <i class="bi bi-shield-fill-check"></i>
+              <div class="item-name-cell">
+                <span class="item-badge">
+                  <i class="bi bi-chat-text-fill"></i>
                 </span>
-                <span class="fw-semibold text-slate-900">{{ role.name }}</span>
+                <span class="fw-semibold text-slate-900 fs-7">{{ item.name }}</span>
               </div>
             </td>
-            <td class="text-muted fs-7">{{ role.created_at ? formatDate(role.created_at) : '—' }}</td>
+            <td class="fw-medium text-slate-900 fs-7">{{ item.title }}</td>
+            <td class="text-muted fs-7">{{ item.created_at ? formatDate(item.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
-                <button class="btn-icon-action btn-view" @click="openView(role)" title="View Details">
+                <button class="btn-icon-action btn-view" @click="openView(item)" title="View Details">
                   <i class="bi bi-eye-fill"></i>
                 </button>
-                <button class="btn-icon-action btn-edit" @click="openEdit(role)" title="Edit">
+                <button class="btn-icon-action btn-edit" @click="openEdit(item)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
-                <button class="btn-icon-action btn-delete" @click="confirmDelete(role)" title="Delete">
+                <button class="btn-icon-action btn-delete" @click="confirmDelete(item)" title="Delete">
                   <i class="bi bi-trash-fill"></i>
                 </button>
               </div>
@@ -70,20 +72,31 @@
     <!-- Create / Edit Modal -->
     <CommonModal
       v-model="showModal"
-      :title="editingRole ? 'Edit Role' : 'New Role'"
-      :icon="editingRole ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
+      :title="editingItem ? 'Edit Notification Template' : 'New Notification Template'"
+      :icon="editingItem ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
     >
       <form @submit.prevent="handleSubmit">
-        <div class="mb-4">
-          <label class="form-label fw-semibold text-slate-700">Role Name <span class="text-danger">*</span></label>
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-slate-700">Template Name <span class="text-danger">*</span></label>
           <input
             v-model="form.name"
             type="text"
             class="form-control"
             :class="{ 'is-invalid': formError }"
-            placeholder="e.g. Supervisor, Coordinator"
+            placeholder="e.g. Welcome Email Template"
             required
             autofocus
+          />
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-slate-700">Display Title <span class="text-danger">*</span></label>
+          <input
+            v-model="form.title"
+            type="text"
+            class="form-control"
+            placeholder="e.g. Welcome to Kongamano Conference"
+            required
           />
           <div v-if="formError" class="invalid-feedback d-block mt-1">{{ formError }}</div>
         </div>
@@ -92,7 +105,7 @@
           <button type="button" class="btn-cancel" @click="showModal = false">Cancel</button>
           <button type="submit" class="btn-submit" :disabled="crud.saving.value">
             <span v-if="crud.saving.value" class="spinner-border spinner-border-sm me-2"></span>
-            {{ editingRole ? 'Save Changes' : 'Create Role' }}
+            {{ editingItem ? 'Save Changes' : 'Create Template' }}
           </button>
         </div>
       </form>
@@ -101,28 +114,29 @@
     <!-- View Details Modal -->
     <CommonModal
       v-model="showViewModal"
-      title="Role Details"
-      icon="bi-shield-check"
+      title="Template Details"
+      icon="bi-envelope-fill"
       size="sm"
     >
-      <div v-if="viewingRole" class="p-1">
+      <div v-if="viewingItem" class="p-1">
         <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
-          <div class="role-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
-            <i class="bi bi-shield-fill-check"></i>
+          <div class="template-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-chat-text-fill"></i>
           </div>
           <div>
-            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingRole.name }}</h6>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingItem.name }}</h6>
+            <span class="fs-7 text-muted fw-medium">{{ viewingItem.title }}</span>
           </div>
         </div>
 
         <div class="row g-2 text-slate-700 fs-7">
           <div class="col-6">
             <span class="text-muted d-block fs-8">Created At</span>
-            <span class="fw-semibold">{{ viewingRole.created_at ? formatDate(viewingRole.created_at) : '—' }}</span>
+            <span class="fw-semibold">{{ viewingItem.created_at ? formatDate(viewingItem.created_at) : '—' }}</span>
           </div>
           <div class="col-6">
             <span class="text-muted d-block fs-8">Updated At</span>
-            <span class="fw-semibold">{{ viewingRole.updated_at ? formatDate(viewingRole.updated_at) : '—' }}</span>
+            <span class="fw-semibold">{{ viewingItem.updated_at ? formatDate(viewingItem.updated_at) : '—' }}</span>
           </div>
         </div>
 
@@ -131,16 +145,18 @@
         </div>
       </div>
     </CommonModal>
+
+    <!-- Delete Confirm Modal -->
     <CommonModal
       v-model="showDeleteModal"
-      title="Delete Role"
+      title="Delete Notification Template"
       icon="bi-exclamation-triangle-fill"
       variant="danger"
       size="sm"
     >
       <div class="text-center">
         <p class="text-slate-700 fs-6 mb-1">
-          Are you sure you want to delete <strong>{{ deletingRole?.name }}</strong>?
+          Are you sure you want to delete <strong>{{ deletingItem?.title || deletingItem?.name }}</strong>?
         </p>
         <p class="text-muted fs-7 mb-4">This action cannot be undone.</p>
         <div class="modal-footer-row justify-content-center">
@@ -152,31 +168,33 @@
         </div>
       </div>
     </CommonModal>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Role } from '~/types/auth';
+import type { NotificationTemplate } from '~/types/notification-template';
 
 definePageMeta({ layout: 'default' });
 
-const crud = useCrudApi<Role>({ endpoint: '/api/roles', dataKey: 'roles' });
+const crud = useCrudApi<NotificationTemplate>({ endpoint: '/api/notification-templates', dataKey: 'notification_templates' });
 
 // Modal state
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
-const viewingRole = ref<Role | null>(null);
-const editingRole = ref<Role | null>(null);
-const deletingRole = ref<Role | null>(null);
+const viewingItem = ref<NotificationTemplate | null>(null);
+const editingItem = ref<NotificationTemplate | null>(null);
+const deletingItem = ref<NotificationTemplate | null>(null);
 
-function openView(role: Role) {
-  viewingRole.value = role;
+function openView(item: NotificationTemplate) {
+  viewingItem.value = item;
   showViewModal.value = true;
 }
 
-const form = reactive({ name: '' });
+const form = reactive({
+  name: '',
+  title: '',
+});
 const formError = ref('');
 
 function formatDate(dateStr: string) {
@@ -188,50 +206,68 @@ function formatDate(dateStr: string) {
 }
 
 function openCreate() {
-  editingRole.value = null;
+  editingItem.value = null;
   form.name = '';
+  form.title = '';
   formError.value = '';
   showModal.value = true;
 }
 
-function openEdit(role: Role) {
-  editingRole.value = role;
-  form.name = role.name;
+function openEdit(item: NotificationTemplate) {
+  editingItem.value = item;
+  form.name = item.name;
+  form.title = item.title;
   formError.value = '';
   showModal.value = true;
 }
 
 async function handleSubmit() {
-  if (!form.name.trim()) {
-    formError.value = 'Role name is required.';
+  if (!form.name.trim() || !form.title.trim()) {
+    formError.value = 'Both key and title are required.';
     return;
   }
   formError.value = '';
 
+  const payload = {
+    name: form.name.trim().toLowerCase().replace(/\s+/g, '_'),
+    title: form.title.trim(),
+  };
+
   let success = false;
-  if (editingRole.value) {
-    success = await crud.updateItem(editingRole.value.id, { name: form.name }, `Role "${form.name}" updated successfully.`);
+  if (editingItem.value) {
+    success = await crud.updateItem(
+      editingItem.value.id,
+      payload,
+      `Template "${form.title}" updated successfully.`
+    );
   } else {
-    success = await crud.createItem({ name: form.name }, `Role "${form.name}" created successfully.`);
+    success = await crud.createItem(
+      payload,
+      `Template "${form.title}" created successfully.`
+    );
   }
 
   if (success) {
     showModal.value = false;
     form.name = '';
+    form.title = '';
   }
 }
 
-function confirmDelete(role: Role) {
-  deletingRole.value = role;
+function confirmDelete(item: NotificationTemplate) {
+  deletingItem.value = item;
   showDeleteModal.value = true;
 }
 
 async function handleDelete() {
-  if (!deletingRole.value) return;
-  const success = await crud.deleteItem(deletingRole.value.id, `Role "${deletingRole.value.name}" has been removed.`);
+  if (!deletingItem.value) return;
+  const success = await crud.deleteItem(
+    deletingItem.value.id,
+    `Template "${deletingItem.value.title}" has been removed.`
+  );
   if (success) {
     showDeleteModal.value = false;
-    deletingRole.value = null;
+    deletingItem.value = null;
   }
 }
 
@@ -241,7 +277,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.roles-page {
+.notification-templates-page {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 120px);
@@ -333,13 +369,13 @@ onMounted(() => {
   width: 40px;
 }
 
-.role-name-cell {
+.item-name-cell {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
 
-.role-badge {
+.item-badge {
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -471,4 +507,7 @@ onMounted(() => {
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+.bg-green-subtle { background-color: var(--green-50); }
+.text-green-700 { color: var(--green-700); }
 </style>

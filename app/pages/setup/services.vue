@@ -1,19 +1,19 @@
 <template>
-  <div class="roles-page">
+  <div class="services-page">
     <!-- Page Header -->
     <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <div class="d-flex align-items-center gap-3">
         <div class="header-icon-box">
-          <i class="bi bi-shield-lock-fill"></i>
+          <i class="bi bi-lightning-fill"></i>
         </div>
         <div>
-          <h2 class="page-heading">Roles Management</h2>
-          <p class="page-subheading">Configure user access roles, security levels, and administrative privileges.</p>
+          <h2 class="page-heading">Event Services & Scan Points</h2>
+          <p class="page-subheading">Configure event check-in points, dining access, and service operation hours.</p>
         </div>
       </div>
       <button class="btn-create" @click="openCreate">
         <i class="bi bi-plus-lg fs-6"></i>
-        <span>New Role</span>
+        <span>New Service</span>
       </button>
     </div>
 
@@ -32,32 +32,47 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Role Name</th>
+            <th>Service Name</th>
+            <th>Operating Hours</th>
+            <th>Scan Required</th>
             <th>Created At</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(role, index) in crud.paginatedItems.value" :key="role.id">
+          <tr v-for="(service, index) in crud.paginatedItems.value" :key="service.id">
             <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
             <td>
-              <div class="role-name-cell">
-                <span class="role-badge">
-                  <i class="bi bi-shield-fill-check"></i>
+              <div class="service-name-cell">
+                <span class="service-badge">
+                  <i class="bi bi-qr-code-scan"></i>
                 </span>
-                <span class="fw-semibold text-slate-900">{{ role.name }}</span>
+                <span class="fw-semibold text-slate-900">{{ service.name }}</span>
               </div>
             </td>
-            <td class="text-muted fs-7">{{ role.created_at ? formatDate(role.created_at) : '—' }}</td>
+            <td class="fs-7 text-slate-700">
+              <i class="bi bi-clock me-1 text-muted"></i>
+              {{ service.start_time || '08:00' }} - {{ service.end_time || '17:00' }}
+            </td>
+            <td>
+              <span
+                class="badge rounded-pill px-2-5 py-1-5 fs-8"
+                :class="service.requires_scan ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'"
+              >
+                <i :class="['bi me-1', service.requires_scan ? 'bi-check-circle-fill' : 'bi-x-circle-fill']"></i>
+                {{ service.requires_scan ? 'Required' : 'Optional' }}
+              </span>
+            </td>
+            <td class="text-muted fs-7">{{ service.created_at ? formatDate(service.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
-                <button class="btn-icon-action btn-view" @click="openView(role)" title="View Details">
+                <button class="btn-icon-action btn-view" @click="openView(service)" title="View Details">
                   <i class="bi bi-eye-fill"></i>
                 </button>
-                <button class="btn-icon-action btn-edit" @click="openEdit(role)" title="Edit">
+                <button class="btn-icon-action btn-edit" @click="openEdit(service)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
-                <button class="btn-icon-action btn-delete" @click="confirmDelete(role)" title="Delete">
+                <button class="btn-icon-action btn-delete" @click="confirmDelete(service)" title="Delete">
                   <i class="bi bi-trash-fill"></i>
                 </button>
               </div>
@@ -70,29 +85,55 @@
     <!-- Create / Edit Modal -->
     <CommonModal
       v-model="showModal"
-      :title="editingRole ? 'Edit Role' : 'New Role'"
-      :icon="editingRole ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
+      :title="editingService ? 'Edit Service' : 'New Service'"
+      :icon="editingService ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
     >
       <form @submit.prevent="handleSubmit">
-        <div class="mb-4">
-          <label class="form-label fw-semibold text-slate-700">Role Name <span class="text-danger">*</span></label>
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-slate-700">Service Name <span class="text-danger">*</span></label>
           <input
             v-model="form.name"
             type="text"
             class="form-control"
             :class="{ 'is-invalid': formError }"
-            placeholder="e.g. Supervisor, Coordinator"
+            placeholder="e.g. Registration Desk, Dining Hall, Main Sanctuary"
             required
             autofocus
           />
           <div v-if="formError" class="invalid-feedback d-block mt-1">{{ formError }}</div>
         </div>
 
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold text-slate-700">Start Time</label>
+            <input v-model="form.start_time" type="time" class="form-control" />
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold text-slate-700">End Time</label>
+            <input v-model="form.end_time" type="time" class="form-control" />
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div class="form-check form-switch pt-1">
+            <input
+              id="requiresScan"
+              v-model="form.requires_scan"
+              type="checkbox"
+              class="form-check-input cursor-pointer"
+            />
+            <label for="requiresScan" class="form-check-label fw-medium text-slate-700 cursor-pointer">
+              Requires QR Code Scanning
+            </label>
+          </div>
+          <small class="text-muted fs-8 d-block mt-1">Enable if attendees must scan their badge QR code at this checkpoint.</small>
+        </div>
+
         <div class="modal-footer-row">
           <button type="button" class="btn-cancel" @click="showModal = false">Cancel</button>
           <button type="submit" class="btn-submit" :disabled="crud.saving.value">
             <span v-if="crud.saving.value" class="spinner-border spinner-border-sm me-2"></span>
-            {{ editingRole ? 'Save Changes' : 'Create Role' }}
+            {{ editingService ? 'Save Changes' : 'Create Service' }}
           </button>
         </div>
       </form>
@@ -101,28 +142,38 @@
     <!-- View Details Modal -->
     <CommonModal
       v-model="showViewModal"
-      title="Role Details"
-      icon="bi-shield-check"
-      size="sm"
+      title="Service Details"
+      icon="bi-gear-fill"
+      size="md"
     >
-      <div v-if="viewingRole" class="p-1">
+      <div v-if="viewingService" class="p-1">
         <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
-          <div class="role-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
-            <i class="bi bi-shield-fill-check"></i>
+          <div class="service-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-gear-wide-connected"></i>
           </div>
           <div>
-            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingRole.name }}</h6>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingService.name }}</h6>
           </div>
         </div>
 
-        <div class="row g-2 text-slate-700 fs-7">
+        <div class="row g-3 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Operating Hours</span>
+            <span class="fw-semibold">{{ viewingService.start_time || '—' }} - {{ viewingService.end_time || '—' }}</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">QR Scan Verification</span>
+            <span class="badge" :class="viewingService.requires_qr_scan ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'">
+              {{ viewingService.requires_qr_scan ? 'Required' : 'Disabled' }}
+            </span>
+          </div>
           <div class="col-6">
             <span class="text-muted d-block fs-8">Created At</span>
-            <span class="fw-semibold">{{ viewingRole.created_at ? formatDate(viewingRole.created_at) : '—' }}</span>
+            <span class="fw-semibold">{{ viewingService.created_at ? formatDate(viewingService.created_at) : '—' }}</span>
           </div>
           <div class="col-6">
             <span class="text-muted d-block fs-8">Updated At</span>
-            <span class="fw-semibold">{{ viewingRole.updated_at ? formatDate(viewingRole.updated_at) : '—' }}</span>
+            <span class="fw-semibold">{{ viewingService.updated_at ? formatDate(viewingService.updated_at) : '—' }}</span>
           </div>
         </div>
 
@@ -131,16 +182,18 @@
         </div>
       </div>
     </CommonModal>
+
+    <!-- Delete Confirm Modal -->
     <CommonModal
       v-model="showDeleteModal"
-      title="Delete Role"
+      title="Delete Service"
       icon="bi-exclamation-triangle-fill"
       variant="danger"
       size="sm"
     >
       <div class="text-center">
         <p class="text-slate-700 fs-6 mb-1">
-          Are you sure you want to delete <strong>{{ deletingRole?.name }}</strong>?
+          Are you sure you want to delete <strong>{{ deletingService?.name }}</strong>?
         </p>
         <p class="text-muted fs-7 mb-4">This action cannot be undone.</p>
         <div class="modal-footer-row justify-content-center">
@@ -152,31 +205,35 @@
         </div>
       </div>
     </CommonModal>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Role } from '~/types/auth';
+import type { Service } from '~/types/service';
 
 definePageMeta({ layout: 'default' });
 
-const crud = useCrudApi<Role>({ endpoint: '/api/roles', dataKey: 'roles' });
+const crud = useCrudApi<Service>({ endpoint: '/api/services', dataKey: 'services' });
 
 // Modal state
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
-const viewingRole = ref<Role | null>(null);
-const editingRole = ref<Role | null>(null);
-const deletingRole = ref<Role | null>(null);
+const viewingService = ref<Service | null>(null);
+const editingService = ref<Service | null>(null);
+const deletingService = ref<Service | null>(null);
 
-function openView(role: Role) {
-  viewingRole.value = role;
+function openView(service: Service) {
+  viewingService.value = service;
   showViewModal.value = true;
 }
 
-const form = reactive({ name: '' });
+const form = reactive({
+  name: '',
+  start_time: '08:00',
+  end_time: '17:00',
+  requires_scan: false,
+});
 const formError = ref('');
 
 function formatDate(dateStr: string) {
@@ -188,31 +245,55 @@ function formatDate(dateStr: string) {
 }
 
 function openCreate() {
-  editingRole.value = null;
+  editingService.value = null;
   form.name = '';
+  form.start_time = '08:00';
+  form.end_time = '17:00';
+  form.requires_scan = false;
   formError.value = '';
   showModal.value = true;
 }
 
-function openEdit(role: Role) {
-  editingRole.value = role;
-  form.name = role.name;
+function openEdit(service: Service) {
+  editingService.value = service;
+  form.name = service.name;
+  form.start_time = service.start_time || '08:00';
+  form.end_time = service.end_time || '17:00';
+  form.requires_scan = Boolean(service.requires_scan);
   formError.value = '';
   showModal.value = true;
 }
 
 async function handleSubmit() {
   if (!form.name.trim()) {
-    formError.value = 'Role name is required.';
+    formError.value = 'Service name is required.';
     return;
   }
   formError.value = '';
 
+  // Format time fields to HH:mm:ss as required by backend CodeIgniter validation
+  const startTimeFormatted = form.start_time.length === 5 ? `${form.start_time}:00` : form.start_time;
+  const endTimeFormatted = form.end_time.length === 5 ? `${form.end_time}:00` : form.end_time;
+
+  const payload = {
+    name: form.name,
+    start_time: startTimeFormatted,
+    end_time: endTimeFormatted,
+    requires_scan: form.requires_scan,
+  };
+
   let success = false;
-  if (editingRole.value) {
-    success = await crud.updateItem(editingRole.value.id, { name: form.name }, `Role "${form.name}" updated successfully.`);
+  if (editingService.value) {
+    success = await crud.updateItem(
+      editingService.value.id,
+      payload,
+      `Service "${form.name}" updated successfully.`
+    );
   } else {
-    success = await crud.createItem({ name: form.name }, `Role "${form.name}" created successfully.`);
+    success = await crud.createItem(
+      payload,
+      `Service "${form.name}" created successfully.`
+    );
   }
 
   if (success) {
@@ -221,17 +302,20 @@ async function handleSubmit() {
   }
 }
 
-function confirmDelete(role: Role) {
-  deletingRole.value = role;
+function confirmDelete(service: Service) {
+  deletingService.value = service;
   showDeleteModal.value = true;
 }
 
 async function handleDelete() {
-  if (!deletingRole.value) return;
-  const success = await crud.deleteItem(deletingRole.value.id, `Role "${deletingRole.value.name}" has been removed.`);
+  if (!deletingService.value) return;
+  const success = await crud.deleteItem(
+    deletingService.value.id,
+    `Service "${deletingService.value.name}" has been removed.`
+  );
   if (success) {
     showDeleteModal.value = false;
-    deletingRole.value = null;
+    deletingService.value = null;
   }
 }
 
@@ -241,7 +325,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.roles-page {
+.services-page {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 120px);
@@ -333,13 +417,13 @@ onMounted(() => {
   width: 40px;
 }
 
-.role-name-cell {
+.service-name-cell {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
 
-.role-badge {
+.service-badge {
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -471,4 +555,7 @@ onMounted(() => {
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+.px-2-5 { padding-left: 0.65rem; padding-right: 0.65rem; }
+.py-1-5 { padding-top: 0.35rem; padding-bottom: 0.35rem; }
 </style>

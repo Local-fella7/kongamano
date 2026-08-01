@@ -1,19 +1,19 @@
 <template>
-  <div class="roles-page">
+  <div class="titles-page">
     <!-- Page Header -->
     <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <div class="d-flex align-items-center gap-3">
         <div class="header-icon-box">
-          <i class="bi bi-shield-lock-fill"></i>
+          <i class="bi bi-person-badge"></i>
         </div>
         <div>
-          <h2 class="page-heading">Roles Management</h2>
-          <p class="page-subheading">Configure user access roles, security levels, and administrative privileges.</p>
+          <h2 class="page-heading">Titles & Salutations</h2>
+          <p class="page-subheading">Manage honorific titles assigned to event attendees (Mr, Mrs, Dr, Rev, etc.).</p>
         </div>
       </div>
       <button class="btn-create" @click="openCreate">
         <i class="bi bi-plus-lg fs-6"></i>
-        <span>New Role</span>
+        <span>New Title</span>
       </button>
     </div>
 
@@ -32,32 +32,32 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Role Name</th>
+            <th>Title / Salutation</th>
             <th>Created At</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(role, index) in crud.paginatedItems.value" :key="role.id">
+          <tr v-for="(title, index) in crud.paginatedItems.value" :key="title.id">
             <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
             <td>
-              <div class="role-name-cell">
-                <span class="role-badge">
-                  <i class="bi bi-shield-fill-check"></i>
+              <div class="title-name-cell">
+                <span class="title-badge">
+                  <i class="bi bi-person-lines-fill"></i>
                 </span>
-                <span class="fw-semibold text-slate-900">{{ role.name }}</span>
+                <span class="fw-semibold text-slate-900">{{ title.name }}</span>
               </div>
             </td>
-            <td class="text-muted fs-7">{{ role.created_at ? formatDate(role.created_at) : '—' }}</td>
+            <td class="text-muted fs-7">{{ title.created_at ? formatDate(title.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
-                <button class="btn-icon-action btn-view" @click="openView(role)" title="View Details">
+                <button class="btn-icon-action btn-view" @click="openView(title)" title="View Details">
                   <i class="bi bi-eye-fill"></i>
                 </button>
-                <button class="btn-icon-action btn-edit" @click="openEdit(role)" title="Edit">
+                <button class="btn-icon-action btn-edit" @click="openEdit(title)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
-                <button class="btn-icon-action btn-delete" @click="confirmDelete(role)" title="Delete">
+                <button class="btn-icon-action btn-delete" @click="confirmDelete(title)" title="Delete">
                   <i class="bi bi-trash-fill"></i>
                 </button>
               </div>
@@ -70,18 +70,18 @@
     <!-- Create / Edit Modal -->
     <CommonModal
       v-model="showModal"
-      :title="editingRole ? 'Edit Role' : 'New Role'"
-      :icon="editingRole ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
+      :title="editingTitle ? 'Edit Title' : 'New Title'"
+      :icon="editingTitle ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
     >
       <form @submit.prevent="handleSubmit">
         <div class="mb-4">
-          <label class="form-label fw-semibold text-slate-700">Role Name <span class="text-danger">*</span></label>
+          <label class="form-label fw-semibold text-slate-700">Title / Salutation Name <span class="text-danger">*</span></label>
           <input
             v-model="form.name"
             type="text"
             class="form-control"
             :class="{ 'is-invalid': formError }"
-            placeholder="e.g. Supervisor, Coordinator"
+            placeholder="e.g. Dr, Rev, Pastor, Mr, Ms"
             required
             autofocus
           />
@@ -92,7 +92,7 @@
           <button type="button" class="btn-cancel" @click="showModal = false">Cancel</button>
           <button type="submit" class="btn-submit" :disabled="crud.saving.value">
             <span v-if="crud.saving.value" class="spinner-border spinner-border-sm me-2"></span>
-            {{ editingRole ? 'Save Changes' : 'Create Role' }}
+            {{ editingTitle ? 'Save Changes' : 'Create Title' }}
           </button>
         </div>
       </form>
@@ -101,28 +101,28 @@
     <!-- View Details Modal -->
     <CommonModal
       v-model="showViewModal"
-      title="Role Details"
-      icon="bi-shield-check"
+      title="Title Details"
+      icon="bi-person-badge"
       size="sm"
     >
-      <div v-if="viewingRole" class="p-1">
+      <div v-if="viewingTitle" class="p-1">
         <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
-          <div class="role-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
-            <i class="bi bi-shield-fill-check"></i>
+          <div class="title-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-person-lines-fill"></i>
           </div>
           <div>
-            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingRole.name }}</h6>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingTitle.name }}</h6>
           </div>
         </div>
 
         <div class="row g-2 text-slate-700 fs-7">
           <div class="col-6">
             <span class="text-muted d-block fs-8">Created At</span>
-            <span class="fw-semibold">{{ viewingRole.created_at ? formatDate(viewingRole.created_at) : '—' }}</span>
+            <span class="fw-semibold">{{ viewingTitle.created_at ? formatDate(viewingTitle.created_at) : '—' }}</span>
           </div>
           <div class="col-6">
             <span class="text-muted d-block fs-8">Updated At</span>
-            <span class="fw-semibold">{{ viewingRole.updated_at ? formatDate(viewingRole.updated_at) : '—' }}</span>
+            <span class="fw-semibold">{{ viewingTitle.updated_at ? formatDate(viewingTitle.updated_at) : '—' }}</span>
           </div>
         </div>
 
@@ -131,16 +131,18 @@
         </div>
       </div>
     </CommonModal>
+
+    <!-- Delete Confirm Modal -->
     <CommonModal
       v-model="showDeleteModal"
-      title="Delete Role"
+      title="Delete Title"
       icon="bi-exclamation-triangle-fill"
       variant="danger"
       size="sm"
     >
       <div class="text-center">
         <p class="text-slate-700 fs-6 mb-1">
-          Are you sure you want to delete <strong>{{ deletingRole?.name }}</strong>?
+          Are you sure you want to delete <strong>{{ deletingTitle?.name }}</strong>?
         </p>
         <p class="text-muted fs-7 mb-4">This action cannot be undone.</p>
         <div class="modal-footer-row justify-content-center">
@@ -152,27 +154,26 @@
         </div>
       </div>
     </CommonModal>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Role } from '~/types/auth';
+import type { Title } from '~/types/title';
 
 definePageMeta({ layout: 'default' });
 
-const crud = useCrudApi<Role>({ endpoint: '/api/roles', dataKey: 'roles' });
+const crud = useCrudApi<Title>({ endpoint: '/api/titles', dataKey: 'titles' });
 
 // Modal state
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
-const viewingRole = ref<Role | null>(null);
-const editingRole = ref<Role | null>(null);
-const deletingRole = ref<Role | null>(null);
+const viewingTitle = ref<Title | null>(null);
+const editingTitle = ref<Title | null>(null);
+const deletingTitle = ref<Title | null>(null);
 
-function openView(role: Role) {
-  viewingRole.value = role;
+function openView(title: Title) {
+  viewingTitle.value = title;
   showViewModal.value = true;
 }
 
@@ -188,31 +189,38 @@ function formatDate(dateStr: string) {
 }
 
 function openCreate() {
-  editingRole.value = null;
+  editingTitle.value = null;
   form.name = '';
   formError.value = '';
   showModal.value = true;
 }
 
-function openEdit(role: Role) {
-  editingRole.value = role;
-  form.name = role.name;
+function openEdit(title: Title) {
+  editingTitle.value = title;
+  form.name = title.name;
   formError.value = '';
   showModal.value = true;
 }
 
 async function handleSubmit() {
   if (!form.name.trim()) {
-    formError.value = 'Role name is required.';
+    formError.value = 'Title name is required.';
     return;
   }
   formError.value = '';
 
   let success = false;
-  if (editingRole.value) {
-    success = await crud.updateItem(editingRole.value.id, { name: form.name }, `Role "${form.name}" updated successfully.`);
+  if (editingTitle.value) {
+    success = await crud.updateItem(
+      editingTitle.value.id,
+      { name: form.name },
+      `Title "${form.name}" updated successfully.`
+    );
   } else {
-    success = await crud.createItem({ name: form.name }, `Role "${form.name}" created successfully.`);
+    success = await crud.createItem(
+      { name: form.name },
+      `Title "${form.name}" created successfully.`
+    );
   }
 
   if (success) {
@@ -221,17 +229,20 @@ async function handleSubmit() {
   }
 }
 
-function confirmDelete(role: Role) {
-  deletingRole.value = role;
+function confirmDelete(title: Title) {
+  deletingTitle.value = title;
   showDeleteModal.value = true;
 }
 
 async function handleDelete() {
-  if (!deletingRole.value) return;
-  const success = await crud.deleteItem(deletingRole.value.id, `Role "${deletingRole.value.name}" has been removed.`);
+  if (!deletingTitle.value) return;
+  const success = await crud.deleteItem(
+    deletingTitle.value.id,
+    `Title "${deletingTitle.value.name}" has been removed.`
+  );
   if (success) {
     showDeleteModal.value = false;
-    deletingRole.value = null;
+    deletingTitle.value = null;
   }
 }
 
@@ -241,7 +252,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.roles-page {
+.titles-page {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 120px);
@@ -333,13 +344,13 @@ onMounted(() => {
   width: 40px;
 }
 
-.role-name-cell {
+.title-name-cell {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
 
-.role-badge {
+.title-badge {
   width: 32px;
   height: 32px;
   border-radius: 8px;

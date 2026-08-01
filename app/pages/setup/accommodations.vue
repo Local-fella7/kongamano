@@ -1,19 +1,19 @@
 <template>
-  <div class="roles-page">
+  <div class="accommodations-page">
     <!-- Page Header -->
     <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <div class="d-flex align-items-center gap-3">
         <div class="header-icon-box">
-          <i class="bi bi-shield-lock-fill"></i>
+          <i class="bi bi-building"></i>
         </div>
         <div>
-          <h2 class="page-heading">Roles Management</h2>
-          <p class="page-subheading">Configure user access roles, security levels, and administrative privileges.</p>
+          <h2 class="page-heading">Accommodations & Lodging</h2>
+          <p class="page-subheading">Manage host venues, hotels, and capacity for event delegates.</p>
         </div>
       </div>
       <button class="btn-create" @click="openCreate">
         <i class="bi bi-plus-lg fs-6"></i>
-        <span>New Role</span>
+        <span>New Accommodation</span>
       </button>
     </div>
 
@@ -32,32 +32,45 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Role Name</th>
+            <th>Accommodation Name</th>
+            <th>Location (City, District)</th>
+            <th>Country</th>
+            <th>Capacity</th>
             <th>Created At</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(role, index) in crud.paginatedItems.value" :key="role.id">
+          <tr v-for="(item, index) in crud.paginatedItems.value" :key="item.id">
             <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
             <td>
-              <div class="role-name-cell">
-                <span class="role-badge">
-                  <i class="bi bi-shield-fill-check"></i>
+              <div class="item-name-cell">
+                <span class="item-badge">
+                  <i class="bi bi-house-door-fill"></i>
                 </span>
-                <span class="fw-semibold text-slate-900">{{ role.name }}</span>
+                <span class="fw-semibold text-slate-900">{{ item.name }}</span>
               </div>
             </td>
-            <td class="text-muted fs-7">{{ role.created_at ? formatDate(role.created_at) : '—' }}</td>
+            <td class="fs-7 text-slate-700">
+              <i class="bi bi-geo-alt-fill me-1 text-danger opacity-75"></i>
+              {{ item.city || item.district ? `${item.city || ''}${item.city && item.district ? ', ' : ''}${item.district || ''}` : '—' }}
+            </td>
+            <td class="fs-7 text-slate-700">{{ item.country || 'Kenya' }}</td>
+            <td>
+              <span class="badge bg-green-subtle text-green-700 rounded-pill px-2-5 py-1 fs-8 fw-semibold">
+                <i class="bi bi-people-fill me-1"></i> {{ item.capacity }} Guests
+              </span>
+            </td>
+            <td class="text-muted fs-7">{{ item.created_at ? formatDate(item.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
-                <button class="btn-icon-action btn-view" @click="openView(role)" title="View Details">
+                <button class="btn-icon-action btn-view" @click="openView(item)" title="View Details">
                   <i class="bi bi-eye-fill"></i>
                 </button>
-                <button class="btn-icon-action btn-edit" @click="openEdit(role)" title="Edit">
+                <button class="btn-icon-action btn-edit" @click="openEdit(item)" title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
-                <button class="btn-icon-action btn-delete" @click="confirmDelete(role)" title="Delete">
+                <button class="btn-icon-action btn-delete" @click="confirmDelete(item)" title="Delete">
                   <i class="bi bi-trash-fill"></i>
                 </button>
               </div>
@@ -70,29 +83,51 @@
     <!-- Create / Edit Modal -->
     <CommonModal
       v-model="showModal"
-      :title="editingRole ? 'Edit Role' : 'New Role'"
-      :icon="editingRole ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
+      :title="editingItem ? 'Edit Accommodation' : 'New Accommodation'"
+      :icon="editingItem ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
     >
       <form @submit.prevent="handleSubmit">
-        <div class="mb-4">
-          <label class="form-label fw-semibold text-slate-700">Role Name <span class="text-danger">*</span></label>
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-slate-700">Accommodation Name <span class="text-danger">*</span></label>
           <input
             v-model="form.name"
             type="text"
             class="form-control"
             :class="{ 'is-invalid': formError }"
-            placeholder="e.g. Supervisor, Coordinator"
+            placeholder="e.g. Grand Hotel, Safari Lodge"
             required
             autofocus
           />
           <div v-if="formError" class="invalid-feedback d-block mt-1">{{ formError }}</div>
         </div>
 
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold text-slate-700">Capacity (Guests)</label>
+            <input v-model.number="form.capacity" type="number" min="1" class="form-control" placeholder="100" />
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold text-slate-700">Country</label>
+            <input v-model="form.country" type="text" class="form-control" placeholder="Kenya" />
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6">
+            <label class="form-label fw-semibold text-slate-700">District / Region</label>
+            <input v-model="form.district" type="text" class="form-control" placeholder="Nairobi" />
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold text-slate-700">City / Town</label>
+            <input v-model="form.city" type="text" class="form-control" placeholder="Nairobi" />
+          </div>
+        </div>
+
         <div class="modal-footer-row">
           <button type="button" class="btn-cancel" @click="showModal = false">Cancel</button>
           <button type="submit" class="btn-submit" :disabled="crud.saving.value">
             <span v-if="crud.saving.value" class="spinner-border spinner-border-sm me-2"></span>
-            {{ editingRole ? 'Save Changes' : 'Create Role' }}
+            {{ editingItem ? 'Save Changes' : 'Create Accommodation' }}
           </button>
         </div>
       </form>
@@ -101,28 +136,36 @@
     <!-- View Details Modal -->
     <CommonModal
       v-model="showViewModal"
-      title="Role Details"
-      icon="bi-shield-check"
-      size="sm"
+      title="Accommodation Details"
+      icon="bi-building-fill"
+      size="md"
     >
-      <div v-if="viewingRole" class="p-1">
+      <div v-if="viewingAcc" class="p-1">
         <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-3">
-          <div class="role-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
-            <i class="bi bi-shield-fill-check"></i>
+          <div class="acc-badge" style="width: 40px; height: 40px; font-size: 1.1rem;">
+            <i class="bi bi-house-door-fill"></i>
           </div>
           <div>
-            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingRole.name }}</h6>
+            <h6 class="fw-bold text-slate-900 mb-0">{{ viewingAcc.name }}</h6>
           </div>
         </div>
 
-        <div class="row g-2 text-slate-700 fs-7">
+        <div class="row g-3 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Total Capacity</span>
+            <span class="badge bg-primary-subtle text-primary fw-bold px-2.5 py-1.5">{{ viewingAcc.capacity || 'N/A' }} Guests</span>
+          </div>
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Location</span>
+            <span class="fw-semibold">{{ viewingAcc.location || '—' }}</span>
+          </div>
           <div class="col-6">
             <span class="text-muted d-block fs-8">Created At</span>
-            <span class="fw-semibold">{{ viewingRole.created_at ? formatDate(viewingRole.created_at) : '—' }}</span>
+            <span class="fw-semibold">{{ viewingAcc.created_at ? formatDate(viewingAcc.created_at) : '—' }}</span>
           </div>
           <div class="col-6">
             <span class="text-muted d-block fs-8">Updated At</span>
-            <span class="fw-semibold">{{ viewingRole.updated_at ? formatDate(viewingRole.updated_at) : '—' }}</span>
+            <span class="fw-semibold">{{ viewingAcc.updated_at ? formatDate(viewingAcc.updated_at) : '—' }}</span>
           </div>
         </div>
 
@@ -131,16 +174,18 @@
         </div>
       </div>
     </CommonModal>
+
+    <!-- Delete Confirm Modal -->
     <CommonModal
       v-model="showDeleteModal"
-      title="Delete Role"
+      title="Delete Accommodation"
       icon="bi-exclamation-triangle-fill"
       variant="danger"
       size="sm"
     >
       <div class="text-center">
         <p class="text-slate-700 fs-6 mb-1">
-          Are you sure you want to delete <strong>{{ deletingRole?.name }}</strong>?
+          Are you sure you want to delete <strong>{{ deletingItem?.name }}</strong>?
         </p>
         <p class="text-muted fs-7 mb-4">This action cannot be undone.</p>
         <div class="modal-footer-row justify-content-center">
@@ -152,31 +197,36 @@
         </div>
       </div>
     </CommonModal>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Role } from '~/types/auth';
+import type { Accommodation } from '~/types/accommodation';
 
 definePageMeta({ layout: 'default' });
 
-const crud = useCrudApi<Role>({ endpoint: '/api/roles', dataKey: 'roles' });
+const crud = useCrudApi<Accommodation>({ endpoint: '/api/accommodations', dataKey: 'accommodations' });
 
 // Modal state
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
-const viewingRole = ref<Role | null>(null);
-const editingRole = ref<Role | null>(null);
-const deletingRole = ref<Role | null>(null);
+const editingItem = ref<Accommodation | null>(null);
+const viewingAcc = ref<Accommodation | null>(null);
+const deletingItem = ref<Accommodation | null>(null);
 
-function openView(role: Role) {
-  viewingRole.value = role;
+function openView(acc: Accommodation) {
+  viewingAcc.value = acc;
   showViewModal.value = true;
 }
 
-const form = reactive({ name: '' });
+const form = reactive({
+  name: '',
+  capacity: 100,
+  country: 'Kenya',
+  district: '',
+  city: '',
+});
 const formError = ref('');
 
 function formatDate(dateStr: string) {
@@ -188,31 +238,54 @@ function formatDate(dateStr: string) {
 }
 
 function openCreate() {
-  editingRole.value = null;
+  editingItem.value = null;
   form.name = '';
+  form.capacity = 100;
+  form.country = 'Kenya';
+  form.district = '';
+  form.city = '';
   formError.value = '';
   showModal.value = true;
 }
 
-function openEdit(role: Role) {
-  editingRole.value = role;
-  form.name = role.name;
+function openEdit(item: Accommodation) {
+  editingItem.value = item;
+  form.name = item.name;
+  form.capacity = item.capacity || 100;
+  form.country = item.country || 'Kenya';
+  form.district = item.district || '';
+  form.city = item.city || '';
   formError.value = '';
   showModal.value = true;
 }
 
 async function handleSubmit() {
   if (!form.name.trim()) {
-    formError.value = 'Role name is required.';
+    formError.value = 'Accommodation name is required.';
     return;
   }
   formError.value = '';
 
+  const payload = {
+    name: form.name,
+    capacity: form.capacity,
+    country: form.country,
+    district: form.district,
+    city: form.city,
+  };
+
   let success = false;
-  if (editingRole.value) {
-    success = await crud.updateItem(editingRole.value.id, { name: form.name }, `Role "${form.name}" updated successfully.`);
+  if (editingItem.value) {
+    success = await crud.updateItem(
+      editingItem.value.id,
+      payload,
+      `Accommodation "${form.name}" updated successfully.`
+    );
   } else {
-    success = await crud.createItem({ name: form.name }, `Role "${form.name}" created successfully.`);
+    success = await crud.createItem(
+      payload,
+      `Accommodation "${form.name}" created successfully.`
+    );
   }
 
   if (success) {
@@ -221,17 +294,20 @@ async function handleSubmit() {
   }
 }
 
-function confirmDelete(role: Role) {
-  deletingRole.value = role;
+function confirmDelete(item: Accommodation) {
+  deletingItem.value = item;
   showDeleteModal.value = true;
 }
 
 async function handleDelete() {
-  if (!deletingRole.value) return;
-  const success = await crud.deleteItem(deletingRole.value.id, `Role "${deletingRole.value.name}" has been removed.`);
+  if (!deletingItem.value) return;
+  const success = await crud.deleteItem(
+    deletingItem.value.id,
+    `Accommodation "${deletingItem.value.name}" has been removed.`
+  );
   if (success) {
     showDeleteModal.value = false;
-    deletingRole.value = null;
+    deletingItem.value = null;
   }
 }
 
@@ -241,7 +317,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.roles-page {
+.accommodations-page {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 120px);
@@ -333,13 +409,13 @@ onMounted(() => {
   width: 40px;
 }
 
-.role-name-cell {
+.item-name-cell {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
 
-.role-badge {
+.item-badge {
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -471,4 +547,8 @@ onMounted(() => {
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+.bg-green-subtle { background-color: var(--green-50); }
+.text-green-700 { color: var(--green-700); }
+.px-2-5 { padding-left: 0.65rem; padding-right: 0.65rem; }
 </style>
