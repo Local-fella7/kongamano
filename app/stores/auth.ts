@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia';
 import type { User } from '~/types/auth';
+import type { ApiResponse } from '~/types/api';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
-  const token = useCookie<string | null>('token', { default: () => null });
+  const token = useCookie<string | null>('token', { default: () => null, maxAge: 60 * 60 * 24 * 7 });
 
   const isAuthenticated = computed(() => !!token.value);
 
@@ -13,6 +14,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setToken(tokenValue: string | null) {
     token.value = tokenValue;
+  }
+
+  async function fetchCurrentUser() {
+    if (!token.value) return;
+    try {
+      const res = await $fetch<ApiResponse<User>>('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token.value}` },
+      });
+      if (res && res.data) {
+        user.value = res.data;
+      }
+    } catch (err) {
+      console.error('Failed to fetch user:', err);
+    }
   }
 
   function logout() {
@@ -27,6 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     setUser,
     setToken,
+    fetchCurrentUser,
     logout,
   };
 });
