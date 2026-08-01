@@ -27,11 +27,18 @@
   --slate-700: #33333F;
   --slate-900: #1C1C24;
 
+  /* User Rule Color Palette */
+  --palette-teal: #43766C;
+  --palette-cream: #F8FAE5;
+  --palette-gold: #B19470;
+  --palette-brown: #76453B;
+
   /* Semantic aliases */
-  --color-primary: var(--green-500);
-  --color-primary-hover: var(--green-600);
-  --color-accent-red: var(--red-500);
-  --color-bg-light: var(--slate-50);
+  --color-primary: var(--palette-teal);
+  --color-primary-hover: #37635a;
+  --color-accent-gold: var(--palette-gold);
+  --color-accent-brown: var(--palette-brown);
+  --color-bg-light: #F4F6F0;
   --color-surface: #ffffff;
   --color-text: var(--slate-900);
   --color-text-muted: var(--slate-500);
