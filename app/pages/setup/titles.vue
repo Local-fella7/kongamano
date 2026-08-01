@@ -112,7 +112,6 @@
           </div>
           <div>
             <h6 class="fw-bold text-slate-900 mb-0">{{ viewingTitle.name }}</h6>
-            <small class="text-muted fs-8">ID: #{{ viewingTitle.id }}</small>
           </div>
         </div>
 
