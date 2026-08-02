@@ -96,8 +96,9 @@
                   {{ event.description || 'No description provided for this event.' }}
                 </p>
 
-                <!-- Metadata Banner Grid -->
-                <div class="event-meta-banner p-3 rounded-3 bg-light-subtle border mb-2">
+                <!-- Event Metadata Box (Schedule & Location Only) -->
+                <div class="event-meta-banner p-3 rounded-3 bg-light-subtle border mb-3">
+                  <!-- Schedule Row -->
                   <div class="d-flex align-items-center justify-content-between gap-2 mb-2 text-slate-700 fs-7">
                     <div class="d-flex align-items-center gap-2">
                       <i class="bi bi-calendar3 text-green-600 fs-7"></i>
@@ -109,6 +110,7 @@
                     </span>
                   </div>
 
+                  <!-- Location Row -->
                   <div class="d-flex align-items-center justify-content-between gap-2 text-slate-700 fs-7">
                     <div class="d-flex align-items-center gap-2">
                       <i class="bi bi-geo-alt-fill text-danger fs-7"></i>
@@ -119,33 +121,68 @@
                     </span>
                   </div>
                 </div>
+
+                <!-- Quick Setup Pills (Balanced: Label Left, Chips Right) -->
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2 px-1">
+                  <span class="fs-8 text-muted fw-semibold">Event Setup:</span>
+                  <div class="d-flex align-items-center gap-2">
+                    <button
+                      class="btn-setup-chip btn-setup-chip--services"
+                      @click="openServicesModal(event)"
+                      title="Manage Services"
+                    >
+                      <i class="bi bi-lightning-fill me-1.5"></i>
+                      <span>Services</span>
+                    </button>
+
+                    <button
+                      class="btn-setup-chip btn-setup-chip--acc"
+                      @click="openAccommodationsModal(event)"
+                      title="Manage Accommodations"
+                    >
+                      <i class="bi bi-building-fill me-1.5"></i>
+                      <span>Accommodations</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <!-- Icon-Only Action Buttons Row -->
-              <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top mt-3">
-                <button
-                  class="btn btn-outline-secondary btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
-                  @click="openView(event)"
-                  title="View Event Details"
+              <!-- Action Buttons Row inside Card Footer (Balanced: ID Left, Buttons Right) -->
+              <div class="d-flex align-items-center justify-content-between gap-2 pt-3 border-top mt-2">
+                <!-- Live Event Status Badge -->
+                <span
+                  class="badge status-pill rounded-3 border d-inline-flex align-items-center gap-1.5"
+                  :class="getEventStatusBadge(event).class"
                 >
-                  <i class="bi bi-eye-fill small-action-icon text-slate-700"></i>
-                </button>
+                  <span class="status-dot"></span>
+                  <span>{{ getEventStatusBadge(event).label }}</span>
+                </span>
 
-                <button
-                  class="btn btn-outline-success btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
-                  @click="openEdit(event)"
-                  title="Edit Event"
-                >
-                  <i class="bi bi-pencil-fill small-action-icon"></i>
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                  <button
+                    class="btn btn-outline-secondary btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
+                    @click="openView(event)"
+                    title="View Details"
+                  >
+                    <i class="bi bi-eye-fill small-action-icon text-slate-700"></i>
+                  </button>
 
-                <button
-                  class="btn btn-outline-danger btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
-                  @click="confirmDelete(event)"
-                  title="Delete Event"
-                >
-                  <i class="bi bi-trash-fill small-action-icon"></i>
-                </button>
+                  <button
+                    class="btn btn-outline-success btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
+                    @click="openEdit(event)"
+                    title="Edit Event"
+                  >
+                    <i class="bi bi-pencil-fill small-action-icon"></i>
+                  </button>
+
+                  <button
+                    class="btn btn-outline-danger btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
+                    @click="confirmDelete(event)"
+                    title="Delete Event"
+                  >
+                    <i class="bi bi-trash-fill small-action-icon"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -324,7 +361,65 @@
           </div>
         </div>
 
-        <div class="row g-2 text-slate-700 fs-8 border-top pt-3">
+        <!-- Linked Services Section -->
+        <div class="border-top pt-3 mt-3">
+          <div class="d-flex align-items-center justify-content-between mb-2.5">
+            <span class="fw-semibold text-slate-900 fs-7 d-flex align-items-center gap-2">
+              <i class="bi bi-lightning-fill text-teal-600 fs-6"></i> Linked Services
+            </span>
+            <span class="badge modal-count-badge modal-count-badge--services">
+              {{ eventServices.length }}
+            </span>
+          </div>
+
+          <div v-if="loadingServices" class="text-muted fs-8 py-2">
+            <span class="spinner-border spinner-border-sm text-success me-1"></span> Loading services...
+          </div>
+          <div v-else-if="eventServices.length === 0" class="text-muted fs-8 fst-italic py-1">
+            No services linked to this event.
+          </div>
+          <div v-else class="d-flex flex-wrap gap-2 py-1">
+            <span
+              v-for="es in eventServices"
+              :key="es.id"
+              class="badge modal-item-pill modal-item-pill--service"
+            >
+              <i class="bi bi-check2-circle me-1 fs-8"></i>
+              {{ es.service?.name || getServiceName(es.service_id) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Linked Accommodations Section -->
+        <div class="border-top pt-3 mt-3">
+          <div class="d-flex align-items-center justify-content-between mb-2.5">
+            <span class="fw-semibold text-slate-900 fs-7 d-flex align-items-center gap-2">
+              <i class="bi bi-building-fill text-amber-700 fs-6"></i> Linked Accommodations
+            </span>
+            <span class="badge modal-count-badge modal-count-badge--acc">
+              {{ eventAccommodations.length }}
+            </span>
+          </div>
+
+          <div v-if="loadingAccommodations" class="text-muted fs-8 py-2">
+            <span class="spinner-border spinner-border-sm text-primary me-1"></span> Loading accommodations...
+          </div>
+          <div v-else-if="eventAccommodations.length === 0" class="text-muted fs-8 fst-italic py-1">
+            No accommodations linked to this event.
+          </div>
+          <div v-else class="d-flex flex-wrap gap-2 py-1">
+            <span
+              v-for="ea in eventAccommodations"
+              :key="ea.id"
+              class="badge modal-item-pill modal-item-pill--acc"
+            >
+              <i class="bi bi-building me-1 fs-8"></i>
+              {{ ea.accommodation?.name || getAccommodationName(ea.accommodation_id) }}
+            </span>
+          </div>
+        </div>
+
+        <div class="row g-2 text-slate-700 fs-8 border-top pt-3 mt-3">
           <div class="col-6">
             <span class="text-muted d-block">Created At</span>
             <span class="fw-semibold">{{ viewingItem.created_at ? formatDate(viewingItem.created_at) : '—' }}</span>
@@ -337,6 +432,149 @@
 
         <div class="mt-4 text-end">
           <button class="btn-cancel" @click="showViewModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
+
+    <!-- Manage Event Services Modal -->
+    <CommonModal
+      v-model="showServicesModal"
+      :title="`Services for ${activeEventForItem?.name || 'Event'}`"
+      icon="bi-lightning-fill"
+      size="md"
+    >
+      <div v-if="activeEventForItem" class="p-1">
+        <!-- Assign Service Header Row -->
+        <div class="d-flex align-items-center justify-content-between mb-3 bg-slate-50 p-2.5 rounded-3 border">
+          <div class="d-flex align-items-center gap-2 flex-grow-1 me-2">
+            <select v-model.number="selectedServiceToAssign" class="form-select form-select-sm rounded-3 fs-7">
+              <option value="" disabled>Select service to assign...</option>
+              <option v-for="s in availableServicesList" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+          <button
+            class="btn btn-success btn-sm rounded-3 px-3 fw-semibold text-nowrap"
+            :disabled="!selectedServiceToAssign || loadingServices"
+            @click="assignServiceToEvent"
+          >
+            <i class="bi bi-plus-lg me-1"></i> Link Service
+          </button>
+        </div>
+
+        <!-- Loading state -->
+        <div v-if="loadingServices" class="text-center py-4">
+          <div class="spinner-border spinner-border-sm text-success" role="status"></div>
+          <span class="ms-2 fs-7 text-muted">Loading services...</span>
+        </div>
+
+        <!-- Empty state -->
+        <div v-else-if="eventServices.length === 0" class="text-center py-4 bg-light rounded-3 border border-dashed">
+          <i class="bi bi-lightning text-muted opacity-50 fs-3"></i>
+          <p class="fs-7 text-muted mt-2 mb-0">No services assigned to this event yet.</p>
+        </div>
+
+        <!-- List of assigned services -->
+        <div v-else class="list-group list-group-flush rounded-3 border overflow-hidden">
+          <div
+            v-for="es in eventServices"
+            :key="es.id"
+            class="list-group-item d-flex align-items-center justify-content-between p-3"
+          >
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-box bg-green-subtle text-green-700 rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <i class="bi bi-lightning-fill"></i>
+              </div>
+              <div>
+                <h6 class="fw-semibold text-slate-900 mb-0 fs-7">{{ es.service?.name || getServiceName(es.service_id) }}</h6>
+                <span class="fs-8 text-muted d-block">
+                  Time: {{ es.service?.start_time || '00:00' }} - {{ es.service?.end_time || '23:59' }} | 
+                  QR Scan: {{ es.service?.requires_scan ? 'Required' : 'Optional' }}
+                </span>
+              </div>
+            </div>
+            <button
+              class="btn btn-outline-danger btn-sm rounded-3 py-1 px-2.5 fs-8 fw-medium"
+              title="Unlink Service"
+              @click="unlinkServiceFromEvent(es.id)"
+            >
+              <i class="bi bi-trash-fill me-1"></i> Unlink
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end border-top pt-3">
+          <button class="btn-cancel" @click="showServicesModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
+
+    <!-- Manage Event Accommodations Modal -->
+    <CommonModal
+      v-model="showAccommodationsModal"
+      :title="`Accommodations for ${activeEventForItem?.name || 'Event'}`"
+      icon="bi-building-fill"
+      size="md"
+    >
+      <div v-if="activeEventForItem" class="p-1">
+        <!-- Assign Accommodation Header Row -->
+        <div class="d-flex align-items-center justify-content-between mb-3 bg-slate-50 p-2.5 rounded-3 border">
+          <div class="d-flex align-items-center gap-2 flex-grow-1 me-2">
+            <select v-model.number="selectedAccommodationToAssign" class="form-select form-select-sm rounded-3 fs-7">
+              <option value="" disabled>Select accommodation to assign...</option>
+              <option v-for="a in availableAccommodationsList" :key="a.id" :value="a.id">{{ a.name }}</option>
+            </select>
+          </div>
+          <button
+            class="btn btn-success btn-sm rounded-3 px-3 fw-semibold text-nowrap"
+            :disabled="!selectedAccommodationToAssign || loadingAccommodations"
+            @click="assignAccommodationToEvent"
+          >
+            <i class="bi bi-plus-lg me-1"></i> Link Accommodation
+          </button>
+        </div>
+
+        <!-- Loading state -->
+        <div v-if="loadingAccommodations" class="text-center py-4">
+          <div class="spinner-border spinner-border-sm text-success" role="status"></div>
+          <span class="ms-2 fs-7 text-muted">Loading accommodations...</span>
+        </div>
+
+        <!-- Empty state -->
+        <div v-else-if="eventAccommodations.length === 0" class="text-center py-4 bg-light rounded-3 border border-dashed">
+          <i class="bi bi-building text-muted opacity-50 fs-3"></i>
+          <p class="fs-7 text-muted mt-2 mb-0">No accommodations assigned to this event yet.</p>
+        </div>
+
+        <!-- List of assigned accommodations -->
+        <div v-else class="list-group list-group-flush rounded-3 border overflow-hidden">
+          <div
+            v-for="ea in eventAccommodations"
+            :key="ea.id"
+            class="list-group-item d-flex align-items-center justify-content-between p-3"
+          >
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-box bg-primary-subtle text-primary rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <i class="bi bi-building-fill"></i>
+              </div>
+              <div>
+                <h6 class="fw-semibold text-slate-900 mb-0 fs-7">{{ ea.accommodation?.name || getAccommodationName(ea.accommodation_id) }}</h6>
+                <span class="fs-8 text-muted d-block">
+                  Capacity: {{ ea.accommodation?.capacity ? `${ea.accommodation.capacity} beds` : 'Unlimited' }}
+                </span>
+              </div>
+            </div>
+            <button
+              class="btn btn-outline-danger btn-sm rounded-3 py-1 px-2.5 fs-8 fw-medium"
+              title="Unlink Accommodation"
+              @click="unlinkAccommodationFromEvent(ea.id)"
+            >
+              <i class="bi bi-trash-fill me-1"></i> Unlink
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end border-top pt-3">
+          <button class="btn-cancel" @click="showAccommodationsModal = false">Close</button>
         </div>
       </div>
     </CommonModal>
@@ -369,6 +607,9 @@
 <script setup lang="ts">
 import type { Event } from '~/types/event';
 import type { EventType } from '~/types/event-type';
+import type { EventService, EventAccommodation } from '~/types/event-assignment';
+import type { Service } from '~/types/service';
+import type { Accommodation } from '~/types/accommodation';
 
 definePageMeta({ layout: 'default' });
 
@@ -385,9 +626,21 @@ const crud = useCrudApi<Event>({
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
+const showServicesModal = ref(false);
+const showAccommodationsModal = ref(false);
+const activeEventForItem = ref<Event | null>(null);
 const viewingItem = ref<Event | null>(null);
 const editingItem = ref<Event | null>(null);
 const deletingItem = ref<Event | null>(null);
+
+const eventServices = ref<EventService[]>([]);
+const eventAccommodations = ref<EventAccommodation[]>([]);
+const allServicesList = ref<Service[]>([]);
+const allAccommodationsList = ref<Accommodation[]>([]);
+const loadingServices = ref(false);
+const loadingAccommodations = ref(false);
+const selectedServiceToAssign = ref<number | string>('');
+const selectedAccommodationToAssign = ref<number | string>('');
 
 const form = reactive({
   name: '',
@@ -410,6 +663,140 @@ async function fetchEventTypes() {
   }
 }
 
+async function fetchMasterLists() {
+  try {
+    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
+    const [sRes, aRes] = await Promise.all([
+      $fetch<any>('/api/services', { headers }),
+      $fetch<any>('/api/accommodations', { headers }),
+    ]);
+    allServicesList.value = Array.isArray(sRes?.data?.services) ? sRes.data.services : (Array.isArray(sRes?.data) ? sRes.data : []);
+    allAccommodationsList.value = Array.isArray(aRes?.data?.accommodations) ? aRes.data.accommodations : (Array.isArray(aRes?.data) ? aRes.data : []);
+  } catch (err) {
+    console.error('Failed to fetch services/accommodations master list:', err);
+  }
+}
+
+async function fetchEventServices(eventId: number) {
+  loadingServices.value = true;
+  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
+  try {
+    const res = await $fetch<any>(`/api/event-services?event_id=${eventId}`, { headers });
+    eventServices.value = Array.isArray(res?.data?.event_services) ? res.data.event_services : (Array.isArray(res?.data) ? res.data : []);
+  } catch (err) {
+    console.error('Failed to load event services:', err);
+  } finally {
+    loadingServices.value = false;
+  }
+}
+
+async function fetchEventAccommodations(eventId: number) {
+  loadingAccommodations.value = true;
+  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
+  try {
+    const res = await $fetch<any>(`/api/event-accommodations?event_id=${eventId}`, { headers });
+    eventAccommodations.value = Array.isArray(res?.data?.event_accommodations) ? res.data.event_accommodations : (Array.isArray(res?.data) ? res.data : []);
+  } catch (err) {
+    console.error('Failed to load event accommodations:', err);
+  } finally {
+    loadingAccommodations.value = false;
+  }
+}
+
+const availableServicesList = computed(() => {
+  const assignedIds = new Set(eventServices.value.map(es => es.service_id));
+  return allServicesList.value.filter(s => !assignedIds.has(s.id));
+});
+
+const availableAccommodationsList = computed(() => {
+  const assignedIds = new Set(eventAccommodations.value.map(ea => ea.accommodation_id));
+  return allAccommodationsList.value.filter(a => !assignedIds.has(a.id));
+});
+
+async function assignServiceToEvent() {
+  if (!activeEventForItem.value || !selectedServiceToAssign.value) return;
+  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
+  try {
+    await $fetch('/api/event-services', {
+      method: 'POST',
+      headers,
+      body: { event_id: activeEventForItem.value.id, service_id: Number(selectedServiceToAssign.value) },
+    });
+    selectedServiceToAssign.value = '';
+    await fetchEventServices(activeEventForItem.value.id);
+  } catch (err) {
+    console.error('Failed to assign service:', err);
+  }
+}
+
+async function unlinkServiceFromEvent(eventServiceId: number) {
+  if (!activeEventForItem.value) return;
+  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
+  try {
+    await $fetch(`/api/event-services/${eventServiceId}`, {
+      method: 'DELETE',
+      headers,
+    });
+    await fetchEventServices(activeEventForItem.value.id);
+  } catch (err) {
+    console.error('Failed to unlink service:', err);
+  }
+}
+
+async function assignAccommodationToEvent() {
+  if (!activeEventForItem.value || !selectedAccommodationToAssign.value) return;
+  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
+  try {
+    await $fetch('/api/event-accommodations', {
+      method: 'POST',
+      headers,
+      body: { event_id: activeEventForItem.value.id, accommodation_id: Number(selectedAccommodationToAssign.value) },
+    });
+    selectedAccommodationToAssign.value = '';
+    await fetchEventAccommodations(activeEventForItem.value.id);
+  } catch (err) {
+    console.error('Failed to assign accommodation:', err);
+  }
+}
+
+async function unlinkAccommodationFromEvent(eventAccId: number) {
+  if (!activeEventForItem.value) return;
+  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
+  try {
+    await $fetch(`/api/event-accommodations/${eventAccId}`, {
+      method: 'DELETE',
+      headers,
+    });
+    await fetchEventAccommodations(activeEventForItem.value.id);
+  } catch (err) {
+    console.error('Failed to unlink accommodation:', err);
+  }
+}
+
+function openServicesModal(event: Event) {
+  activeEventForItem.value = event;
+  selectedServiceToAssign.value = '';
+  showServicesModal.value = true;
+  fetchEventServices(event.id);
+}
+
+function openAccommodationsModal(event: Event) {
+  activeEventForItem.value = event;
+  selectedAccommodationToAssign.value = '';
+  showAccommodationsModal.value = true;
+  fetchEventAccommodations(event.id);
+}
+
+function getServiceName(serviceId: number) {
+  const found = allServicesList.value.find(s => s.id === serviceId);
+  return found ? found.name : `Service #${serviceId}`;
+}
+
+function getAccommodationName(accId: number) {
+  const found = allAccommodationsList.value.find(a => a.id === accId);
+  return found ? found.name : `Accommodation #${accId}`;
+}
+
 function getEventTypeName(typeId: number) {
   const found = eventTypes.value.find((t) => t.id === typeId);
   return found ? found.name : `Type #${typeId}`;
@@ -429,7 +816,10 @@ function openCreateModal() {
 
 function openView(item: Event) {
   viewingItem.value = item;
+  activeEventForItem.value = item;
   showViewModal.value = true;
+  fetchEventServices(item.id);
+  fetchEventAccommodations(item.id);
 }
 
 function openEdit(item: Event) {
@@ -499,6 +889,23 @@ async function handleDelete() {
   }
 }
 
+function getEventStatusBadge(event: Event) {
+  const now = new Date();
+  const startStr = (event.date_from || event.start_date || '').replace(' ', 'T');
+  const endStr = (event.date_to || event.end_date || '').replace(' ', 'T');
+
+  const start = startStr ? new Date(startStr) : null;
+  const end = endStr ? new Date(endStr) : null;
+
+  if (end && !isNaN(end.getTime()) && now > end) {
+    return { label: 'Completed', class: 'status-badge--completed' };
+  }
+  if (start && !isNaN(start.getTime()) && now < start) {
+    return { label: 'Scheduled', class: 'status-badge--scheduled' };
+  }
+  return { label: 'Active', class: 'status-badge--active' };
+}
+
 function formatDate(dateStr?: string) {
   if (!dateStr) return '—';
   try {
@@ -515,6 +922,7 @@ function formatDate(dateStr?: string) {
 onMounted(() => {
   crud.fetchItems();
   fetchEventTypes();
+  fetchMasterLists();
 });
 </script>
 
@@ -699,4 +1107,128 @@ onMounted(() => {
 .bg-green-subtle { background-color: var(--green-50); }
 .text-green-700 { color: var(--green-700); }
 .text-green-600 { color: var(--green-600); }
+
+/* ── Standalone Setup Chips (Fully Rounded Pill Shape) ── */
+.btn-setup-chip {
+  border: 1px solid transparent;
+  border-radius: 50rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-setup-chip--services {
+  background-color: rgba(67, 118, 108, 0.08);
+  color: #43766c;
+  border-color: rgba(67, 118, 108, 0.2);
+}
+
+.btn-setup-chip--services:hover {
+  background-color: #43766c;
+  color: #ffffff;
+  border-color: #43766c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(67, 118, 108, 0.25);
+}
+
+.btn-setup-chip--acc {
+  background-color: rgba(118, 69, 59, 0.08);
+  color: #76453b;
+  border-color: rgba(118, 69, 59, 0.2);
+}
+
+.btn-setup-chip--acc:hover {
+  background-color: #76453b;
+  color: #ffffff;
+  border-color: #76453b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(118, 69, 59, 0.25);
+}
+
+/* ── Modal Linked Item Badges & Counters ────────── */
+.modal-count-badge {
+  border-radius: 50rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.modal-count-badge--services {
+  background-color: #f0f7f5;
+  color: #43766c;
+  border: 1px solid rgba(67, 118, 108, 0.2);
+}
+
+.modal-count-badge--acc {
+  background-color: #fbf7f0;
+  color: #76453b;
+  border: 1px solid rgba(118, 69, 59, 0.2);
+}
+
+.modal-item-pill {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.15s ease;
+}
+
+.modal-item-pill:hover {
+  transform: translateY(-1px);
+}
+
+.modal-item-pill--service {
+  background-color: #f0f7f5;
+  color: #43766c;
+  border: 1px solid rgba(67, 118, 108, 0.3);
+}
+
+.modal-item-pill--acc {
+  background-color: #fbf7f0;
+  color: #76453b;
+  border: 1px solid rgba(118, 69, 59, 0.3);
+}
+
+.text-teal-600 { color: #43766c; }
+.text-amber-700 { color: #76453b; }
+
+.status-pill {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.status-badge--completed {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1 !important;
+}
+
+.status-badge--scheduled {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe !important;
+}
+
+.status-badge--active {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0 !important;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
+}
 </style>

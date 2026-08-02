@@ -137,15 +137,7 @@ const navGroups = [
     title: 'Main',
     items: [
       { name: 'Dashboard', to: '/', icon: 'bi-grid-1x2-fill' },
-      {
-        name: 'Events',
-        icon: 'bi-calendar-event-fill',
-        children: [
-          { name: 'Events Catalog', to: '/events', icon: 'bi-calendar-check-fill' },
-          { name: 'Event Services', to: '/events/services', icon: 'bi-lightning-fill' },
-          { name: 'Event Accommodations', to: '/events/accommodations', icon: 'bi-building-fill' },
-        ],
-      },
+      { name: 'Events', to: '/events', icon: 'bi-calendar-event-fill' },
     ],
   },
   {
