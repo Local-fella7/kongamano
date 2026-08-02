@@ -23,11 +23,18 @@
       v-model:currentPage="crud.currentPage.value"
       v-model:perPage="crud.perPage.value"
       :loading="crud.loading.value"
-      :totalCount="crud.filteredItems.value.length"
-      :totalPages="crud.totalPages.value"
-      :startIndex="crud.startIndex.value"
-      :endIndex="crud.endIndex.value"
+      :totalCount="filteredAccommodationsList.length"
+      :totalPages="totalPages"
+      :startIndex="startIndex"
+      :endIndex="endIndex"
     >
+      <template #filters>
+        <!-- Country Filter Dropdown -->
+        <select v-model="selectedCountryFilter" class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs" style="max-width: 180px;">
+          <option value="">All Countries</option>
+          <option v-for="c in uniqueCountries" :key="c" :value="c">{{ c }}</option>
+        </select>
+      </template>
       <table class="data-table">
         <thead>
           <tr>
@@ -41,8 +48,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) in crud.paginatedItems.value" :key="item.id">
-            <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
+          <tr v-for="(item, index) in paginatedFilteredAccommodations" :key="item.id">
+            <td class="row-index">{{ startIndex + index }}</td>
             <td>
               <div class="item-name-cell">
                 <span class="item-badge">
@@ -207,7 +214,37 @@ definePageMeta({ layout: 'default' });
 
 const crud = useCrudApi<Accommodation>({ endpoint: '/api/accommodations', dataKey: 'accommodations' });
 
-// Modal state
+const selectedCountryFilter = ref<string>('');
+
+const uniqueCountries = computed(() => {
+  const countries = crud.items.value.map(a => a.country).filter(Boolean);
+  return Array.from(new Set(countries));
+});
+
+const filteredAccommodationsList = computed(() => {
+  let list = crud.filteredItems.value;
+  if (selectedCountryFilter.value) {
+    list = list.filter(a => a.country === selectedCountryFilter.value);
+  }
+  return list;
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredAccommodationsList.value.length / crud.perPage.value) || 1;
+});
+
+const startIndex = computed(() => {
+  return (crud.currentPage.value - 1) * crud.perPage.value + 1;
+});
+
+const endIndex = computed(() => {
+  return Math.min(crud.currentPage.value * crud.perPage.value, filteredAccommodationsList.value.length);
+});
+
+const paginatedFilteredAccommodations = computed(() => {
+  const start = (crud.currentPage.value - 1) * crud.perPage.value;
+  return filteredAccommodationsList.value.slice(start, start + crud.perPage.value);
+});
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
