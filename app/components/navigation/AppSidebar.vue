@@ -111,10 +111,12 @@ const userInitials = computed(() => {
 // Dropdown open states
 const setupOpen = ref(route.path.startsWith('/setup'));
 const eventsOpen = ref(route.path.startsWith('/events'));
+const notificationsOpen = ref(route.path.startsWith('/notifications'));
 
 watch(() => route.path, (p) => {
   if (p.startsWith('/setup')) setupOpen.value = true;
   if (p.startsWith('/events')) eventsOpen.value = true;
+  if (p.startsWith('/notifications')) notificationsOpen.value = true;
 });
 
 function isChildActive(item: any): boolean {
@@ -124,12 +126,14 @@ function isChildActive(item: any): boolean {
 function getItemOpenState(item: any): boolean {
   if (item.name === 'Events') return eventsOpen.value;
   if (item.name === 'Setup') return setupOpen.value;
+  if (item.name === 'Notifications') return notificationsOpen.value;
   return false;
 }
 
 function toggleItemOpen(item: any) {
   if (item.name === 'Events') eventsOpen.value = !eventsOpen.value;
   if (item.name === 'Setup') setupOpen.value = !setupOpen.value;
+  if (item.name === 'Notifications') notificationsOpen.value = !notificationsOpen.value;
 }
 
 const navGroups = [
@@ -146,6 +150,14 @@ const navGroups = [
       { name: 'Registrations', to: '/registrations', icon: 'bi-people-fill' },
       { name: 'Payments', to: '/payments', icon: 'bi-credit-card-fill' },
       { name: 'Agents', to: '/agents', icon: 'bi-person-badge-fill' },
+      {
+        name: 'Notifications',
+        icon: 'bi-bell-fill',
+        children: [
+          { name: 'Notifications Catalog', to: '/notifications', icon: 'bi-bell-fill' },
+          { name: 'Notification Registrations', to: '/notification-registrations', icon: 'bi-envelope-check-fill' },
+        ],
+      },
     ],
   },
   {
