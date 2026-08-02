@@ -27,8 +27,8 @@
           <template v-if="item.children">
             <button
               class="nav-item nav-item--parent"
-              :class="{ 'nav-item--open': setupOpen, 'nav-item--child-active': isChildActive(item) }"
-              @click="setupOpen = !setupOpen"
+              :class="{ 'nav-item--open': getItemOpenState(item), 'nav-item--child-active': isChildActive(item) }"
+              @click="toggleItemOpen(item)"
               :title="isCollapsed ? item.name : undefined"
             >
               <i :class="['bi', item.icon, 'nav-item-icon']"></i>
@@ -36,19 +36,20 @@
               <i
                 v-if="!isCollapsed"
                 class="bi nav-chevron"
-                :class="setupOpen ? 'bi-chevron-up' : 'bi-chevron-down'"
+                :class="getItemOpenState(item) ? 'bi-chevron-up' : 'bi-chevron-down'"
               ></i>
             </button>
 
-            <!-- Dropdown children — inline, no indent, no border -->
+            <!-- Dropdown children -->
             <Transition name="dropdown">
-              <div v-if="!isCollapsed && setupOpen" class="setup-dropdown">
+              <div v-if="!isCollapsed && getItemOpenState(item)" class="setup-dropdown">
                 <NuxtLink
                   v-for="child in item.children"
                   :key="child.to"
                   :to="child.to"
                   class="nav-item nav-item--child"
                   active-class="nav-item--active"
+                  exact-active-class="nav-item--active"
                 >
                   <span class="child-dot"></span>
                   <i :class="['bi', child.icon, 'nav-item-icon child-icon']"></i>
@@ -107,15 +108,28 @@ const userInitials = computed(() => {
   return `${f}${l}`.toUpperCase();
 });
 
-// Setup dropdown open state — auto-open if on a setup page
+// Dropdown open states
 const setupOpen = ref(route.path.startsWith('/setup'));
+const eventsOpen = ref(route.path.startsWith('/events'));
 
 watch(() => route.path, (p) => {
   if (p.startsWith('/setup')) setupOpen.value = true;
+  if (p.startsWith('/events')) eventsOpen.value = true;
 });
 
 function isChildActive(item: any): boolean {
   return item.children?.some((c: any) => route.path.startsWith(c.to));
+}
+
+function getItemOpenState(item: any): boolean {
+  if (item.name === 'Events') return eventsOpen.value;
+  if (item.name === 'Setup') return setupOpen.value;
+  return false;
+}
+
+function toggleItemOpen(item: any) {
+  if (item.name === 'Events') eventsOpen.value = !eventsOpen.value;
+  if (item.name === 'Setup') setupOpen.value = !setupOpen.value;
 }
 
 const navGroups = [
