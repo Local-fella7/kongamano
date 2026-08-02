@@ -2,13 +2,20 @@
   <div class="table-card shadow-sm rounded-4 border-0">
     <!-- Table Header Toolbar / Search -->
     <div class="table-toolbar d-flex align-items-center justify-content-between p-3 border-bottom flex-wrap gap-3">
-      <div class="d-flex align-items-center gap-2">
+      <!-- Left: Total Records Count Badge -->
+      <div class="d-flex align-items-center gap-2 flex-wrap">
         <span class="badge bg-green-subtle text-green-700 rounded-pill px-3 py-2 fs-7 fw-semibold">
           <i class="bi bi-layers-fill me-1"></i> {{ totalCount }} Total Records
         </span>
       </div>
 
-      <div class="search-box position-relative">
+      <!-- Center: Filter Pills / Selects -->
+      <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap flex-grow-1 px-md-3">
+        <slot name="filters" />
+      </div>
+
+      <!-- Right: Search Input Box -->
+      <div class="search-box position-relative ms-auto ms-md-0">
         <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-7"></i>
         <input
           :value="searchQuery"

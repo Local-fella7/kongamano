@@ -85,8 +85,16 @@ const maxWidthClass = computed(() => {
   background: #fff;
   border-radius: 16px;
   width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   animation: modalIn 0.2s ease;
+}
+
+.modal-body-content {
+  overflow-y: auto;
+  flex: 1;
 }
 
 .modal-box--sm { max-width: 380px; }
