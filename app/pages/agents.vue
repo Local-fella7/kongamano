@@ -23,11 +23,18 @@
       v-model:currentPage="crud.currentPage.value"
       v-model:perPage="crud.perPage.value"
       :loading="crud.loading.value"
-      :totalCount="crud.filteredItems.value.length"
-      :totalPages="crud.totalPages.value"
-      :startIndex="crud.startIndex.value"
-      :endIndex="crud.endIndex.value"
+      :totalCount="filteredAgentsList.length"
+      :totalPages="totalPages"
+      :startIndex="startIndex"
+      :endIndex="endIndex"
     >
+      <template #filters>
+        <!-- Region Filter Dropdown -->
+        <select v-model="selectedRegionFilter" class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs" style="max-width: 180px;">
+          <option value="">All Regions</option>
+          <option v-for="r in uniqueRegions" :key="r" :value="r">{{ r }}</option>
+        </select>
+      </template>
       <table class="data-table">
         <thead>
           <tr>
@@ -42,8 +49,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(agent, index) in crud.paginatedItems.value" :key="agent.id">
-            <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
+          <tr v-for="(agent, index) in paginatedFilteredAgents" :key="agent.id">
+            <td class="row-index">{{ startIndex + index }}</td>
             <td>
               <div class="agent-name-cell d-flex align-items-center gap-2.5">
                 <span class="agent-badge">
@@ -303,7 +310,37 @@ const crud = useCrudApi<Agent>({
   searchFields: ['name', 'registration_no', 'country', 'region', 'district', 'ward'],
 });
 
-// Modal state
+const selectedRegionFilter = ref<string>('');
+
+const uniqueRegions = computed(() => {
+  const regions = crud.items.value.map(a => a.region).filter(Boolean);
+  return Array.from(new Set(regions));
+});
+
+const filteredAgentsList = computed(() => {
+  let list = crud.filteredItems.value;
+  if (selectedRegionFilter.value) {
+    list = list.filter(a => a.region === selectedRegionFilter.value);
+  }
+  return list;
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredAgentsList.value.length / crud.perPage.value) || 1;
+});
+
+const startIndex = computed(() => {
+  return (crud.currentPage.value - 1) * crud.perPage.value + 1;
+});
+
+const endIndex = computed(() => {
+  return Math.min(crud.currentPage.value * crud.perPage.value, filteredAgentsList.value.length);
+});
+
+const paginatedFilteredAgents = computed(() => {
+  const start = (crud.currentPage.value - 1) * crud.perPage.value;
+  return filteredAgentsList.value.slice(start, start + crud.perPage.value);
+});
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);

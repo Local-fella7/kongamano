@@ -23,11 +23,24 @@
       v-model:currentPage="crud.currentPage.value"
       v-model:perPage="crud.perPage.value"
       :loading="crud.loading.value"
-      :totalCount="crud.filteredItems.value.length"
-      :totalPages="crud.totalPages.value"
-      :startIndex="crud.startIndex.value"
-      :endIndex="crud.endIndex.value"
+      :totalCount="filteredPaymentsList.length"
+      :totalPages="totalPages"
+      :startIndex="startIndex"
+      :endIndex="endIndex"
     >
+      <template #filters>
+        <!-- Payment Mode Filter Dropdown -->
+        <select v-model="selectedPaymentModeFilter" class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs" style="max-width: 175px;">
+          <option value="">All Payment Modes</option>
+          <option v-for="pm in modesList" :key="pm.id" :value="pm.id">{{ pm.name }}</option>
+        </select>
+
+        <!-- Event Filter Dropdown -->
+        <select v-model="selectedEventFilter" class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs" style="max-width: 175px;">
+          <option value="">All Events</option>
+          <option v-for="ev in eventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
+        </select>
+      </template>
       <table class="data-table">
         <thead>
           <tr>
@@ -41,8 +54,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(pm, index) in crud.paginatedItems.value" :key="pm.id">
-            <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
+          <tr v-for="(pm, index) in paginatedFilteredPayments" :key="pm.id">
+            <td class="row-index">{{ startIndex + index }}</td>
             <td>
               <div class="payment-ref-cell d-flex align-items-center gap-2.5">
                 <span class="payment-badge">
@@ -61,7 +74,7 @@
               <span v-else class="text-muted fs-7">—</span>
             </td>
             <td>
-              <span class="badge bg-green-subtle text-green-700 border border-green-200 rounded-pill px-2.5 py-1 fs-8 fw-bold">
+              <span class="badge payment-mode-pill rounded-pill border px-3 py-1 fs-8 fw-semibold">
                 <i class="bi bi-wallet2 me-1"></i>
                 {{ pm.payment_mode?.name || getPaymentModeName(pm.payment_mode_id) }}
               </span>
@@ -260,7 +273,44 @@ const crud = useCrudApi<Payment>({
   searchFields: ['id', 'reference_no', 'amount', 'registration_id', 'payment_mode_id'],
 });
 
-// Modal state
+const selectedPaymentModeFilter = ref<number | string>('');
+const selectedEventFilter = ref<number | string>('');
+const eventsList = ref<any[]>([]);
+
+// Computed filtered list
+const filteredPaymentsList = computed(() => {
+  let list = crud.filteredItems.value;
+
+  if (selectedPaymentModeFilter.value) {
+    list = list.filter(p => Number(p.payment_mode_id) === Number(selectedPaymentModeFilter.value));
+  }
+
+  if (selectedEventFilter.value) {
+    list = list.filter(p => {
+      const reg = registrationsList.value.find(r => r.id === p.registration_id) || p.registration;
+      return reg && Number(reg.event_id) === Number(selectedEventFilter.value);
+    });
+  }
+
+  return list;
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredPaymentsList.value.length / crud.perPage.value) || 1;
+});
+
+const startIndex = computed(() => {
+  return (crud.currentPage.value - 1) * crud.perPage.value + 1;
+});
+
+const endIndex = computed(() => {
+  return Math.min(crud.currentPage.value * crud.perPage.value, filteredPaymentsList.value.length);
+});
+
+const paginatedFilteredPayments = computed(() => {
+  const start = (crud.currentPage.value - 1) * crud.perPage.value;
+  return filteredPaymentsList.value.slice(start, start + crud.perPage.value);
+});
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
@@ -279,12 +329,14 @@ const formError = ref('');
 async function fetchDropdownData() {
   try {
     const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
-    const [regRes, modeRes] = await Promise.all([
+    const [regRes, modeRes, eventRes] = await Promise.all([
       $fetch<any>('/api/registrations', { headers }),
       $fetch<any>('/api/payment-modes', { headers }),
+      $fetch<any>('/api/events', { headers }),
     ]);
     registrationsList.value = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
     modesList.value = Array.isArray(modeRes?.data?.payment_modes) ? modeRes.data.payment_modes : (Array.isArray(modeRes?.data) ? modeRes.data : []);
+    eventsList.value = Array.isArray(eventRes?.data?.events) ? eventRes.data.events : (Array.isArray(eventRes?.data) ? eventRes.data : []);
   } catch (err) {
     console.error('Failed to load dropdown data for payments:', err);
   }
@@ -612,6 +664,12 @@ onMounted(() => {
 .btn-danger-confirm:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.payment-mode-pill {
+  background-color: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1 !important;
 }
 
 .bg-green-subtle { background-color: var(--green-50); }

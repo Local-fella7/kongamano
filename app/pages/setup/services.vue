@@ -23,11 +23,19 @@
       v-model:currentPage="crud.currentPage.value"
       v-model:perPage="crud.perPage.value"
       :loading="crud.loading.value"
-      :totalCount="crud.filteredItems.value.length"
-      :totalPages="crud.totalPages.value"
-      :startIndex="crud.startIndex.value"
-      :endIndex="crud.endIndex.value"
+      :totalCount="filteredServicesList.length"
+      :totalPages="totalPages"
+      :startIndex="startIndex"
+      :endIndex="endIndex"
     >
+      <template #filters>
+        <!-- Scan Requirement Filter -->
+        <select v-model="selectedScanFilter" class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs" style="max-width: 180px;">
+          <option value="">All Services</option>
+          <option value="yes">Scan Required</option>
+          <option value="no">No Scan Required</option>
+        </select>
+      </template>
       <table class="data-table">
         <thead>
           <tr>
@@ -40,8 +48,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(service, index) in crud.paginatedItems.value" :key="service.id">
-            <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
+          <tr v-for="(service, index) in paginatedFilteredServices" :key="service.id">
+            <td class="row-index">{{ startIndex + index }}</td>
             <td>
               <div class="service-name-cell">
                 <span class="service-badge">
@@ -215,7 +223,34 @@ definePageMeta({ layout: 'default' });
 
 const crud = useCrudApi<Service>({ endpoint: '/api/services', dataKey: 'services' });
 
-// Modal state
+const selectedScanFilter = ref<string>('');
+
+const filteredServicesList = computed(() => {
+  let list = crud.filteredItems.value;
+  if (selectedScanFilter.value === 'yes') {
+    list = list.filter(s => Boolean(s.requires_scan));
+  } else if (selectedScanFilter.value === 'no') {
+    list = list.filter(s => !s.requires_scan);
+  }
+  return list;
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredServicesList.value.length / crud.perPage.value) || 1;
+});
+
+const startIndex = computed(() => {
+  return (crud.currentPage.value - 1) * crud.perPage.value + 1;
+});
+
+const endIndex = computed(() => {
+  return Math.min(crud.currentPage.value * crud.perPage.value, filteredServicesList.value.length);
+});
+
+const paginatedFilteredServices = computed(() => {
+  const start = (crud.currentPage.value - 1) * crud.perPage.value;
+  return filteredServicesList.value.slice(start, start + crud.perPage.value);
+});
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);

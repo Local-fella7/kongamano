@@ -127,10 +127,23 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
+watch(
+  () => route.path,
+  () => {
+    if (import.meta.client && window.innerWidth < 992) {
+      isSidebarCollapsed.value = true;
+    }
+  }
+);
+
 onMounted(() => {
   if (import.meta.client) {
-    const saved = localStorage.getItem('kongamano_sidebar_collapsed');
-    if (saved !== null) isSidebarCollapsed.value = JSON.parse(saved);
+    if (window.innerWidth < 992) {
+      isSidebarCollapsed.value = true;
+    } else {
+      const saved = localStorage.getItem('kongamano_sidebar_collapsed');
+      if (saved !== null) isSidebarCollapsed.value = JSON.parse(saved);
+    }
     document.addEventListener('click', handleClickOutside);
   }
 });
@@ -177,7 +190,8 @@ const currentPageTitle = computed(() => {
 <style scoped>
 .layout-default {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background-color: var(--slate-50);
 }
 

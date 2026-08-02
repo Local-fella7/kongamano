@@ -19,30 +19,49 @@
 
     <!-- Search & Filter Bar -->
     <div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
-      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center justify-content-between flex-nowrap gap-3">
+        <!-- Left: Title & Count Badge -->
+        <div class="d-flex align-items-center gap-2.5 text-nowrap flex-shrink-0">
           <h6 class="fw-bold text-slate-900 mb-0">Events Catalog</h6>
-          <span class="badge bg-green-subtle text-green-700 rounded-pill px-2.5 py-1 fs-8 fw-bold">
-            {{ crud.filteredItems.value.length }} Total
+          <span class="badge bg-green-subtle text-green-700 rounded-pill px-3 py-1.5 fs-8 fw-bold">
+            {{ filteredEventsList.length }} Total Records
           </span>
         </div>
 
-        <div class="search-box position-relative" style="min-width: 280px;">
-          <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-7"></i>
-          <input
-            v-model="crud.searchQuery.value"
-            type="text"
-            class="form-control form-control-sm ps-5 pe-4 py-2 rounded-pill border-slate-200"
-            placeholder="Search events, venues..."
-          />
-          <button
-            v-if="crud.searchQuery.value"
-            @click="crud.searchQuery.value = ''"
-            class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted text-decoration-none pe-3 py-0"
-            style="font-size: 0.8rem;"
-          >
-            <i class="bi bi-x-circle-fill"></i>
-          </button>
+        <!-- Right: Status, Event Type Filters & Search Input in a single line -->
+        <div class="d-flex align-items-center gap-2 flex-nowrap ms-auto" style="min-width: 0;">
+          <!-- Status Filter Dropdown -->
+          <select v-model="selectedStatusFilter" class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs text-nowrap" style="width: 155px; flex-shrink: 0;">
+            <option value="">All Statuses</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Active">Active</option>
+            <option value="Completed">Completed</option>
+          </select>
+
+          <!-- Event Type Filter Dropdown -->
+          <select v-model="selectedEventTypeFilter" class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs text-nowrap" style="width: 165px; flex-shrink: 0;">
+            <option value="">All Event Types</option>
+            <option v-for="et in eventTypes" :key="et.id" :value="et.id">{{ et.name }}</option>
+          </select>
+
+          <!-- Search Input Box -->
+          <div class="search-box position-relative" style="width: 240px; flex-shrink: 0;">
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-7"></i>
+            <input
+              v-model="crud.searchQuery.value"
+              type="text"
+              class="form-control form-control-sm ps-5 pe-4 py-2 rounded-pill border-slate-200"
+              placeholder="Search events..."
+            />
+            <button
+              v-if="crud.searchQuery.value"
+              @click="crud.searchQuery.value = ''"
+              class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted text-decoration-none pe-3 py-0"
+              style="font-size: 0.8rem;"
+            >
+              <i class="bi bi-x-circle-fill"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -54,7 +73,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="crud.filteredItems.value.length === 0" class="state-box card border-0 shadow-sm rounded-4">
+    <div v-else-if="filteredEventsList.length === 0" class="state-box card border-0 shadow-sm rounded-4">
       <i class="bi bi-calendar-x text-muted opacity-40 fs-1"></i>
       <h6 class="fw-semibold text-slate-800 mt-3 mb-1">No Events Found</h6>
       <p class="text-muted fs-7 mb-3">There are no events matching your criteria.</p>
@@ -67,7 +86,7 @@
     <div v-else class="event-grid-container d-flex flex-column justify-content-between flex-grow-1">
       <div class="row g-4 mb-4">
         <div
-          v-for="event in crud.paginatedItems.value"
+          v-for="event in paginatedFilteredEvents"
           :key="event.id"
           class="col-12 col-md-6 col-xl-4"
         >
@@ -190,22 +209,34 @@
       </div>
 
       <!-- Bottom Pagination Bar -->
-      <div v-if="crud.filteredItems.value.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between flex-wrap gap-3 px-4 py-3 bg-white mt-auto">
-        <!-- Left Side: Range Info -->
-        <div class="fs-7 text-muted fw-medium">
-          Showing <span class="fw-bold text-slate-900">{{ (crud.currentPage.value - 1) * crud.perPage.value + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(crud.currentPage.value * crud.perPage.value, crud.filteredItems.value.length) }}</span> of <span class="fw-bold text-slate-900">{{ crud.filteredItems.value.length }}</span> events
+      <div v-if="filteredEventsList.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between flex-nowrap gap-3 px-4 py-3 bg-white mt-auto">
+        <!-- Left Side: Range Info & Per Page Selector in a single line -->
+        <div class="d-flex align-items-center gap-3 fs-7 text-muted fw-medium text-nowrap flex-shrink-0">
+          <div>
+            Showing <span class="fw-bold text-slate-900">{{ (crud.currentPage.value - 1) * crud.perPage.value + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(crud.currentPage.value * crud.perPage.value, filteredEventsList.length) }}</span> of <span class="fw-bold text-slate-900">{{ filteredEventsList.length }}</span> events
+          </div>
+
+          <div class="d-flex align-items-center gap-1.5 ms-2">
+            <span class="fs-8 text-muted fw-semibold">Per page:</span>
+            <select v-model="crud.perPage.value" class="form-select form-select-sm rounded-3 fs-8 py-1 px-2 border-slate-200 shadow-2xs" style="width: auto;">
+              <option :value="6">6</option>
+              <option :value="9">9</option>
+              <option :value="12">12</option>
+              <option :value="24">24</option>
+            </select>
+          </div>
         </div>
 
-        <!-- Center/Right: Page Numbers Navigation -->
-        <nav v-if="crud.totalPages.value > 1" aria-label="Page navigation">
-          <ul class="pagination pagination-sm mb-0 gap-1">
+        <!-- Right Side: Page Numbers Navigation in a single line -->
+        <nav v-if="totalPages > 1" aria-label="Page navigation" class="ms-auto flex-shrink-0">
+          <ul class="pagination pagination-sm mb-0 gap-1 flex-nowrap">
             <li class="page-item" :class="{ disabled: crud.currentPage.value === 1 }">
               <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value--" :disabled="crud.currentPage.value === 1">
                 <i class="bi bi-chevron-left fs-8"></i>
               </button>
             </li>
             <li
-              v-for="page in crud.totalPages.value"
+              v-for="page in totalPages"
               :key="page"
               class="page-item"
               :class="{ active: crud.currentPage.value === page }"
@@ -214,24 +245,13 @@
                 {{ page }}
               </button>
             </li>
-            <li class="page-item" :class="{ disabled: crud.currentPage.value === crud.totalPages.value }">
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value++" :disabled="crud.currentPage.value === crud.totalPages.value">
+            <li class="page-item" :class="{ disabled: crud.currentPage.value === totalPages }">
+              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value++" :disabled="crud.currentPage.value === totalPages">
                 <i class="bi bi-chevron-right fs-8"></i>
               </button>
             </li>
           </ul>
         </nav>
-
-        <!-- Right Side: Per Page Selector -->
-        <div class="d-flex align-items-center gap-2">
-          <span class="fs-7 text-muted fw-medium text-nowrap">Per Page:</span>
-          <select v-model="crud.perPage.value" class="form-select form-select-sm rounded-3 fs-7 border-slate-200 shadow-2xs cursor-pointer px-3" style="width: auto;">
-            <option :value="6">6</option>
-            <option :value="9">9</option>
-            <option :value="12">12</option>
-            <option :value="24">24</option>
-          </select>
-        </div>
       </div>
     </div>
 
@@ -701,6 +721,29 @@ const activeEventForItem = ref<Event | null>(null);
 const viewingItem = ref<Event | null>(null);
 const editingItem = ref<Event | null>(null);
 const deletingItem = ref<Event | null>(null);
+
+const selectedStatusFilter = ref<string>('');
+const selectedEventTypeFilter = ref<number | string>('');
+
+// Filtered items computed
+const filteredEventsList = computed(() => {
+  let list = crud.filteredItems.value;
+
+  if (selectedStatusFilter.value) {
+    list = list.filter(e => getEventStatusBadge(e).label === selectedStatusFilter.value);
+  }
+
+  if (selectedEventTypeFilter.value) {
+    list = list.filter(e => Number(e.event_type_id) === Number(selectedEventTypeFilter.value));
+  }
+
+  return list;
+});
+
+const paginatedFilteredEvents = computed(() => {
+  const start = (crud.currentPage.value - 1) * crud.perPage.value;
+  return filteredEventsList.value.slice(start, start + crud.perPage.value);
+});
 
 const eventServices = ref<EventService[]>([]);
 const eventAccommodations = ref<EventAccommodation[]>([]);
