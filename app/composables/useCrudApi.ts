@@ -24,11 +24,12 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   }
 
   // ── Fetch All ──────────────────────────────────────
-  async function fetchItems() {
+  async function fetchItems(params?: Record<string, any>) {
     loading.value = true;
     try {
       const res = await $fetch<any>(options.endpoint, {
         headers: authHeaders(),
+        params,
       });
 
       let rawList: T[] = [];

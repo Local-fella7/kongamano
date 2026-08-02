@@ -48,6 +48,11 @@
 body {
   background-color: var(--color-bg-light);
   color: var(--color-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6, .page-heading, .card-title {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 /* Bootstrap Overrides using the exact new tokens */
@@ -87,3 +92,14 @@ body {
 .text-kongamano-red {
   color: var(--red-500) !important;
 }
+
+/* Center Notivue Toast Container in the middle of the screen */
+.notivue__container {
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  z-index: 99999 !important;
+}
+
