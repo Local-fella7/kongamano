@@ -39,22 +39,44 @@
         </div>
       </div>
 
-      <!-- Right Login Form -->
-      <div class="col-lg-6 d-flex align-items-center justify-content-center bg-white p-4 p-md-5">
-        <div class="form-wrapper w-100" style="max-width: 440px;">
-          <!-- Mobile Brand Logo -->
-          <div class="d-flex d-lg-none align-items-center gap-3 mb-4">
-            <img src="/mana ministries.png" alt="Mana Ministries Logo" class="brand-logo sm shadow-sm" style="width: 52px; height: 52px; object-fit: contain; background: white; padding: 4px; border-radius: 12px; border: 1px solid #e2e8f0;" />
-            <div>
-              <span class="fs-4 fw-bold text-slate-900 d-block">Kongamano</span>
-              <small class="text-slate-500 fs-7">Mana Ministries</small>
+      <!-- Right Login Form Section with Split Curved Wavy Header -->
+      <div class="col-lg-6 d-flex align-items-center justify-content-center p-3 p-md-5 login-right-section position-relative overflow-hidden">
+        <div class="form-wrapper w-100 rounded-4 shadow-lg bg-white overflow-hidden border border-slate-100 position-relative" style="max-width: 450px;">
+          <!-- Curved Wavy Header Banner -->
+          <div class="card-wavy-header position-relative px-4 pt-4 pb-5 text-white">
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <div class="wavy-header-logo-box shadow-2xs">
+                <i class="bi bi-person-badge-fill fs-5"></i>
+              </div>
+              <div>
+                <h4 class="fw-bold text-white mb-0 fs-5">Account Sign In</h4>
+                <small class="text-slate-200 fs-7">Kongamano Platform</small>
+              </div>
+            </div>
+
+            <!-- SVG Wave Bottom Mask -->
+            <div class="wave-svg-box">
+              <svg viewBox="0 0 500 150" preserveAspectRatio="none" style="height: 100%; width: 100%;">
+                <path d="M0.00,49.98 C150.00,150.00 349.20,-49.98 500.00,49.98 L500.00,150.00 L0.00,150.00 Z" style="stroke: none; fill: #ffffff;"></path>
+              </svg>
             </div>
           </div>
 
-          <div class="mb-4">
-            <h2 class="fw-bold text-slate-900 mb-1">Welcome back</h2>
-            <p class="text-slate-500 fs-6">Please enter your credentials to access your account.</p>
-          </div>
+          <!-- Card Content Body -->
+          <div class="p-4 px-sm-5 pb-sm-5 pt-0">
+            <!-- Mobile Brand Logo -->
+            <div class="d-flex d-lg-none align-items-center gap-3 mb-4">
+              <img src="/mana ministries.png" alt="Mana Ministries Logo" class="brand-logo sm shadow-sm" style="width: 52px; height: 52px; object-fit: contain; background: white; padding: 4px; border-radius: 12px; border: 1px solid #e2e8f0;" />
+              <div>
+                <span class="fs-4 fw-bold text-slate-900 d-block">Kongamano</span>
+                <small class="text-slate-500 fs-7">Mana Ministries</small>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <h5 class="fw-bold text-slate-900 mb-1">Welcome back</h5>
+              <p class="text-slate-500 fs-7">Please enter your credentials to access your account.</p>
+            </div>
 
           <form @submit.prevent="handleLogin" class="needs-validation">
             <!-- Username Field -->
@@ -163,6 +185,7 @@
               </a>
             </p>
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -349,4 +372,40 @@ async function handleLogin() {
   padding-top: 0.65rem;
   padding-bottom: 0.65rem;
 }
-</style>
+
+/* ── Split Curved Wavy Header Card Design with Luxury Warm Cream & Tan Background ───────── */
+.login-right-section {
+  background-color: #F8FAE5;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(177, 148, 112, 0.18) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(67, 118, 108, 0.14) 0px, transparent 50%),
+    radial-gradient(rgba(177, 148, 112, 0.2) 0.6px, transparent 0.6px);
+  background-size: 100% 100%, 100% 100%, 22px 22px;
+}
+
+.card-wavy-header {
+  background: linear-gradient(135deg, var(--green-900) 0%, var(--green-600) 50%, var(--green-500) 100%);
+  overflow: hidden;
+}
+
+.wavy-header-logo-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.wave-svg-box {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 48px;
+  pointer-events: none;
+}</style>
