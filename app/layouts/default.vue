@@ -175,7 +175,8 @@ const currentPageTitle = computed(() => {
 <style scoped>
 .layout-default {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background-color: var(--slate-50);
 }
 
