@@ -48,62 +48,118 @@
       <p class="mt-3 text-muted mb-0">Loading permissions matrix...</p>
     </div>
 
-    <!-- Role Cards Grid -->
-    <div v-else class="row g-4">
-      <div
-        v-for="roleGroup in filteredRoleGroups"
-        :key="roleGroup.role.id"
-        class="col-12 col-md-6 col-xl-4"
-      >
-        <div class="card role-matrix-card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-          <div class="card-body p-3.5 d-flex flex-column justify-content-between">
-            <!-- Role Header Info -->
-            <div class="d-flex align-items-center gap-3 mb-3">
-              <div class="role-avatar-badge">
-                <i class="bi bi-shield-fill-check"></i>
-              </div>
-              <div>
-                <h5 class="fw-bold text-slate-900 mb-0 fs-6">{{ roleGroup.role.name }}</h5>
-                <span class="fs-7 text-muted">
-                  {{ roleGroup.features.length }} Granted {{ roleGroup.features.length === 1 ? 'Feature' : 'Features' }}
-                </span>
+    <!-- Role Cards Grid Container -->
+    <div v-else class="role-grid-container d-flex flex-column justify-content-between flex-grow-1">
+      <div class="row g-4 mb-4">
+        <div
+          v-for="roleGroup in paginatedRoleGroups"
+          :key="roleGroup.role.id"
+          class="col-12 col-md-6 col-xl-4"
+        >
+          <div class="card gradient-header-card h-100 border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+            <!-- Top Gradient Header Banner (Matches Events Page) -->
+            <div class="card-gradient-header px-4 py-4 d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-3 overflow-hidden">
+                <div class="header-avatar-circle shadow-2xs">
+                  <i class="bi bi-shield-fill-check"></i>
+                </div>
+                <div class="overflow-hidden">
+                  <h5 class="fw-bold text-white mb-1 fs-6 text-truncate" :title="roleGroup.role.name">{{ roleGroup.role.name }}</h5>
+                  <span class="role-feature-count-badge">
+                    <i class="bi bi-key-fill me-1"></i>
+                    {{ roleGroup.features.length }} {{ roleGroup.features.length === 1 ? 'Feature' : 'Features' }}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <!-- Action Buttons Row inside Card -->
-            <div class="d-flex align-items-center gap-2 pt-3 border-top mt-2">
-              <!-- View Features Button -->
-              <button
-                class="btn btn-white btn-sm flex-fill rounded-3 border text-slate-800 fw-semibold fs-7 d-flex align-items-center justify-content-center gap-1.5 py-2 shadow-2xs hover-bg-green-subtle"
-                @click="openViewModal(roleGroup)"
-                title="View Granted Features"
-              >
-                <i class="bi bi-eye-fill text-green-600 small-action-icon"></i>
-                <span>View ({{ roleGroup.features.length }})</span>
-              </button>
+            <!-- Card Body Content -->
+            <div class="card-body p-4 d-flex flex-column justify-content-between">
+              <div class="mb-3">
+                <span class="fs-8 text-muted fw-semibold d-block mb-1.5">Role Privileges:</span>
+                <p class="text-muted fs-7 mb-0 line-clamp-2" style="min-height: 2.4rem;">
+                  {{ roleGroup.role.description || `Configured access privileges and feature permissions for ${roleGroup.role.name}.` }}
+                </p>
+              </div>
 
-              <!-- Edit Permissions Button -->
-              <button
-                class="btn btn-outline-success btn-sm flex-fill rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center gap-1.5 py-2 shadow-2xs"
-                @click="openEditPermissionsModal(roleGroup)"
-                title="Edit Role Permissions"
-              >
-                <i class="bi bi-pencil-fill small-action-icon"></i>
-                <span>Edit</span>
-              </button>
+              <!-- Action Buttons Row inside Card Footer (Icon-only matching Events Page) -->
+              <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top mt-2">
+                <div class="d-flex align-items-center gap-2">
+                  <button
+                    class="btn btn-outline-secondary btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
+                    @click="openViewModal(roleGroup)"
+                    title="View Granted Features"
+                  >
+                    <i class="bi bi-eye-fill small-action-icon text-slate-700"></i>
+                  </button>
 
-              <!-- Clear All / Delete Permissions Button -->
-              <button
-                class="btn btn-outline-danger btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
-                @click="confirmClearAllRoleFeatures(roleGroup)"
-                title="Clear All Permissions for this Role"
-                :disabled="roleGroup.features.length === 0"
-              >
-                <i class="bi bi-trash-fill small-action-icon"></i>
-              </button>
+                  <button
+                    class="btn btn-outline-success btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
+                    @click="openEditPermissionsModal(roleGroup)"
+                    title="Edit Role Permissions"
+                  >
+                    <i class="bi bi-pencil-fill small-action-icon"></i>
+                  </button>
+
+                  <button
+                    class="btn btn-outline-danger btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
+                    @click="confirmClearAllRoleFeatures(roleGroup)"
+                    title="Clear All Permissions"
+                    :disabled="roleGroup.features.length === 0"
+                  >
+                    <i class="bi bi-trash-fill small-action-icon"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Bottom Pagination Bar -->
+      <div v-if="filteredRoleGroups.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between flex-nowrap gap-3 px-4 py-3 bg-white mt-auto">
+        <!-- Left Side: Range Info & Per Page Selector in a single line -->
+        <div class="d-flex align-items-center gap-3 fs-7 text-muted fw-medium text-nowrap flex-shrink-0">
+          <div>
+            Showing <span class="fw-bold text-slate-900">{{ (currentPage - 1) * perPage + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(currentPage * perPage, filteredRoleGroups.length) }}</span> of <span class="fw-bold text-slate-900">{{ filteredRoleGroups.length }}</span> roles
+          </div>
+
+          <div class="d-flex align-items-center gap-1.5 ms-2">
+            <span class="fs-8 text-muted fw-semibold">Per page:</span>
+            <select v-model="perPage" class="form-select form-select-sm rounded-3 fs-8 py-1 px-2 border-slate-200 shadow-2xs" style="width: auto;">
+              <option :value="6">6</option>
+              <option :value="12">12</option>
+              <option :value="24">24</option>
+              <option :value="48">48</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Right Side: Page Numbers Navigation in a single line -->
+        <nav v-if="totalPages > 1" aria-label="Page navigation" class="ms-auto flex-shrink-0">
+          <ul class="pagination pagination-sm mb-0 gap-1 flex-nowrap">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }">
+              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage--" :disabled="currentPage === 1">
+                <i class="bi bi-chevron-left fs-8"></i>
+              </button>
+            </li>
+            <li
+              v-for="page in totalPages"
+              :key="page"
+              class="page-item"
+              :class="{ active: currentPage === page }"
+            >
+              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage = page">
+                {{ page }}
+              </button>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage++" :disabled="currentPage === totalPages">
+                <i class="bi bi-chevron-right fs-8"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
     </div>
 
@@ -122,12 +178,6 @@
               {{ selectedRoleGroup.features.length }} Modules
             </span>
           </div>
-          <button
-            class="btn btn-success btn-sm rounded-pill fs-7 fw-semibold px-3"
-            @click="openAssignModal(selectedRoleGroup.role.id)"
-          >
-            <i class="bi bi-plus-lg me-1"></i> Grant Features
-          </button>
         </div>
 
         <div v-if="selectedRoleGroup.features.length > 0" class="row g-2.5">
@@ -389,6 +439,22 @@ const filteredRoleGroups = computed(() => {
   });
 });
 
+const currentPage = ref(1);
+const perPage = ref(6);
+
+watch([perPage, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredRoleGroups.value.length / perPage.value) || 1;
+});
+
+const paginatedRoleGroups = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredRoleGroups.value.slice(start, start + perPage.value);
+});
+
 const selectedFeatureIds = ref<number[]>([]);
 
 function isFeatureAlreadyAssigned(featureId: number): boolean {
@@ -595,6 +661,47 @@ onMounted(fetchData);
 .role-matrix-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+.gradient-header-card {
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  min-height: 250px;
+}
+
+.gradient-header-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08) !important;
+}
+
+.card-gradient-header {
+  background: linear-gradient(135deg, var(--green-900) 0%, var(--green-500) 100%);
+  padding: 1.25rem 1.5rem !important;
+  min-height: 80px;
+}
+
+.header-avatar-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.role-feature-count-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
 }
 
 .role-avatar-badge {
