@@ -78,7 +78,7 @@
                   <span class="fw-semibold text-slate-900 fs-7 d-block">
                     {{ getTemplateTitle(item) }}
                   </span>
-                  <small class="text-muted fs-8">#{{ item.notification_template_id }}</small>
+                  <!-- <small class="text-muted fs-8">#{{ item.notification_template_id }}</small> -->
                 </div>
               </div>
             </td>
@@ -143,11 +143,9 @@
         <div class="row g-3 mb-4">
           <div class="col-12 col-md-6">
             <label class="form-label fw-semibold text-slate-700">Notification Date <span class="text-danger">*</span></label>
-            <input
+            <CommonDatePicker
               v-model="form.notification_date"
-              type="date"
-              class="form-control py-2 rounded-3"
-              required
+              placeholder="Select a date"
             />
           </div>
           <div class="col-12 col-md-6">
@@ -302,19 +300,6 @@ const formError = ref('');
 function getTemplateTitle(item: Notification) {
   const tpl = item.notification_template || templatesList.value.find((t) => t.id === item.notification_template_id);
   return tpl?.title || tpl?.name || `Template #${item.notification_template_id}`;
-}
-
-function formatDate(dateStr?: string) {
-  if (!dateStr) return '—';
-  try {
-    return new Date(dateStr).toLocaleDateString('en-KE', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
 }
 
 function formatTime(timeStr?: string) {

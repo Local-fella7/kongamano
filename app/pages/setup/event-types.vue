@@ -178,14 +178,6 @@ function openView(type: EventType) {
 const form = reactive({ name: '' });
 const formError = ref('');
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-KE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
 function openCreate() {
   editingType.value = null;
   form.name = '';

@@ -366,14 +366,6 @@ function getRoleName(roleId: number) {
   return roles.value.find((role) => role.id === roleId)?.name || '—';
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-KE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
 async function fetchRoles() {
   rolesLoading.value = true;
   try {

@@ -179,14 +179,6 @@ function openView(role: Role) {
 const form = reactive({ name: '' });
 const formError = ref('');
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-KE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
 function openCreate() {
   editingRole.value = null;
   form.name = '';

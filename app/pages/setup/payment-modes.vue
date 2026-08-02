@@ -180,14 +180,6 @@ function openView(mode: PaymentMode) {
 const form = reactive({ name: '' });
 const formError = ref('');
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-KE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
 function openCreate() {
   editingMode.value = null;
   form.name = '';

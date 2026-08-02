@@ -280,20 +280,16 @@
         <div class="row g-3 mb-3">
           <div class="col-12 col-md-6">
             <label class="form-label fw-semibold text-slate-700">Start Date <span class="text-danger">*</span></label>
-            <input
+            <CommonDatePicker
               v-model="form.start_date"
-              type="date"
-              class="form-control py-2 rounded-3"
-              required
+              placeholder="Select start date"
             />
           </div>
           <div class="col-12 col-md-6">
             <label class="form-label fw-semibold text-slate-700">End Date <span class="text-danger">*</span></label>
-            <input
+            <CommonDatePicker
               v-model="form.end_date"
-              type="date"
-              class="form-control py-2 rounded-3"
-              required
+              placeholder="Select end date"
             />
           </div>
         </div>
@@ -987,19 +983,6 @@ function getEventStatusBadge(event: Event) {
     return { label: 'Scheduled', class: 'status-badge--scheduled' };
   }
   return { label: 'Active', class: 'status-badge--active' };
-}
-
-function formatDate(dateStr?: string) {
-  if (!dateStr) return '—';
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
 }
 
 onMounted(() => {

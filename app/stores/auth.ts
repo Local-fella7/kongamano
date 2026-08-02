@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import type { User } from '~/types/auth';
-import type { ApiResponse } from '~/types/api';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
@@ -19,11 +18,11 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchCurrentUser() {
     if (!token.value) return;
     try {
-      const res = await $fetch<ApiResponse<User>>('/api/auth/me', {
+      const res = await $fetch<any>('/api/auth/me', {
         headers: { Authorization: `Bearer ${token.value}` },
       });
-      if (res && res.data) {
-        user.value = res.data;
+      if (res?.data?.user) {
+        user.value = res.data.user;
       }
     } catch (err) {
       console.error('Failed to fetch user:', err);

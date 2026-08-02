@@ -367,19 +367,6 @@ function getInitials(regId: number) {
   return `${f}${l}`.toUpperCase();
 }
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return '—';
-  try {
-    return new Date(dateStr).toLocaleDateString('en-KE', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
-}
-
 // Modal state
 const showModal = ref(false);
 const showViewModal = ref(false);
