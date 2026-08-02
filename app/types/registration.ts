@@ -6,22 +6,17 @@ export interface Registration {
   gender: string;
   phone: string;
   email: string;
-  payment_mode_id: number;
-  amount: number;
-  status: 'Pending' | 'Confirmed';
+  payment_mode_id?: number;
+  amount?: number | string;
+  status: string; // "Pending" | "Confirmed" | "Cancelled"
   created_at?: string;
-}
-
-export interface Payment {
-  id: number;
-  registration_id: number;
-  payment_mode_id: number;
-  amount: number;
-  reference_no: string;
-  created_at?: string;
-}
-
-export interface PaymentMode {
-  id: number;
-  name: string;
+  updated_at?: string;
+  event?: {
+    id: number;
+    name: string;
+  };
+  payment_mode?: {
+    id: number;
+    name: string;
+  };
 }
