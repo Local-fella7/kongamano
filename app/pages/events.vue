@@ -439,71 +439,108 @@
     <!-- Manage Event Services Modal -->
     <CommonModal
       v-model="showServicesModal"
-      :title="`Services for ${activeEventForItem?.name || 'Event'}`"
+      :title="`Event Services Setup`"
       icon="bi-lightning-fill"
       size="md"
     >
       <div v-if="activeEventForItem" class="p-1">
-        <!-- Assign Service Header Row -->
-        <div class="d-flex align-items-center justify-content-between mb-3 bg-slate-50 p-2.5 rounded-3 border">
-          <div class="d-flex align-items-center gap-2 flex-grow-1 me-2">
-            <select v-model.number="selectedServiceToAssign" class="form-select form-select-sm rounded-3 fs-7">
-              <option value="" disabled>Select service to assign...</option>
-              <option v-for="s in availableServicesList" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
+        <!-- Sub-header Banner -->
+        <div class="p-3 rounded-3 bg-teal-subtle border-teal-subtle mb-3 d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="fw-bold text-slate-900 mb-0.5">{{ activeEventForItem.name }}</h6>
+            <span class="fs-8 text-muted fw-medium">Configure services available during this conference</span>
           </div>
-          <button
-            class="btn btn-success btn-sm rounded-3 px-3 fw-semibold text-nowrap"
-            :disabled="!selectedServiceToAssign || loadingServices"
-            @click="assignServiceToEvent"
-          >
-            <i class="bi bi-plus-lg me-1"></i> Link Service
-          </button>
+          <span class="badge modal-count-badge modal-count-badge--services fs-7">
+            {{ eventServices.length }} Attached
+          </span>
+        </div>
+
+        <!-- Attach Service Checkbox Selection List -->
+        <div class="assign-action-card p-3 rounded-3 border mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <label class="form-label fs-8 fw-bold text-uppercase text-muted mb-0">Select Services to Attach</label>
+            <span v-if="(selectedServicesToAssign?.length || 0) > 0" class="badge bg-teal-subtle text-teal-600 border border-teal-subtle rounded-pill fs-8 fw-bold">
+              {{ selectedServicesToAssign.length }} Selected
+            </span>
+          </div>
+
+          <div v-if="availableServicesList.length === 0" class="text-muted fs-8 py-2 fst-italic">
+            All available services have already been attached to this event.
+          </div>
+          <div v-else class="checkbox-selection-list rounded-3 border bg-white p-2" style="max-height: 160px; overflow-y: auto;">
+            <div
+              v-for="s in availableServicesList"
+              :key="s.id"
+              class="form-check custom-checkbox-item p-2 ps-0 ms-3 rounded-2 d-flex align-items-center mb-1"
+            >
+              <input
+                :id="`service-checkbox-${s.id}`"
+                v-model="selectedServicesToAssign"
+                type="checkbox"
+                :value="s.id"
+                class="form-check-input me-3.5 ms-0 mt-0 cursor-pointer"
+              />
+              <label :for="`service-checkbox-${s.id}`" class="form-check-label fs-7 fw-medium text-slate-800 cursor-pointer w-100 ps-1">
+                {{ s.name }}
+              </label>
+            </div>
+          </div>
         </div>
 
         <!-- Loading state -->
         <div v-if="loadingServices" class="text-center py-4">
           <div class="spinner-border spinner-border-sm text-success" role="status"></div>
-          <span class="ms-2 fs-7 text-muted">Loading services...</span>
+          <span class="ms-2 fs-7 text-muted">Loading attached services...</span>
         </div>
 
         <!-- Empty state -->
         <div v-else-if="eventServices.length === 0" class="text-center py-4 bg-light rounded-3 border border-dashed">
           <i class="bi bi-lightning text-muted opacity-50 fs-3"></i>
-          <p class="fs-7 text-muted mt-2 mb-0">No services assigned to this event yet.</p>
+          <p class="fs-7 text-muted mt-2 mb-0">No services attached to this event yet.</p>
         </div>
 
-        <!-- List of assigned services -->
-        <div v-else class="list-group list-group-flush rounded-3 border overflow-hidden">
+        <!-- List of attached services -->
+        <div v-else class="attached-items-list d-flex flex-column gap-2">
           <div
             v-for="es in eventServices"
             :key="es.id"
-            class="list-group-item d-flex align-items-center justify-content-between p-3"
+            class="attached-item-card p-3 rounded-3 border bg-white d-flex align-items-center justify-content-between"
           >
             <div class="d-flex align-items-center gap-3">
-              <div class="avatar-box bg-green-subtle text-green-700 rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+              <div class="item-icon-box item-icon-box--service rounded-3 d-flex align-items-center justify-content-center">
                 <i class="bi bi-lightning-fill"></i>
               </div>
               <div>
-                <h6 class="fw-semibold text-slate-900 mb-0 fs-7">{{ es.service?.name || getServiceName(es.service_id) }}</h6>
+                <h6 class="fw-bold text-slate-900 mb-0.5 fs-7">{{ es.service?.name || getServiceName(es.service_id) }}</h6>
                 <span class="fs-8 text-muted d-block">
-                  Time: {{ es.service?.start_time || '00:00' }} - {{ es.service?.end_time || '23:59' }} | 
-                  QR Scan: {{ es.service?.requires_scan ? 'Required' : 'Optional' }}
+                  <i class="bi bi-clock me-1"></i>{{ es.service?.start_time || '00:00' }} - {{ es.service?.end_time || '23:59' }}
+                  <span class="mx-1">•</span>
+                  <i class="bi bi-qr-code me-1"></i>QR Scan: {{ es.service?.requires_scan ? 'Required' : 'Optional' }}
                 </span>
               </div>
             </div>
             <button
-              class="btn btn-outline-danger btn-sm rounded-3 py-1 px-2.5 fs-8 fw-medium"
-              title="Unlink Service"
+              class="btn-remove-item"
+              title="Detach Service"
               @click="unlinkServiceFromEvent(es.id)"
             >
-              <i class="bi bi-trash-fill me-1"></i> Unlink
+              <i class="bi bi-x-circle-fill fs-6"></i>
+              <span class="ms-1 fs-8 fw-semibold">Detach</span>
             </button>
           </div>
         </div>
 
-        <div class="mt-4 text-end border-top pt-3">
+        <!-- Bottom Modal Footer with Attach & Close Buttons -->
+        <div class="mt-4 d-flex align-items-center justify-content-end gap-2 border-top pt-3">
           <button class="btn-cancel" @click="showServicesModal = false">Close</button>
+          <button
+            class="btn btn-teal-action py-2 px-3.5 rounded-3 fw-semibold d-inline-flex align-items-center gap-1.5"
+            :disabled="!selectedServicesToAssign || selectedServicesToAssign.length === 0 || loadingServices"
+            @click="assignServiceToEvent"
+          >
+            <i class="bi bi-plus-lg"></i>
+            <span>Attach {{ (selectedServicesToAssign?.length || 0) > 0 ? `(${selectedServicesToAssign.length}) Services` : 'Services' }}</span>
+          </button>
         </div>
       </div>
     </CommonModal>
@@ -511,70 +548,106 @@
     <!-- Manage Event Accommodations Modal -->
     <CommonModal
       v-model="showAccommodationsModal"
-      :title="`Accommodations for ${activeEventForItem?.name || 'Event'}`"
+      :title="`Event Accommodations Setup`"
       icon="bi-building-fill"
       size="md"
     >
       <div v-if="activeEventForItem" class="p-1">
-        <!-- Assign Accommodation Header Row -->
-        <div class="d-flex align-items-center justify-content-between mb-3 bg-slate-50 p-2.5 rounded-3 border">
-          <div class="d-flex align-items-center gap-2 flex-grow-1 me-2">
-            <select v-model.number="selectedAccommodationToAssign" class="form-select form-select-sm rounded-3 fs-7">
-              <option value="" disabled>Select accommodation to assign...</option>
-              <option v-for="a in availableAccommodationsList" :key="a.id" :value="a.id">{{ a.name }}</option>
-            </select>
+        <!-- Sub-header Banner -->
+        <div class="p-3 rounded-3 bg-amber-subtle border-amber-subtle mb-3 d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="fw-bold text-slate-900 mb-0.5">{{ activeEventForItem.name }}</h6>
+            <span class="fs-8 text-muted fw-medium">Allocate lodging & accommodation options for attendees</span>
           </div>
-          <button
-            class="btn btn-success btn-sm rounded-3 px-3 fw-semibold text-nowrap"
-            :disabled="!selectedAccommodationToAssign || loadingAccommodations"
-            @click="assignAccommodationToEvent"
-          >
-            <i class="bi bi-plus-lg me-1"></i> Link Accommodation
-          </button>
+          <span class="badge modal-count-badge modal-count-badge--acc fs-7">
+            {{ eventAccommodations.length }} Allocated
+          </span>
+        </div>
+
+        <!-- Allocate Accommodation Checkbox Selection List -->
+        <div class="assign-action-card p-3 rounded-3 border mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <label class="form-label fs-8 fw-bold text-uppercase text-muted mb-0">Select Accommodations to Allocate</label>
+            <span v-if="(selectedAccommodationsToAssign?.length || 0) > 0" class="badge bg-amber-subtle text-amber-700 border border-amber-subtle rounded-pill fs-8 fw-bold">
+              {{ selectedAccommodationsToAssign.length }} Selected
+            </span>
+          </div>
+
+          <div v-if="availableAccommodationsList.length === 0" class="text-muted fs-8 py-2 fst-italic">
+            All available accommodations have already been allocated to this event.
+          </div>
+          <div v-else class="checkbox-selection-list rounded-3 border bg-white p-2" style="max-height: 160px; overflow-y: auto;">
+            <div
+              v-for="a in availableAccommodationsList"
+              :key="a.id"
+              class="form-check custom-checkbox-item p-2 ps-0 ms-3 rounded-2 d-flex align-items-center mb-1"
+            >
+              <input
+                :id="`acc-checkbox-${a.id}`"
+                v-model="selectedAccommodationsToAssign"
+                type="checkbox"
+                :value="a.id"
+                class="form-check-input me-3.5 ms-0 mt-0 cursor-pointer"
+              />
+              <label :for="`acc-checkbox-${a.id}`" class="form-check-label fs-7 fw-medium text-slate-800 cursor-pointer w-100 ps-1">
+                {{ a.name }}
+              </label>
+            </div>
+          </div>
         </div>
 
         <!-- Loading state -->
         <div v-if="loadingAccommodations" class="text-center py-4">
-          <div class="spinner-border spinner-border-sm text-success" role="status"></div>
-          <span class="ms-2 fs-7 text-muted">Loading accommodations...</span>
+          <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+          <span class="ms-2 fs-7 text-muted">Loading allocated accommodations...</span>
         </div>
 
         <!-- Empty state -->
         <div v-else-if="eventAccommodations.length === 0" class="text-center py-4 bg-light rounded-3 border border-dashed">
           <i class="bi bi-building text-muted opacity-50 fs-3"></i>
-          <p class="fs-7 text-muted mt-2 mb-0">No accommodations assigned to this event yet.</p>
+          <p class="fs-7 text-muted mt-2 mb-0">No accommodations allocated to this event yet.</p>
         </div>
 
-        <!-- List of assigned accommodations -->
-        <div v-else class="list-group list-group-flush rounded-3 border overflow-hidden">
+        <!-- List of allocated accommodations -->
+        <div v-else class="attached-items-list d-flex flex-column gap-2">
           <div
             v-for="ea in eventAccommodations"
             :key="ea.id"
-            class="list-group-item d-flex align-items-center justify-content-between p-3"
+            class="attached-item-card p-3 rounded-3 border bg-white d-flex align-items-center justify-content-between"
           >
             <div class="d-flex align-items-center gap-3">
-              <div class="avatar-box bg-primary-subtle text-primary rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+              <div class="item-icon-box item-icon-box--acc rounded-3 d-flex align-items-center justify-content-center">
                 <i class="bi bi-building-fill"></i>
               </div>
               <div>
-                <h6 class="fw-semibold text-slate-900 mb-0 fs-7">{{ ea.accommodation?.name || getAccommodationName(ea.accommodation_id) }}</h6>
+                <h6 class="fw-bold text-slate-900 mb-0.5 fs-7">{{ ea.accommodation?.name || getAccommodationName(ea.accommodation_id) }}</h6>
                 <span class="fs-8 text-muted d-block">
-                  Capacity: {{ ea.accommodation?.capacity ? `${ea.accommodation.capacity} beds` : 'Unlimited' }}
+                  <i class="bi bi-person-badge me-1"></i>Capacity: {{ ea.accommodation?.capacity ? `${ea.accommodation.capacity} beds` : 'Unlimited' }}
                 </span>
               </div>
             </div>
             <button
-              class="btn btn-outline-danger btn-sm rounded-3 py-1 px-2.5 fs-8 fw-medium"
-              title="Unlink Accommodation"
+              class="btn-remove-item"
+              title="Remove Allocation"
               @click="unlinkAccommodationFromEvent(ea.id)"
             >
-              <i class="bi bi-trash-fill me-1"></i> Unlink
+              <i class="bi bi-x-circle-fill fs-6"></i>
+              <span class="ms-1 fs-8 fw-semibold">Remove</span>
             </button>
           </div>
         </div>
 
-        <div class="mt-4 text-end border-top pt-3">
+        <!-- Bottom Modal Footer with Allocate & Close Buttons -->
+        <div class="mt-4 d-flex align-items-center justify-content-end gap-2 border-top pt-3">
           <button class="btn-cancel" @click="showAccommodationsModal = false">Close</button>
+          <button
+            class="btn btn-amber-action py-2 px-3.5 rounded-3 fw-semibold d-inline-flex align-items-center gap-1.5"
+            :disabled="!selectedAccommodationsToAssign || selectedAccommodationsToAssign.length === 0 || loadingAccommodations"
+            @click="assignAccommodationToEvent"
+          >
+            <i class="bi bi-plus-lg"></i>
+            <span>Allocate {{ (selectedAccommodationsToAssign?.length || 0) > 0 ? `(${selectedAccommodationsToAssign.length}) Options` : 'Accommodations' }}</span>
+          </button>
         </div>
       </div>
     </CommonModal>
@@ -639,8 +712,8 @@ const allServicesList = ref<Service[]>([]);
 const allAccommodationsList = ref<Accommodation[]>([]);
 const loadingServices = ref(false);
 const loadingAccommodations = ref(false);
-const selectedServiceToAssign = ref<number | string>('');
-const selectedAccommodationToAssign = ref<number | string>('');
+const selectedServicesToAssign = ref<number[]>([]);
+const selectedAccommodationsToAssign = ref<number[]>([]);
 
 const form = reactive({
   name: '',
@@ -714,18 +787,23 @@ const availableAccommodationsList = computed(() => {
 });
 
 async function assignServiceToEvent() {
-  if (!activeEventForItem.value || !selectedServiceToAssign.value) return;
+  if (!activeEventForItem.value || selectedServicesToAssign.value.length === 0) return;
   const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
   try {
-    await $fetch('/api/event-services', {
-      method: 'POST',
-      headers,
-      body: { event_id: activeEventForItem.value.id, service_id: Number(selectedServiceToAssign.value) },
-    });
-    selectedServiceToAssign.value = '';
-    await fetchEventServices(activeEventForItem.value.id);
+    const eventId = activeEventForItem.value.id;
+    await Promise.all(
+      selectedServicesToAssign.value.map(serviceId =>
+        $fetch('/api/event-services', {
+          method: 'POST',
+          headers,
+          body: { event_id: eventId, service_id: Number(serviceId) },
+        })
+      )
+    );
+    selectedServicesToAssign.value = [];
+    await fetchEventServices(eventId);
   } catch (err) {
-    console.error('Failed to assign service:', err);
+    console.error('Failed to assign services:', err);
   }
 }
 
@@ -744,18 +822,23 @@ async function unlinkServiceFromEvent(eventServiceId: number) {
 }
 
 async function assignAccommodationToEvent() {
-  if (!activeEventForItem.value || !selectedAccommodationToAssign.value) return;
+  if (!activeEventForItem.value || selectedAccommodationsToAssign.value.length === 0) return;
   const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
   try {
-    await $fetch('/api/event-accommodations', {
-      method: 'POST',
-      headers,
-      body: { event_id: activeEventForItem.value.id, accommodation_id: Number(selectedAccommodationToAssign.value) },
-    });
-    selectedAccommodationToAssign.value = '';
-    await fetchEventAccommodations(activeEventForItem.value.id);
+    const eventId = activeEventForItem.value.id;
+    await Promise.all(
+      selectedAccommodationsToAssign.value.map(accId =>
+        $fetch('/api/event-accommodations', {
+          method: 'POST',
+          headers,
+          body: { event_id: eventId, accommodation_id: Number(accId) },
+        })
+      )
+    );
+    selectedAccommodationsToAssign.value = [];
+    await fetchEventAccommodations(eventId);
   } catch (err) {
-    console.error('Failed to assign accommodation:', err);
+    console.error('Failed to assign accommodations:', err);
   }
 }
 
@@ -775,14 +858,14 @@ async function unlinkAccommodationFromEvent(eventAccId: number) {
 
 function openServicesModal(event: Event) {
   activeEventForItem.value = event;
-  selectedServiceToAssign.value = '';
+  selectedServicesToAssign.value = [];
   showServicesModal.value = true;
   fetchEventServices(event.id);
 }
 
 function openAccommodationsModal(event: Event) {
   activeEventForItem.value = event;
-  selectedAccommodationToAssign.value = '';
+  selectedAccommodationsToAssign.value = [];
   showAccommodationsModal.value = true;
   fetchEventAccommodations(event.id);
 }
@@ -1151,6 +1234,120 @@ onMounted(() => {
 }
 
 /* ── Modal Linked Item Badges & Counters ────────── */
+.bg-teal-subtle {
+  background-color: #f0f7f5;
+}
+
+.border-teal-subtle {
+  border: 1px solid rgba(67, 118, 108, 0.2);
+}
+
+.bg-amber-subtle {
+  background-color: #fbf7f0;
+}
+
+.border-amber-subtle {
+  border: 1px solid rgba(118, 69, 59, 0.2);
+}
+
+.assign-action-card {
+  background-color: #f8fafc;
+  border-color: var(--slate-200) !important;
+}
+
+.custom-checkbox-item {
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.custom-checkbox-item:last-child {
+  border-bottom: none;
+}
+
+.custom-checkbox-item:hover {
+  background-color: #f1f5f9;
+}
+
+.custom-checkbox-item .form-check-input {
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 2px solid #64748b !important;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.custom-checkbox-item .form-check-input:checked {
+  background-color: #43766c !important;
+  border-color: #43766c !important;
+}
+
+.btn-teal-action {
+  background-color: #43766c;
+  color: #ffffff;
+  border: none;
+}
+
+.btn-teal-action:hover:not(:disabled) {
+  background-color: #355f57;
+  color: #ffffff;
+}
+
+.btn-amber-action {
+  background-color: #76453b;
+  color: #ffffff;
+  border: none;
+}
+
+.btn-amber-action:hover:not(:disabled) {
+  background-color: #5e362e;
+  color: #ffffff;
+}
+
+.attached-item-card {
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.attached-item-card:hover {
+  border-color: var(--slate-300) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.item-icon-box {
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+}
+
+.item-icon-box--service {
+  background-color: #f0f7f5;
+  color: #43766c;
+  border: 1px solid rgba(67, 118, 108, 0.2);
+}
+
+.item-icon-box--acc {
+  background-color: #fbf7f0;
+  color: #76453b;
+  border: 1px solid rgba(118, 69, 59, 0.2);
+}
+
+.btn-remove-item {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-remove-item:hover {
+  background-color: #fef2f2;
+  color: #ef4444;
+}
+
 .modal-count-badge {
   border-radius: 50rem;
   padding: 0.25rem 0.6rem;
