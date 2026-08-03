@@ -341,6 +341,7 @@ definePageMeta({ layout: 'default' });
 
 const push = usePush();
 const token = useCookie<string | null>('token');
+const { executeOrQueue } = useOfflineSync();
 
 const roles = ref<Role[]>([]);
 const features = ref<Feature[]>([]);
@@ -389,22 +390,32 @@ function getFeatureName(featureId?: number) {
 
 async function fetchData() {
   loading.value = true;
-  try {
-    const [rolesRes, featuresRes, rfRes] = await Promise.all([
-      $fetch<any>('/api/roles', { headers: authHeaders() }),
-      $fetch<any>('/api/features', { headers: authHeaders() }),
-      $fetch<any>('/api/role-features', { headers: authHeaders() }),
-    ]);
 
+  // Fetch roles list
+  try {
+    const rolesRes = await cachedFetch<any>('/api/roles');
     roles.value = Array.isArray(rolesRes?.data?.roles) ? rolesRes.data.roles : (Array.isArray(rolesRes?.data) ? rolesRes.data : []);
-    features.value = Array.isArray(featuresRes?.data?.features) ? featuresRes.data.features : (Array.isArray(featuresRes?.data) ? featuresRes.data : []);
-    roleFeatures.value = Array.isArray(rfRes?.data?.role_features) ? rfRes.data.role_features : (Array.isArray(rfRes?.data) ? rfRes.data : []);
-  } catch (err: any) {
-    console.error('Failed to load role features matrix data:', err);
-    push.error({ title: 'Error', message: 'Failed to load permissions matrix.' });
-  } finally {
-    loading.value = false;
+  } catch (err) {
+    console.error('Failed to load roles:', err);
   }
+
+  // Fetch features list
+  try {
+    const featuresRes = await cachedFetch<any>('/api/features');
+    features.value = Array.isArray(featuresRes?.data?.features) ? featuresRes.data.features : (Array.isArray(featuresRes?.data) ? featuresRes.data : []);
+  } catch (err) {
+    console.error('Failed to load features:', err);
+  }
+
+  // Fetch role features assignments
+  try {
+    const rfRes = await cachedFetch<any>('/api/role-features');
+    roleFeatures.value = Array.isArray(rfRes?.data?.role_features) ? rfRes.data.role_features : (Array.isArray(rfRes?.data) ? rfRes.data : []);
+  } catch (err) {
+    console.error('Failed to load role features permissions matrix:', err);
+  }
+
+  loading.value = false;
 }
 
 // Group features under their respective roles
@@ -498,17 +509,32 @@ async function handleSubmit() {
 
   try {
     const roleId = Number(form.role_id);
-    const promises = selectedFeatureIds.value.map((featureId) =>
-      $fetch('/api/role-features', {
+    
+    // Find already assigned features for this role
+    const existingGroup = roleGroups.value.find((rg) => rg.role.id === roleId);
+    const existingFeatureIds = existingGroup ? existingGroup.features.map((f: any) => f.feature_id) : [];
+
+    // Only grant features that aren't already present in the database
+    const newFeatureIds = selectedFeatureIds.value.filter((id) => !existingFeatureIds.includes(id));
+
+    if (newFeatureIds.length === 0) {
+      showModal.value = false;
+      push.info({ title: 'No Changes', message: 'Selected permissions are already granted to this role.' });
+      return;
+    }
+
+    const promises = newFeatureIds.map((featureId) =>
+      executeOrQueue({
+        url: '/api/role-features',
         method: 'POST',
         body: { role_id: roleId, feature_id: featureId },
-        headers: authHeaders(),
+        label: `Grant Feature #${featureId} to Role #${roleId}`,
       })
     );
 
     await Promise.all(promises);
 
-    push.success({ title: 'Batch Granted', message: `Granted ${selectedFeatureIds.value.length} feature(s) to ${getRoleName(roleId)}.` });
+    push.success({ title: 'Batch Granted', message: `Granted ${newFeatureIds.length} new feature(s) to ${getRoleName(roleId)}.` });
     showModal.value = false;
     selectedFeatureIds.value = [];
     await fetchData();
@@ -540,9 +566,10 @@ async function handleClearAllRoleFeatures() {
 
   try {
     const promises = clearingRoleGroup.value.features.map((rf: any) =>
-      $fetch(`/api/role-features/${rf.id}`, {
+      executeOrQueue({
+        url: `/api/role-features/${rf.id}`,
         method: 'DELETE',
-        headers: authHeaders(),
+        label: `Clear Feature #${rf.feature_id} from Role #${clearingRoleGroup.value.role.id}`,
       })
     );
 
@@ -572,9 +599,10 @@ async function handleRevoke() {
   saving.value = true;
 
   try {
-    await $fetch(`/api/role-features/${revokingItem.value.id}`, {
+    await executeOrQueue({
+      url: `/api/role-features/${revokingItem.value.id}`,
       method: 'DELETE',
-      headers: authHeaders(),
+      label: `Revoke Feature #${revokingItem.value.feature_id} from Role #${revokingItem.value.role_id}`,
     });
 
     push.success({ title: 'Revoked', message: 'Permission revoked successfully.' });

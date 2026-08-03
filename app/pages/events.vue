@@ -704,6 +704,7 @@ definePageMeta({ layout: 'default' });
 
 const token = useCookie<string | null>('token');
 const eventTypes = ref<EventType[]>([]);
+const { executeOrQueue } = useOfflineSync();
 
 const crud = useCrudApi<Event>({
   endpoint: '/api/events',
@@ -745,6 +746,8 @@ const paginatedFilteredEvents = computed(() => {
   return filteredEventsList.value.slice(start, start + crud.perPage.value);
 });
 
+const totalPages = computed(() => Math.ceil(filteredEventsList.value.length / crud.perPage.value) || 1);
+
 const eventServices = ref<EventService[]>([]);
 const eventAccommodations = ref<EventAccommodation[]>([]);
 const allServicesList = ref<Service[]>([]);
@@ -766,9 +769,7 @@ const formError = ref('');
 
 async function fetchEventTypes() {
   try {
-    const res = await $fetch<any>('/api/event-types', {
-      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-    });
+    const res = await cachedFetch<any>('/api/event-types');
     eventTypes.value = Array.isArray(res?.data?.event_types) ? res.data.event_types : (Array.isArray(res?.data) ? res.data : []);
   } catch (err) {
     console.error('Failed to load event types:', err);
@@ -777,23 +778,23 @@ async function fetchEventTypes() {
 
 async function fetchMasterLists() {
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
-    const [sRes, aRes] = await Promise.all([
-      $fetch<any>('/api/services', { headers }),
-      $fetch<any>('/api/accommodations', { headers }),
-    ]);
+    const sRes = await cachedFetch<any>('/api/services');
     allServicesList.value = Array.isArray(sRes?.data?.services) ? sRes.data.services : (Array.isArray(sRes?.data) ? sRes.data : []);
+  } catch (err) {
+    console.error('Failed to fetch services master list:', err);
+  }
+  try {
+    const aRes = await cachedFetch<any>('/api/accommodations');
     allAccommodationsList.value = Array.isArray(aRes?.data?.accommodations) ? aRes.data.accommodations : (Array.isArray(aRes?.data) ? aRes.data : []);
   } catch (err) {
-    console.error('Failed to fetch services/accommodations master list:', err);
+    console.error('Failed to fetch accommodations master list:', err);
   }
 }
 
 async function fetchEventServices(eventId: number) {
   loadingServices.value = true;
-  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
   try {
-    const res = await $fetch<any>(`/api/event-services?event_id=${eventId}`, { headers });
+    const res = await cachedFetch<any>(`/api/event-services?event_id=${eventId}`);
     eventServices.value = Array.isArray(res?.data?.event_services) ? res.data.event_services : (Array.isArray(res?.data) ? res.data : []);
   } catch (err) {
     console.error('Failed to load event services:', err);
@@ -804,9 +805,8 @@ async function fetchEventServices(eventId: number) {
 
 async function fetchEventAccommodations(eventId: number) {
   loadingAccommodations.value = true;
-  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
   try {
-    const res = await $fetch<any>(`/api/event-accommodations?event_id=${eventId}`, { headers });
+    const res = await cachedFetch<any>(`/api/event-accommodations?event_id=${eventId}`);
     eventAccommodations.value = Array.isArray(res?.data?.event_accommodations) ? res.data.event_accommodations : (Array.isArray(res?.data) ? res.data : []);
   } catch (err) {
     console.error('Failed to load event accommodations:', err);
@@ -827,15 +827,15 @@ const availableAccommodationsList = computed(() => {
 
 async function assignServiceToEvent() {
   if (!activeEventForItem.value || selectedServicesToAssign.value.length === 0) return;
-  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
   try {
     const eventId = activeEventForItem.value.id;
     await Promise.all(
       selectedServicesToAssign.value.map(serviceId =>
-        $fetch('/api/event-services', {
+        executeOrQueue({
+          url: '/api/event-services',
           method: 'POST',
-          headers,
           body: { event_id: eventId, service_id: Number(serviceId) },
+          label: `Assign Service to Event #${eventId}`,
         })
       )
     );
@@ -848,11 +848,11 @@ async function assignServiceToEvent() {
 
 async function unlinkServiceFromEvent(eventServiceId: number) {
   if (!activeEventForItem.value) return;
-  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
   try {
-    await $fetch(`/api/event-services/${eventServiceId}`, {
+    await executeOrQueue({
+      url: `/api/event-services/${eventServiceId}`,
       method: 'DELETE',
-      headers,
+      label: `Unlink Service #${eventServiceId} from Event #${activeEventForItem.value.id}`,
     });
     await fetchEventServices(activeEventForItem.value.id);
   } catch (err) {
@@ -862,15 +862,15 @@ async function unlinkServiceFromEvent(eventServiceId: number) {
 
 async function assignAccommodationToEvent() {
   if (!activeEventForItem.value || selectedAccommodationsToAssign.value.length === 0) return;
-  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
   try {
     const eventId = activeEventForItem.value.id;
     await Promise.all(
       selectedAccommodationsToAssign.value.map(accId =>
-        $fetch('/api/event-accommodations', {
+        executeOrQueue({
+          url: '/api/event-accommodations',
           method: 'POST',
-          headers,
           body: { event_id: eventId, accommodation_id: Number(accId) },
+          label: `Assign Accommodation to Event #${eventId}`,
         })
       )
     );
@@ -883,11 +883,11 @@ async function assignAccommodationToEvent() {
 
 async function unlinkAccommodationFromEvent(eventAccId: number) {
   if (!activeEventForItem.value) return;
-  const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
   try {
-    await $fetch(`/api/event-accommodations/${eventAccId}`, {
+    await executeOrQueue({
+      url: `/api/event-accommodations/${eventAccId}`,
       method: 'DELETE',
-      headers,
+      label: `Unlink Accommodation #${eventAccId} from Event #${activeEventForItem.value.id}`,
     });
     await fetchEventAccommodations(activeEventForItem.value.id);
   } catch (err) {

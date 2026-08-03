@@ -17,33 +17,6 @@
       </button>
     </div>
 
-    <!-- Template Filter Bar -->
-    <div class="filter-bar card border-0 shadow-sm rounded-4 p-3 mb-4">
-      <div class="d-flex align-items-center flex-wrap gap-3">
-        <label class="filter-label mb-0">
-          <i class="bi bi-funnel-fill me-1"></i>
-          Filter by Template
-        </label>
-        <select
-          v-model="templateFilter"
-          class="form-select form-select-sm filter-select"
-          :disabled="templatesLoading"
-        >
-          <option :value="''">All Templates</option>
-          <option v-for="tpl in templatesList" :key="tpl.id" :value="tpl.id">
-            {{ tpl.title || tpl.name }}
-          </option>
-        </select>
-        <button
-          v-if="templateFilter"
-          class="btn btn-link btn-sm text-muted text-decoration-none p-0"
-          @click="templateFilter = ''"
-        >
-          Clear filter
-        </button>
-      </div>
-    </div>
-
     <!-- Reusable Data Table -->
     <CommonDataTable
       v-model:searchQuery="crud.searchQuery.value"
@@ -55,6 +28,20 @@
       :startIndex="crud.startIndex.value"
       :endIndex="crud.endIndex.value"
     >
+      <template #filters>
+        <!-- Template Filter Dropdown -->
+        <select
+          v-model="templateFilter"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 200px;"
+          :disabled="templatesLoading"
+        >
+          <option :value="''">All Templates</option>
+          <option v-for="tpl in templatesList" :key="tpl.id" :value="tpl.id">
+            {{ tpl.title || tpl.name }}
+          </option>
+        </select>
+      </template>
       <table class="data-table">
         <thead>
           <tr>
@@ -270,8 +257,7 @@ watch(templateFilter, (val) => {
 async function fetchTemplates() {
   templatesLoading.value = true;
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
-    const res = await $fetch<any>('/api/notification-templates', { headers });
+    const res = await cachedFetch<any>('/api/notification-templates');
     templatesList.value = Array.isArray(res?.data?.notification_templates)
       ? res.data.notification_templates
       : (Array.isArray(res?.data) ? res.data : []);

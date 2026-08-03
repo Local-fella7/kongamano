@@ -4,10 +4,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     apiBase: process.env.NUXT_API_BASE || 'http://localhost/kongamano'
   },
-  modules: [
-    '@pinia/nuxt',
-    'notivue/nuxt'
-  ],
+  modules: ['@pinia/nuxt', 'notivue/nuxt', '@nuxtjs/google-fonts'],
   css: [
     'bootstrap/dist/css/bootstrap.min.css',
     'bootstrap-icons/font/bootstrap-icons.css',
@@ -17,12 +14,16 @@ export default defineNuxtConfig({
   ],
   app: {
     head: {
-      link: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap' }
-      ]
+      link: []
     }
+  },
+  googleFonts: {
+    families: {
+      Inter: [400, 500, 600, 700],
+      'Plus Jakarta Sans': [600, 700, 800],
+    },
+    download: true,
+    inject: true,
   },
   notivue: {
     position: 'top-center',

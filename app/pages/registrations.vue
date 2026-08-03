@@ -396,9 +396,7 @@ onMounted(() => {
 
 async function fetchEventsList() {
   try {
-    const res = await $fetch<any>('/api/events', {
-      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-    });
+    const res = await cachedFetch<any>('/api/events');
     eventsList.value = Array.isArray(res?.data?.events) ? res.data.events : (Array.isArray(res?.data) ? res.data : []);
   } catch (err) {
     console.error('Failed to fetch events list:', err);
@@ -407,9 +405,7 @@ async function fetchEventsList() {
 
 async function fetchPaymentModesList() {
   try {
-    const res = await $fetch<any>('/api/payment-modes', {
-      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-    });
+    const res = await cachedFetch<any>('/api/payment-modes');
     paymentModesList.value = Array.isArray(res?.data?.payment_modes) ? res.data.payment_modes : (Array.isArray(res?.data) ? res.data : []);
   } catch (err) {
     console.error('Failed to fetch payment modes list:', err);

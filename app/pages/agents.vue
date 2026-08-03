@@ -361,8 +361,7 @@ const formError = ref('');
 
 async function fetchUsers() {
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
-    const res = await $fetch<any>('/api/users', { headers });
+    const res = await cachedFetch<any>('/api/users');
     usersList.value = Array.isArray(res?.data?.users) ? res.data.users : (Array.isArray(res?.data) ? res.data : []);
   } catch (err) {
     console.error('Failed to load users for dropdown:', err);

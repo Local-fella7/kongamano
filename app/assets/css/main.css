@@ -103,3 +103,239 @@ h1, h2, h3, h4, h5, h6, .page-heading, .card-title {
   z-index: 99999 !important;
 }
 
+/* ─── Theme Toggle Button ──────────────────────────────── */
+.theme-toggle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-border);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--palette-teal);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--palette-teal);
+  color: #fff;
+  border-color: var(--palette-teal);
+  transform: rotate(15deg) scale(1.05);
+}
+
+/* ─── Dark Mode Token Overrides ─────────────────────────── */
+[data-theme="dark"] {
+  --color-bg-light:   #0d1117;
+  --color-surface:    #161b22;
+  --color-surface-2:  #21262d;
+  --color-border:     #30363d;
+  --color-text:       #e6edf3;
+  --color-text-muted: #8b949e;
+  --slate-50:         #21262d;
+  --slate-100:        #30363d;
+  --slate-900:        #e6edf3;
+}
+
+[data-theme="dark"] body {
+  background-color: var(--color-bg-light);
+  color: var(--color-text);
+}
+
+/* ── Layout shells ── */
+[data-theme="dark"] .layout-default,
+[data-theme="dark"] .main-wrapper,
+[data-theme="dark"] .page-content {
+  background-color: var(--color-bg-light) !important;
+}
+
+/* ── Header ── */
+[data-theme="dark"] .app-header {
+  background: var(--color-surface) !important;
+  border-bottom-color: var(--color-border) !important;
+}
+[data-theme="dark"] .page-title  { color: var(--color-text) !important; }
+[data-theme="dark"] .page-sub    { color: #58a6ff !important; }
+
+/* ── Search ── */
+[data-theme="dark"] .search-input {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+[data-theme="dark"] .search-input:focus {
+  background: #1c2128;
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.12);
+}
+[data-theme="dark"] .search-input::placeholder { color: var(--color-text-muted); }
+
+/* ── User btn & chevron ── */
+[data-theme="dark"] .user-btn {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .user-btn-name    { color: var(--color-text); }
+[data-theme="dark"] .header-chevron   { color: var(--color-text-muted); }
+
+/* ── Dropdown menu ── */
+[data-theme="dark"] .header-dropdown-menu {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+}
+[data-theme="dark"] .dropdown-header-info { background: var(--color-surface-2) !important; }
+[data-theme="dark"] .dh-name             { color: var(--color-text) !important; }
+[data-theme="dark"] .dh-username         { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .dropdown-menu-item  { color: #c9d1d9 !important; }
+[data-theme="dark"] .dropdown-menu-item:hover { background: var(--color-surface-2) !important; }
+[data-theme="dark"] .dropdown-divider    { border-color: var(--color-border) !important; }
+
+/* ── Bootstrap utility overrides ── */
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-light {
+  background-color: var(--color-surface) !important;
+}
+[data-theme="dark"] .text-dark,
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .fw-bold,
+[data-theme="dark"] .fw-extrabold { color: var(--color-text) !important; }
+[data-theme="dark"] .text-muted   { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .border,
+[data-theme="dark"] .border-top,
+[data-theme="dark"] .border-bottom,
+[data-theme="dark"] hr            { border-color: var(--color-border) !important; }
+
+/* ── Cards (all) ── */
+[data-theme="dark"] .card {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+/* ── Command bar card ── */
+[data-theme="dark"] .command-bar-card {
+  background-color: var(--color-surface) !important;
+}
+[data-theme="dark"] .command-bar-icon-box {
+  background: var(--color-surface-2) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* ── KPI full-color cards — keep their brand colours, just soften ── */
+[data-theme="dark"] .full-color-kpi-card { filter: brightness(0.88) saturate(0.9); }
+
+/* ── Feed items (ticker cards) ── */
+[data-theme="dark"] .premium-feed-item {
+  background: var(--color-surface-2) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .premium-feed-item:hover {
+  background: #1c2128 !important;
+}
+[data-theme="dark"] .feed-title   { color: var(--color-text) !important; }
+[data-theme="dark"] .feed-subtitle,
+[data-theme="dark"] .feed-currency { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .feed-value   { color: #3fb950 !important; }
+
+/* ── Timeline card ── */
+[data-theme="dark"] .timeline-card {
+  background: var(--color-surface-2) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .timeline-title { color: var(--color-text) !important; }
+[data-theme="dark"] .timeline-desc  { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .timeline-time  { color: #58a6ff !important; }
+[data-theme="dark"] .timeline-line  { background: var(--color-border) !important; }
+
+/* ── Payment badge & status pills ── */
+[data-theme="dark"] .payment-badge {
+  background: rgba(56,139,253,0.15) !important;
+  color: #58a6ff !important;
+}
+[data-theme="dark"] .status-pill--pending {
+  background: rgba(210,153,34,0.2) !important;
+  color: #e3b341 !important;
+}
+
+/* ── Feed icon wrappers ── */
+[data-theme="dark"] .bg-green-light  { background: rgba(63,185,80,0.15) !important; }
+[data-theme="dark"] .text-green-dark { color: #3fb950 !important; }
+[data-theme="dark"] .bg-amber-light  { background: rgba(210,153,34,0.15) !important; }
+[data-theme="dark"] .text-amber-dark { color: #e3b341 !important; }
+
+/* ── Tables ── */
+[data-theme="dark"] .table {
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .table > :not(caption) > * > * {
+  background-color: transparent !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .table-hover tbody tr:hover {
+  background-color: var(--color-surface-2) !important;
+}
+[data-theme="dark"] thead th { color: var(--color-text-muted) !important; }
+
+/* ── Forms & inputs ── */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .input-group-text {
+  background-color: var(--color-surface-2) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+  background-color: #1c2128 !important;
+  border-color: #58a6ff !important;
+  box-shadow: 0 0 0 3px rgba(88,166,255,0.12) !important;
+}
+[data-theme="dark"] .form-control::placeholder { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .form-label { color: var(--color-text) !important; }
+
+/* ── Modals ── */
+[data-theme="dark"] .modal-content {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer {
+  border-color: var(--color-border) !important;
+}
+
+/* ── Pagination & tabs ── */
+[data-theme="dark"] .page-item .page-link {
+  background-color: var(--color-surface-2) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+[data-theme="dark"] .page-item.active .page-link {
+  background-color: var(--palette-teal) !important;
+  border-color: var(--palette-teal) !important;
+}
+[data-theme="dark"] .nav-tabs .nav-link {
+  color: var(--color-text-muted) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .nav-tabs .nav-link.active {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) var(--color-border) var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+
+/* ── Badges ── */
+[data-theme="dark"] .badge.bg-light { background-color: var(--color-surface-2) !important; color: var(--color-text) !important; }
+[data-theme="dark"] .badge.text-dark { color: var(--color-text) !important; }
+
+/* ── Chart wrapper ── */
+[data-theme="dark"] .chart-container-wrapper { filter: brightness(0.9); }
+
+/* ── Spinner ── */
+[data-theme="dark"] .state-box { background: var(--color-surface) !important; }

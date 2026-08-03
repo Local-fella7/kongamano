@@ -139,25 +139,33 @@
           </div>
 
           <!-- Right Action Pills -->
-          <div class="d-flex align-items-center gap-4 flex-wrap ms-auto">
-            <NuxtLink to="/registrations" class="btn command-btn command-btn--green rounded-pill px-4 py-2-5 fs-7 fw-bold d-flex align-items-center gap-2 shadow-2xs me-1">
-              <i class="bi bi-person-plus-fill me-0.5"></i>
-              <span>New Registration</span>
+          <div class="d-flex align-items-center gap-4 ms-auto">
+            <NuxtLink to="/registrations" class="btn command-btn command-btn--green rounded-circle d-flex align-items-center justify-content-center shadow-2xs" style="width: 40px; height: 40px;" title="New Registration" aria-label="New Registration">
+              <i class="bi bi-person-plus-fill fs-5"></i>
             </NuxtLink>
 
-            <NuxtLink to="/payments" class="btn command-btn command-btn--tan rounded-pill px-4 py-2-5 fs-7 fw-bold d-flex align-items-center gap-2 shadow-2xs me-1">
-              <i class="bi bi-wallet2 me-0.5"></i>
-              <span>Record Payment</span>
+            <NuxtLink to="/payments" class="btn command-btn command-btn--tan rounded-circle d-flex align-items-center justify-content-center shadow-2xs" style="width: 40px; height: 40px;" title="Record Payment" aria-label="Record Payment">
+              <i class="bi bi-wallet2 fs-5"></i>
             </NuxtLink>
 
-            <NuxtLink to="/events" class="btn command-btn command-btn--teal rounded-pill px-4 py-2-5 fs-7 fw-bold d-flex align-items-center gap-2 shadow-2xs me-1">
-              <i class="bi bi-calendar-plus-fill me-0.5"></i>
-              <span>Manage Events</span>
+            <NuxtLink to="/events" class="btn command-btn command-btn--teal rounded-circle d-flex align-items-center justify-content-center shadow-2xs" style="width: 40px; height: 40px;" title="Manage Events" aria-label="Manage Events">
+              <i class="bi bi-calendar-plus-fill fs-5"></i>
             </NuxtLink>
 
-            <NuxtLink to="/agents" class="btn command-btn command-btn--terracotta rounded-pill px-4 py-2-5 fs-7 fw-bold d-flex align-items-center gap-2 shadow-2xs">
-              <i class="bi bi-person-workspace me-0.5"></i>
-              <span>Agents Portal</span>
+            <NuxtLink to="/agents" class="btn command-btn command-btn--terracotta rounded-circle d-flex align-items-center justify-content-center shadow-2xs" style="width: 40px; height: 40px;" title="Agents Portal" aria-label="Agents Portal">
+              <i class="bi bi-person-workspace fs-5"></i>
+            </NuxtLink>
+
+            <NuxtLink to="/users" class="btn command-btn command-btn--blue rounded-circle d-flex align-items-center justify-content-center shadow-2xs" style="width: 40px; height: 40px;" title="Manage Users & Staff" aria-label="Manage Users & Staff">
+              <i class="bi bi-people-fill fs-5"></i>
+            </NuxtLink>
+
+            <NuxtLink to="/notifications" class="btn command-btn command-btn--purple rounded-circle d-flex align-items-center justify-content-center shadow-2xs" style="width: 40px; height: 40px;" title="Notification Catalog" aria-label="Notification Catalog">
+              <i class="bi bi-bell-fill fs-5"></i>
+            </NuxtLink>
+
+            <NuxtLink to="/setup/roles" class="btn command-btn command-btn--slate rounded-circle d-flex align-items-center justify-content-center shadow-2xs" style="width: 40px; height: 40px;" title="System Setup & Configuration" aria-label="System Setup & Configuration">
+              <i class="bi bi-gear-fill fs-5"></i>
             </NuxtLink>
           </div>
         </div>
@@ -299,32 +307,30 @@
                 <h6 class="fw-bold text-slate-900 mb-0">Recent Payments</h6>
                 <small class="text-muted fs-8">Latest verified financial receipts</small>
               </div>
-              <NuxtLink to="/payments" class="text-green-600 text-decoration-none fw-semibold fs-8">
-                View All
-              </NuxtLink>
+              <NuxtLink to="/payments" class="text-green-600 text-decoration-none fw-semibold fs-8">View All</NuxtLink>
             </div>
 
-            <div class="d-flex flex-column">
-              <div v-for="pm in recentPayments" :key="pm.id" class="premium-feed-item cascade-item">
-                <div class="feed-icon-wrapper bg-green-light text-green-dark">
-                  <i class="bi bi-cash-stack"></i>
-                </div>
-                <div class="feed-details overflow-hidden">
-                  <span class="feed-title text-truncate">{{ getRegistrationName(pm.registration_id) || '—' }}</span>
-                  <div class="feed-subtitle text-truncate">
-                    <span class="payment-badge">{{ pm.payment_mode?.name || getPaymentModeName(pm.payment_mode_id) }}</span>
-                    <span class="dot-separator mx-1.5">•</span>
-                    <span>{{ formatDate(pm.created_at) }}</span>
+            <div class="ticker-list-container overflow-hidden">
+              <TransitionGroup name="ticker" tag="div" class="d-flex flex-column gap-2">
+                <div v-for="pm in visiblePayments" :key="pm.id" class="premium-feed-item">
+                  <div class="feed-icon-wrapper bg-green-light text-green-dark">
+                    <i class="bi bi-cash-stack"></i>
+                  </div>
+                  <div class="feed-details overflow-hidden">
+                    <span class="feed-title text-truncate">{{ getRegistrationName(pm.registration_id) || '—' }}</span>
+                    <div class="feed-subtitle text-truncate">
+                      <span class="payment-badge">{{ pm.payment_mode?.name || getPaymentModeName(pm.payment_mode_id) }}</span>
+                      <span class="dot-separator mx-1.5">•</span>
+                      <span>{{ formatDate(pm.created_at) }}</span>
+                    </div>
+                  </div>
+                  <div class="feed-action text-end">
+                    <span class="feed-value">+{{ Number(pm.amount).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}</span>
+                    <span class="feed-currency text-muted">TZS</span>
                   </div>
                 </div>
-                <div class="feed-action text-end">
-                  <span class="feed-value">+{{ Number(pm.amount).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}</span>
-                  <span class="feed-currency text-muted">TZS</span>
-                </div>
-              </div>
-              <div v-if="recentPayments.length === 0" class="text-center py-4 text-muted fs-7">
-                No verified payments found.
-              </div>
+              </TransitionGroup>
+              <div v-if="paymentsList.length === 0" class="text-center py-4 text-muted fs-7">No verified payments found.</div>
             </div>
           </div>
         </div>
@@ -337,29 +343,27 @@
                 <h6 class="fw-bold text-slate-900 mb-0">Awaiting Action</h6>
                 <small class="text-muted fs-8">Pending delegate registrations</small>
               </div>
-              <NuxtLink to="/registrations" class="text-amber-700 text-decoration-none fw-semibold fs-8">
-                Manage
-              </NuxtLink>
+              <NuxtLink to="/registrations" class="text-amber-700 text-decoration-none fw-semibold fs-8">Manage</NuxtLink>
             </div>
 
-            <div class="d-flex flex-column">
-              <div v-for="reg in pendingRegistrations" :key="reg.id" class="premium-feed-item cascade-item">
-                <div class="feed-icon-wrapper bg-amber-light text-amber-dark">
-                  <i class="bi bi-person-fill-exclamation"></i>
+            <div class="ticker-list-container overflow-hidden">
+              <TransitionGroup name="ticker" tag="div" class="d-flex flex-column gap-2">
+                <div v-for="reg in visiblePending" :key="reg.id" class="premium-feed-item">
+                  <div class="feed-icon-wrapper bg-amber-light text-amber-dark">
+                    <i class="bi bi-person-fill-exclamation"></i>
+                  </div>
+                  <div class="feed-details overflow-hidden">
+                    <span class="feed-title text-truncate">{{ reg.first_name }} {{ reg.last_name }}</span>
+                    <span class="feed-subtitle text-truncate">
+                      <i class="bi bi-calendar-event me-1"></i>{{ reg.event?.name || getEventName(reg.event_id) }}
+                    </span>
+                  </div>
+                  <div class="feed-action text-end">
+                    <span class="status-pill status-pill--pending">Pending</span>
+                  </div>
                 </div>
-                <div class="feed-details overflow-hidden">
-                  <span class="feed-title text-truncate">{{ reg.first_name }} {{ reg.last_name }}</span>
-                  <span class="feed-subtitle text-truncate">
-                    <i class="bi bi-calendar-event me-1"></i>{{ reg.event?.name || getEventName(reg.event_id) }}
-                  </span>
-                </div>
-                <div class="feed-action text-end">
-                  <span class="status-pill status-pill--pending">Pending</span>
-                </div>
-              </div>
-              <div v-if="pendingRegistrations.length === 0" class="text-center py-4 text-muted fs-7">
-                No pending registrations.
-              </div>
+              </TransitionGroup>
+              <div v-if="allPendingRegistrations.length === 0" class="text-center py-4 text-muted fs-7">No pending registrations.</div>
             </div>
           </div>
         </div>
@@ -374,23 +378,23 @@
               </div>
             </div>
 
-            <div class="premium-timeline">
-              <div v-for="(act, index) in systemActivities" :key="index" class="premium-timeline-item cascade-item">
-                <div class="timeline-line"></div>
-                <div class="timeline-badge" :class="act.colorClass">
-                  <i class="bi" :class="act.icon"></i>
-                </div>
-                <div class="timeline-card">
-                  <div class="d-flex align-items-center justify-content-between mb-1">
-                    <span class="timeline-title">{{ act.title }}</span>
-                    <span class="timeline-time">{{ formatTimeAgo(act.date) }}</span>
+            <div class="ticker-list-container overflow-hidden">
+              <TransitionGroup name="ticker" tag="div" class="premium-timeline">
+                <div v-for="act in visibleActivity" :key="act.key" class="premium-timeline-item">
+                  <div class="timeline-line"></div>
+                  <div class="timeline-badge" :class="act.colorClass">
+                    <i class="bi" :class="act.icon"></i>
                   </div>
-                  <p class="timeline-desc">{{ act.description }}</p>
+                  <div class="timeline-card">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                      <span class="timeline-title">{{ act.title }}</span>
+                      <span class="timeline-time">{{ formatTimeAgo(act.date) }}</span>
+                    </div>
+                    <p class="timeline-desc">{{ act.description }}</p>
+                  </div>
                 </div>
-              </div>
-              <div v-if="systemActivities.length === 0" class="text-center py-4 text-muted fs-7">
-                No recent activity events found.
-              </div>
+              </TransitionGroup>
+              <div v-if="allSystemActivities.length === 0" class="text-center py-4 text-muted fs-7">No recent activity events found.</div>
             </div>
           </div>
         </div>
@@ -401,6 +405,7 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth';
+import type { Ref } from 'vue';
 import type { Event } from '~/types/event';
 import type { Payment } from '~/types/payment';
 import type { Registration } from '~/types/registration';
@@ -474,18 +479,19 @@ const registrationsList = ref<Registration[]>([]);
 const paymentsList = ref<Payment[]>([]);
 const paymentModesList = ref<any[]>([]);
 const agentsList = ref<any[]>([]);
+const usersList = ref<any[]>([]);
 
 // Parallel fetch for hyper-fast execution
 async function fetchDashboardData() {
   loading.value = true;
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
-    const [eventRes, regRes, payRes, modeRes, agentRes] = await Promise.all([
-      $fetch<any>('/api/events', { headers }),
-      $fetch<any>('/api/registrations', { headers }),
-      $fetch<any>('/api/payments', { headers }),
-      $fetch<any>('/api/payment-modes', { headers }),
-      $fetch<any>('/api/agents', { headers }),
+    const [eventRes, regRes, payRes, modeRes, agentRes, userRes] = await Promise.all([
+      cachedFetch<any>('/api/events'),
+      cachedFetch<any>('/api/registrations'),
+      cachedFetch<any>('/api/payments'),
+      cachedFetch<any>('/api/payment-modes'),
+      cachedFetch<any>('/api/agents'),
+      cachedFetch<any>('/api/users'),
     ]);
 
     eventsList.value = Array.isArray(eventRes?.data?.events) ? eventRes.data.events : (Array.isArray(eventRes?.data) ? eventRes.data : []);
@@ -493,12 +499,21 @@ async function fetchDashboardData() {
     paymentsList.value = Array.isArray(payRes?.data?.payments) ? payRes.data.payments : (Array.isArray(payRes?.data) ? payRes.data : []);
     paymentModesList.value = Array.isArray(modeRes?.data?.payment_modes) ? modeRes.data.payment_modes : (Array.isArray(modeRes?.data) ? modeRes.data : []);
     agentsList.value = Array.isArray(agentRes?.data?.agents) ? agentRes.data.agents : (Array.isArray(agentRes?.data) ? agentRes.data : []);
+    usersList.value = Array.isArray(userRes?.data?.users) ? userRes.data.users : (Array.isArray(userRes?.data) ? userRes.data : []);
     loadedOnce.value = true;
   } catch (err) {
     console.error('Failed to load dashboard statistics:', err);
   } finally {
     loading.value = false;
   }
+
+  // loading is now false → v-else cards are in DOM.
+  // Wait two ticks: first for Vue to mount the card elements, second to allow browser layout pass.
+  await nextTick();
+  await nextTick();
+  animateCardList(paymentsListRef);
+  animateCardList(pendingListRef);
+  animateCardList(activityListRef);
 }
 
 function refreshData() {
@@ -533,12 +548,22 @@ const activeUpcomingEvents = computed(() => {
 
 const barChartData = computed(() => {
   const events = activeUpcomingEvents.value;
+  
+  // Single-pass event registration counting: O(N)
+  const eventRegCounts = new Map<number, number>();
+  registrationsList.value.forEach((r) => {
+    const eventId = Number(r.event_id);
+    if (!isNaN(eventId)) {
+      eventRegCounts.set(eventId, (eventRegCounts.get(eventId) || 0) + 1);
+    }
+  });
+
   return {
     labels: events.map(e => e.name),
     datasets: [
       {
         label: 'Registered Delegates',
-        data: events.map(e => registrationsList.value.filter(r => r.event_id === e.id).length),
+        data: events.map(e => eventRegCounts.get(Number(e.id)) || 0),
         backgroundColor: events.map((_, idx) => {
           const colors = ['#43766C', '#B19470', '#76453B'];
           return colors[idx % colors.length];
@@ -634,10 +659,24 @@ const pieChartOptions = {
 };
 const paymentModesBreakdown = computed(() => {
   const totalRev = totalRevenueAmount.value || 1;
+  
+  // Single-pass payment modes sum & count calculation: O(N)
+  const modeSums = new Map<number, number>();
+  const modeCounts = new Map<number, number>();
+  
+  paymentsList.value.forEach((p) => {
+    const modeId = Number(p.payment_mode_id);
+    if (!isNaN(modeId)) {
+      const amt = Number(p.amount) || 0;
+      modeSums.set(modeId, (modeSums.get(modeId) || 0) + amt);
+      modeCounts.set(modeId, (modeCounts.get(modeId) || 0) + 1);
+    }
+  });
+
   return paymentModesList.value.map(mode => {
-    const modePayments = paymentsList.value.filter(p => Number(p.payment_mode_id) === Number(mode.id));
-    const modeTotalAmount = modePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const count = modePayments.length;
+    const modeId = Number(mode.id);
+    const modeTotalAmount = modeSums.get(modeId) || 0;
+    const count = modeCounts.get(modeId) || 0;
     const percentage = Math.round((modeTotalAmount / totalRev) * 100);
 
     return {
@@ -653,14 +692,21 @@ const paymentModesBreakdown = computed(() => {
 const last7DaysRegistrations = computed(() => {
   const result = [];
   const now = new Date();
+  
+  // Single-pass date counting: O(N)
+  const dateCounts = new Map<string, number>();
+  registrationsList.value.forEach((r) => {
+    if (r.created_at) {
+      const dateStr = r.created_at.split('T')[0].split(' ')[0];
+      dateCounts.set(dateStr, (dateCounts.get(dateStr) || 0) + 1);
+    }
+  });
+
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(now.getDate() - i);
     const dateStr = d.toISOString().split('T')[0];
-    const count = registrationsList.value.filter(r => {
-      if (!r.created_at) return false;
-      return r.created_at.startsWith(dateStr);
-    }).length;
+    const count = dateCounts.get(dateStr) || 0;
     const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     result.push({ label, count });
   }
@@ -760,9 +806,10 @@ const doughnutChartOptions = {
   cutout: '65%'
 };
 
-const systemActivities = computed(() => {
+const allSystemActivities = computed(() => {
   const activities: any[] = [];
   
+  // 1. Registrations
   registrationsList.value.forEach(reg => {
     activities.push({
       type: 'registration',
@@ -775,6 +822,7 @@ const systemActivities = computed(() => {
     });
   });
 
+  // 2. Payments
   paymentsList.value.forEach(pm => {
     activities.push({
       type: 'payment',
@@ -787,16 +835,102 @@ const systemActivities = computed(() => {
     });
   });
 
-  return activities.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
+  // 3. Events
+  eventsList.value.forEach(event => {
+    activities.push({
+      type: 'event',
+      title: 'New Event Scheduled',
+      description: `"${event.name}" was scheduled at ${event.location || 'TBA'}.`,
+      date: event.created_at ? new Date(event.created_at) : new Date(event.start_date || Date.now()),
+      status: 'Confirmed',
+      icon: 'bi-calendar-event-fill',
+      colorClass: 'bg-success',
+    });
+  });
+
+  // 4. Agents
+  agentsList.value.forEach(agent => {
+    activities.push({
+      type: 'agent',
+      title: 'New Agent Registered',
+      description: `Agent "${agent.name || agent.company_name || 'Agent'}" was successfully registered.`,
+      date: agent.created_at ? new Date(agent.created_at) : new Date(),
+      status: 'Confirmed',
+      icon: 'bi-person-workspace',
+      colorClass: 'bg-danger',
+    });
+  });
+
+  // 5. Users / Staff Accounts
+  usersList.value.forEach(user => {
+    activities.push({
+      type: 'user',
+      title: 'New User Account',
+      description: `User "${user.name || user.email}" was created with role: ${user.role?.name || 'Staff'}.`,
+      date: user.created_at ? new Date(user.created_at) : new Date(),
+      status: 'Confirmed',
+      icon: 'bi-person-badge-fill',
+      colorClass: 'bg-primary',
+    });
+  });
+
+  return activities.sort((a, b) => b.date.getTime() - a.date.getTime());
 });
 
-const recentPayments = computed(() => {
-  return paymentsList.value.slice(0, 5);
+// Full unsliced lists for ticker
+const allPendingRegistrations = computed(() =>
+  registrationsList.value.filter(r => r.status === 'Pending')
+);
+
+// Ticker offsets — which index is currently at the top of the 5-item window
+const TICKER_SIZE = 5;
+const tickerPaymentOffset = ref(0);
+const tickerPendingOffset = ref(0);
+const tickerActivityOffset = ref(0);
+
+// Visible 5-item windows (circular)
+const visiblePayments = computed(() => {
+  const list = paymentsList.value;
+  if (!list.length) return [];
+  return Array.from({ length: Math.min(TICKER_SIZE, list.length) }, (_, i) =>
+    list[(tickerPaymentOffset.value + i) % list.length]
+  );
 });
 
-const pendingRegistrations = computed(() => {
-  return registrationsList.value.filter(r => r.status === 'Pending').slice(0, 5);
+const visiblePending = computed(() => {
+  const list = allPendingRegistrations.value;
+  if (!list.length) return [];
+  return Array.from({ length: Math.min(TICKER_SIZE, list.length) }, (_, i) =>
+    list[(tickerPendingOffset.value + i) % list.length]
+  );
 });
+
+const visibleActivity = computed(() => {
+  const list = allSystemActivities.value;
+  if (!list.length) return [];
+  return Array.from({ length: Math.min(TICKER_SIZE, list.length) }, (_, i) => {
+    const item = list[(tickerActivityOffset.value + i) % list.length];
+    return { ...item, key: `${item.type}-${(tickerActivityOffset.value + i) % list.length}` };
+  });
+});
+
+// Keep old name for backward compat with empty-state checks
+const recentPayments = visiblePayments;
+const pendingRegistrations = visiblePending;
+
+let tickerInterval: ReturnType<typeof setInterval> | null = null;
+
+function startTicker() {
+  if (tickerInterval) clearInterval(tickerInterval);
+  tickerInterval = setInterval(() => {
+    if (paymentsList.value.length > TICKER_SIZE)
+      tickerPaymentOffset.value = (tickerPaymentOffset.value + 1) % paymentsList.value.length;
+    if (allPendingRegistrations.value.length > TICKER_SIZE)
+      tickerPendingOffset.value = (tickerPendingOffset.value + 1) % allPendingRegistrations.value.length;
+    if (allSystemActivities.value.length > TICKER_SIZE)
+      tickerActivityOffset.value = (tickerActivityOffset.value + 1) % allSystemActivities.value.length;
+  }, 3000);
+}
 
 function getRegistrationName(regId: number) {
   const found = registrationsList.value.find(r => r.id === regId);
@@ -842,8 +976,39 @@ function formatTimeAgo(dateObj: Date) {
 
 let greetingInterval: any = null;
 
-onMounted(() => {
-  fetchDashboardData();
+// ── Template refs for direct DOM animation ──
+const paymentsListRef = ref<HTMLElement | null>(null);
+const pendingListRef = ref<HTMLElement | null>(null);
+const activityListRef = ref<HTMLElement | null>(null);
+
+// Animate children of a container directly via DOM — bypasses Vue reactivity timing
+function animateCardList(containerRef: Ref<HTMLElement | null>) {
+  const container = containerRef.value;
+  if (!container) return;
+  const items = Array.from(container.querySelectorAll<HTMLElement>('.card-list-item'));
+  // Set all hidden immediately
+  items.forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(18px)';
+    el.style.transition = 'none';
+  });
+  // Double rAF: ensures browser paints the hidden state before we start transitions
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      items.forEach((el, i) => {
+        setTimeout(() => {
+          el.style.transition = 'opacity 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1)';
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }, i * 90);
+      });
+    });
+  });
+}
+
+onMounted(async () => {
+  await fetchDashboardData();
+  startTicker();
   updateGreeting();
   if (import.meta.client) {
     greetingInterval = setInterval(updateGreeting, 60000);
@@ -851,9 +1016,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (greetingInterval) {
-    clearInterval(greetingInterval);
-  }
+  if (greetingInterval) clearInterval(greetingInterval);
+  if (tickerInterval) clearInterval(tickerInterval);
 });
 </script>
 
@@ -978,6 +1142,39 @@ onUnmounted(() => {
   background: #76453B;
   color: #ffffff;
   border-color: #76453B;
+}
+
+.command-btn--blue {
+  background: #e0e7ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+}
+.command-btn--blue:hover {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+}
+
+.command-btn--purple {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
+}
+.command-btn--purple:hover {
+  background: #a855f7;
+  color: #ffffff;
+  border-color: #a855f7;
+}
+
+.command-btn--slate {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+.command-btn--slate:hover {
+  background: #64748b;
+  color: #ffffff;
+  border-color: #64748b;
 }
 
 /* ── Full-Color KPI Cards ───────────────────────────── */
@@ -1161,28 +1358,7 @@ onUnmounted(() => {
   transition: opacity 0.3s ease;
 }
 
-/* ── Cascade Entry Staggered Animation ─────────── */
-@keyframes cascadeFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-.cascade-item {
-  opacity: 0;
-  animation: cascadeFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.cascade-item:nth-child(1) { animation-delay: 0.04s; }
-.cascade-item:nth-child(2) { animation-delay: 0.08s; }
-.cascade-item:nth-child(3) { animation-delay: 0.12s; }
-.cascade-item:nth-child(4) { animation-delay: 0.16s; }
-.cascade-item:nth-child(5) { animation-delay: 0.20s; }
 
 /* ── Premium Custom Cards Design ───────────────── */
 .premium-feed-item {
@@ -1360,5 +1536,45 @@ onUnmounted(() => {
   color: #475569;
   margin: 0;
   line-height: 1.35;
+}
+</style>
+
+<style>
+/* ── Ticker Slide Transition ───────────────────── */
+.ticker-list-container {
+  position: relative;
+}
+
+/* New item slides UP from below */
+.ticker-enter-active {
+  transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ticker-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.ticker-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Leaving item slides UP and fades out */
+.ticker-leave-active {
+  transition: all 0.35s cubic-bezier(0.4, 0, 1, 1);
+  position: absolute;
+  width: 100%;
+}
+.ticker-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+.ticker-leave-to {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+
+/* Remaining items shift position smoothly */
+.ticker-move {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 </style>

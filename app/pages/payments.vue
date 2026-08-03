@@ -328,11 +328,10 @@ const formError = ref('');
 
 async function fetchDropdownData() {
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
     const [regRes, modeRes, eventRes] = await Promise.all([
-      $fetch<any>('/api/registrations', { headers }),
-      $fetch<any>('/api/payment-modes', { headers }),
-      $fetch<any>('/api/events', { headers }),
+      cachedFetch<any>('/api/registrations'),
+      cachedFetch<any>('/api/payment-modes'),
+      cachedFetch<any>('/api/events'),
     ]);
     registrationsList.value = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
     modesList.value = Array.isArray(modeRes?.data?.payment_modes) ? modeRes.data.payment_modes : (Array.isArray(modeRes?.data) ? modeRes.data : []);

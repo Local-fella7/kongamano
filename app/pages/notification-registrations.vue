@@ -17,43 +17,6 @@
       </button>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="filter-bar card border-0 shadow-sm rounded-4 p-3 mb-4">
-      <div class="d-flex align-items-center flex-wrap gap-3">
-        <label class="filter-label mb-0">
-          <i class="bi bi-funnel-fill me-1"></i>
-          Filter by
-        </label>
-        <select
-          v-model="notificationFilter"
-          class="form-select form-select-sm filter-select"
-          :disabled="dropdownLoading"
-        >
-          <option :value="''">All Notifications</option>
-          <option v-for="n in notificationsList" :key="n.id" :value="n.id">
-            {{ getNotificationOptionLabel(n) }}
-          </option>
-        </select>
-        <select
-          v-model="registrationFilter"
-          class="form-select form-select-sm filter-select"
-          :disabled="dropdownLoading"
-        >
-          <option :value="''">All Delegates</option>
-          <option v-for="r in registrationsList" :key="r.id" :value="r.id">
-            {{ getRegistrationName(r) }}
-          </option>
-        </select>
-        <button
-          v-if="notificationFilter || registrationFilter"
-          class="btn btn-link btn-sm text-muted text-decoration-none p-0"
-          @click="clearFilters"
-        >
-          Clear filters
-        </button>
-      </div>
-    </div>
-
     <!-- Reusable Data Table -->
     <CommonDataTable
       v-model:searchQuery="crud.searchQuery.value"
@@ -65,6 +28,33 @@
       :startIndex="crud.startIndex.value"
       :endIndex="crud.endIndex.value"
     >
+      <template #filters>
+        <!-- Notification Filter Dropdown -->
+        <select
+          v-model="notificationFilter"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 180px;"
+          :disabled="dropdownLoading"
+        >
+          <option :value="''">All Notifications</option>
+          <option v-for="n in notificationsList" :key="n.id" :value="n.id">
+            {{ getNotificationOptionLabel(n) }}
+          </option>
+        </select>
+
+        <!-- Delegate Filter Dropdown -->
+        <select
+          v-model="registrationFilter"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 180px;"
+          :disabled="dropdownLoading"
+        >
+          <option :value="''">All Delegates</option>
+          <option v-for="r in registrationsList" :key="r.id" :value="r.id">
+            {{ getRegistrationName(r) }}
+          </option>
+        </select>
+      </template>
       <table class="data-table">
         <thead>
           <tr>
@@ -293,10 +283,9 @@ function clearFilters() {
 async function fetchDropdownData() {
   dropdownLoading.value = true;
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
     const [notifRes, regRes] = await Promise.all([
-      $fetch<any>('/api/notifications', { headers }),
-      $fetch<any>('/api/registrations', { headers }),
+      cachedFetch<any>('/api/notifications'),
+      cachedFetch<any>('/api/registrations'),
     ]);
     notificationsList.value = Array.isArray(notifRes?.data?.notifications)
       ? notifRes.data.notifications

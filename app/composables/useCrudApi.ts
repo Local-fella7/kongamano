@@ -9,6 +9,8 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   const push = usePush();
   const token = useCookie<string | null>('token');
 
+  const { executeOrQueue } = useOfflineSync();
+
   const items = ref<T[]>([]) as Ref<T[]>;
   const loading = ref(false);
   const saving = ref(false);
@@ -27,9 +29,9 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   async function fetchItems(params?: Record<string, any>) {
     loading.value = true;
     try {
-      const res = await $fetch<any>(options.endpoint, {
-        headers: authHeaders(),
+      const res = await cachedFetch<any>(options.endpoint, {
         params,
+        headers: authHeaders(),
       });
 
       let rawList: T[] = [];
@@ -44,7 +46,10 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
       items.value = rawList;
     } catch (err: any) {
       console.error(`[CRUD ${options.endpoint}] Fetch error:`, err);
-      push.error({ title: 'Error', message: err?.data?.message || 'Failed to load data.' });
+      // Only show error notification if we are online (so we don't alert spam while offline)
+      if (import.meta.client && navigator.onLine) {
+        push.error({ title: 'Error', message: err?.data?.message || 'Failed to load data.' });
+      }
     } finally {
       loading.value = false;
     }
@@ -54,11 +59,20 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   async function createItem(payload: Record<string, any>, successMsg = 'Item created successfully.') {
     saving.value = true;
     try {
-      await $fetch(options.endpoint, {
+      const entity = options.dataKey ? (options.dataKey.endsWith('s') ? options.dataKey.slice(0, -1) : options.dataKey) : 'item';
+      const label = `Create ${entity.charAt(0).toUpperCase() + entity.slice(1)}`;
+
+      const res = await executeOrQueue({
+        url: options.endpoint,
         method: 'POST',
         body: payload,
-        headers: authHeaders(),
+        label,
       });
+
+      if (res.queued) {
+        return true;
+      }
+
       push.success({ title: 'Success', message: successMsg });
       await fetchItems();
       return true;
@@ -74,11 +88,27 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   async function updateItem(id: number | string, payload: Record<string, any>, successMsg = 'Item updated successfully.') {
     saving.value = true;
     try {
-      await $fetch(`${options.endpoint}/${id}`, {
+      const entity = options.dataKey ? (options.dataKey.endsWith('s') ? options.dataKey.slice(0, -1) : options.dataKey) : 'item';
+      const label = `Update ${entity.charAt(0).toUpperCase() + entity.slice(1)} #${id}`;
+
+      // Extract original updated_at from memory for offline conflict detection
+      const baseItem = items.value.find((i: any) => String(i.id) === String(id));
+      const bodyWithMetadata = {
+        ...payload,
+        ...(baseItem?.updated_at ? { updated_at: baseItem.updated_at } : {}),
+      };
+
+      const res = await executeOrQueue({
+        url: `${options.endpoint}/${id}`,
         method: 'PUT',
-        body: payload,
-        headers: authHeaders(),
+        body: bodyWithMetadata,
+        label,
       });
+
+      if (res.queued) {
+        return true;
+      }
+
       push.success({ title: 'Success', message: successMsg });
       await fetchItems();
       return true;
@@ -94,10 +124,23 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   async function deleteItem(id: number | string, successMsg = 'Item deleted successfully.') {
     saving.value = true;
     try {
-      await $fetch(`${options.endpoint}/${id}`, {
+      const entity = options.dataKey ? (options.dataKey.endsWith('s') ? options.dataKey.slice(0, -1) : options.dataKey) : 'item';
+      const label = `Delete ${entity.charAt(0).toUpperCase() + entity.slice(1)} #${id}`;
+
+      // Extract original updated_at from memory for offline conflict detection
+      const baseItem = items.value.find((i: any) => String(i.id) === String(id));
+
+      const res = await executeOrQueue({
+        url: `${options.endpoint}/${id}`,
         method: 'DELETE',
-        headers: authHeaders(),
+        body: baseItem?.updated_at ? { updated_at: baseItem.updated_at } : undefined,
+        label,
       });
+
+      if (res.queued) {
+        return true;
+      }
+
       push.success({ title: 'Deleted', message: successMsg });
       await fetchItems();
       return true;
