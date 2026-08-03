@@ -17,33 +17,6 @@
       </button>
     </div>
 
-    <!-- Role Filter -->
-    <div class="filter-bar card border-0 shadow-sm rounded-4 p-3 mb-4">
-      <div class="d-flex align-items-center flex-wrap gap-3">
-        <label class="filter-label mb-0">
-          <i class="bi bi-funnel-fill me-1"></i>
-          Filter by Role
-        </label>
-        <select
-          v-model="roleFilter"
-          class="form-select form-select-sm filter-select"
-          :disabled="rolesLoading"
-        >
-          <option :value="null">All Roles</option>
-          <option v-for="role in roles" :key="role.id" :value="role.id">
-            {{ role.name }}
-          </option>
-        </select>
-        <button
-          v-if="roleFilter"
-          class="btn btn-link btn-sm text-muted text-decoration-none p-0"
-          @click="roleFilter = null"
-        >
-          Clear filter
-        </button>
-      </div>
-    </div>
-
     <!-- Reusable Data Table -->
     <CommonDataTable
       v-model:searchQuery="crud.searchQuery.value"
@@ -55,6 +28,20 @@
       :startIndex="crud.startIndex.value"
       :endIndex="crud.endIndex.value"
     >
+      <template #filters>
+        <!-- Role Filter Dropdown -->
+        <select
+          v-model="roleFilter"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 180px;"
+          :disabled="rolesLoading"
+        >
+          <option :value="null">All Roles</option>
+          <option v-for="role in roles" :key="role.id" :value="role.id">
+            {{ role.name }}
+          </option>
+        </select>
+      </template>
       <table class="data-table">
         <thead>
           <tr>
@@ -306,6 +293,10 @@ const crud = useCrudApi<User>({
   dataKey: 'users',
   itemKey: 'user',
   queryParams,
+});
+
+watch(roleFilter, (val) => {
+  crud.fetchItems(val ? { role_id: val } : undefined);
 });
 
 const roles = ref<Role[]>([]);
