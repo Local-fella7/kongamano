@@ -135,4 +135,57 @@ const maxWidthClass = computed(() => {
 .modal-close:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* ── Dark mode overrides ── */
+:global([data-theme="dark"]) .modal-overlay {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+:global([data-theme="dark"]) .modal-box {
+  background: #161b22 !important;
+  border: 1px solid #30363d;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8) !important;
+  color: #e6edf3;
+}
+
+:global([data-theme="dark"]) .modal-body-content {
+  background: #161b22;
+}
+
+/* Inputs inside modal — lighter than modal bg so they're clearly visible */
+:global([data-theme="dark"]) .modal-body-content .form-control,
+:global([data-theme="dark"]) .modal-body-content .form-select,
+:global([data-theme="dark"]) .modal-body-content .input-group-text {
+  background-color: #2d333b !important;
+  border-color: #444c56 !important;
+  color: #e6edf3 !important;
+}
+
+:global([data-theme="dark"]) .modal-body-content .form-control:focus,
+:global([data-theme="dark"]) .modal-body-content .form-select:focus {
+  background-color: #373e47 !important;
+  border-color: #58a6ff !important;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15) !important;
+}
+
+:global([data-theme="dark"]) .modal-body-content .form-control::placeholder {
+  color: #6e7681 !important;
+}
+
+:global([data-theme="dark"]) .modal-body-content .form-label {
+  color: #adbac7 !important;
+}
+
+:global([data-theme="dark"]) .modal-body-content hr {
+  border-color: #30363d !important;
+}
+
+:global([data-theme="dark"]) .modal-body-content .text-muted {
+  color: #768390 !important;
+}
+
+:global([data-theme="dark"]) .modal-body-content .text-slate-700,
+:global([data-theme="dark"]) .modal-body-content .text-slate-900 {
+  color: #e6edf3 !important;
+}
 </style>

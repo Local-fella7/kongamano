@@ -215,4 +215,73 @@ defineEmits(['update:searchQuery', 'update:currentPage', 'update:perPage']);
   background-color: transparent;
   opacity: 0.5;
 }
+
+/* ── Dark mode overrides ── */
+:global([data-theme="dark"]) .table-card {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+:global([data-theme="dark"]) .table-toolbar {
+  background: var(--color-surface) !important;
+  border-bottom-color: var(--color-border) !important;
+}
+
+:global([data-theme="dark"]) .pagination-footer {
+  background: var(--color-surface) !important;
+  border-top-color: var(--color-border) !important;
+}
+
+:global([data-theme="dark"]) .data-table-wrapper .data-table {
+  color: var(--color-text) !important;
+}
+
+:global([data-theme="dark"]) .data-table thead th {
+  background: var(--color-surface-2, #21262d) !important;
+  color: var(--color-text-muted) !important;
+  border-bottom-color: var(--color-border) !important;
+}
+
+:global([data-theme="dark"]) .data-table tbody tr {
+  border-bottom-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+:global([data-theme="dark"]) .data-table tbody tr:hover {
+  background: var(--color-surface-2, #21262d) !important;
+}
+
+:global([data-theme="dark"]) .data-table td {
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
+:global([data-theme="dark"]) .search-input {
+  background: var(--color-surface-2, #21262d) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+:global([data-theme="dark"]) .pagination .page-item .page-link {
+  background-color: var(--color-surface-2, #21262d) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+:global([data-theme="dark"]) .pagination .page-item .page-link:hover:not(:disabled) {
+  background-color: var(--color-surface, #161b22) !important;
+  color: #58a6ff !important;
+}
+
+:global([data-theme="dark"]) .state-box {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+
+:global([data-theme="dark"]) .bg-green-subtle {
+  background: rgba(63, 185, 80, 0.15) !important;
+}
+:global([data-theme="dark"]) .text-green-700 {
+  color: #3fb950 !important;
+}
 </style>

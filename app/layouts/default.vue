@@ -38,7 +38,15 @@
             />
           </div>
 
-          <!-- User dropdown -->
+          <!-- Theme Toggle -->
+          <button
+            class="theme-toggle-btn"
+            @click="toggleTheme"
+            :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+            :aria-label="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+          >
+            <i :class="isDark ? 'bi bi-sun-fill' : 'bi bi-moon-fill'"></i>
+          </button>
           <div class="dropdown position-relative" ref="userDropdownRef">
             <button
               class="user-btn"
@@ -120,6 +128,7 @@ const route = useRoute();
 const isSidebarCollapsed = ref(false);
 const isUserMenuOpen = ref(false);
 const userDropdownRef = ref<HTMLElement | null>(null);
+const { isDark, toggleTheme, initTheme } = useTheme();
 
 function handleClickOutside(event: MouseEvent) {
   if (userDropdownRef.value && !userDropdownRef.value.contains(event.target as Node)) {
@@ -137,6 +146,7 @@ watch(
 );
 
 onMounted(() => {
+  initTheme();
   if (import.meta.client) {
     if (window.innerWidth < 992) {
       isSidebarCollapsed.value = true;
