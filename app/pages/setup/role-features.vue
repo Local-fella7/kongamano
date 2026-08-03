@@ -509,7 +509,21 @@ async function handleSubmit() {
 
   try {
     const roleId = Number(form.role_id);
-    const promises = selectedFeatureIds.value.map((featureId) =>
+    
+    // Find already assigned features for this role
+    const existingGroup = roleGroups.value.find((rg) => rg.role.id === roleId);
+    const existingFeatureIds = existingGroup ? existingGroup.features.map((f: any) => f.feature_id) : [];
+
+    // Only grant features that aren't already present in the database
+    const newFeatureIds = selectedFeatureIds.value.filter((id) => !existingFeatureIds.includes(id));
+
+    if (newFeatureIds.length === 0) {
+      showModal.value = false;
+      push.info({ title: 'No Changes', message: 'Selected permissions are already granted to this role.' });
+      return;
+    }
+
+    const promises = newFeatureIds.map((featureId) =>
       executeOrQueue({
         url: '/api/role-features',
         method: 'POST',
@@ -520,7 +534,7 @@ async function handleSubmit() {
 
     await Promise.all(promises);
 
-    push.success({ title: 'Batch Granted', message: `Granted ${selectedFeatureIds.value.length} feature(s) to ${getRoleName(roleId)}.` });
+    push.success({ title: 'Batch Granted', message: `Granted ${newFeatureIds.length} new feature(s) to ${getRoleName(roleId)}.` });
     showModal.value = false;
     selectedFeatureIds.value = [];
     await fetchData();

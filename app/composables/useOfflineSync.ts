@@ -1,4 +1,5 @@
 import { ref, onMounted } from 'vue';
+import { dbStore } from '~/utils/db';
 
 export interface QueuedAction {
   id: string;
@@ -47,25 +48,22 @@ export function useOfflineSync() {
   const push = usePush(); // Notivue notification engine
   const token = useCookie('token');
 
-  // Load queue from localStorage
-  function loadQueue() {
+  // Load queue from IndexedDB
+  async function loadQueue() {
     if (import.meta.client) {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          queue.value = JSON.parse(raw);
-        }
-      } catch (err) {
-        console.error('Failed to parse offline queue:', err);
+      const stored = await dbStore.get(STORAGE_KEY);
+      if (Array.isArray(stored)) {
+        queue.value = stored;
+      } else {
         queue.value = [];
       }
     }
   }
 
-  // Save queue to localStorage
-  function saveQueue() {
+  // Save queue to IndexedDB
+  async function saveQueue() {
     if (import.meta.client) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(queue.value));
+      await dbStore.set(STORAGE_KEY, JSON.parse(JSON.stringify(queue.value)));
     }
   }
 
@@ -82,6 +80,36 @@ export function useOfflineSync() {
 
     for (const item of itemsToProcess) {
       try {
+        // ── Conflict Detection (Number 4) ──────────────────
+        // If updating or deleting, and the client queued body contains updated_at,
+        // check if the server has a newer modification to prevent silent data loss.
+        if ((item.method === 'PUT' || item.method === 'DELETE') && item.body && item.body.updated_at) {
+          try {
+            const serverItem = await $fetch<any>(item.url, {
+              headers: {
+                ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
+                Accept: 'application/json',
+              },
+            });
+            const serverUpdatedAt = serverItem?.data?.updated_at || serverItem?.updated_at;
+            if (serverUpdatedAt && serverUpdatedAt !== item.body.updated_at) {
+              console.warn(`[Sync Conflict] Skipping ${item.label} to prevent data loss. Server: ${serverUpdatedAt}, Client: ${item.body.updated_at}`);
+              push.error({
+                title: 'Sync Conflict',
+                message: `"${item.label}" was edited by someone else on the server. Action skipped.`,
+              });
+
+              // Remove conflicted action to unblock queue
+              queue.value = queue.value.filter((q) => q.id !== item.id);
+              await saveQueue();
+              failCount++;
+              continue;
+            }
+          } catch (e) {
+            console.error('Failed to run conflict check fetch (ignoring):', e);
+          }
+        }
+
         await $fetch(item.url, {
           method: item.method,
           body: item.body,
@@ -93,13 +121,25 @@ export function useOfflineSync() {
 
         // Remove successfully synced item from shared queue
         queue.value = queue.value.filter((q) => q.id !== item.id);
-        saveQueue();
+        await saveQueue();
         successCount++;
       } catch (err: any) {
         console.error(`Failed to sync queued action [${item.label}]:`, err);
-        item.retryCount = (item.retryCount || 0) + 1;
-        failCount++;
-        saveQueue();
+        const statusCode = err?.status || err?.statusCode;
+
+        if (statusCode && (statusCode === 400 || statusCode === 422 || statusCode === 401 || statusCode === 403)) {
+          // Permanent logical/validation errors - discard to avoid blocking the queue
+          push.error({
+            title: `Sync Failed: ${item.label}`,
+            message: err?.data?.message || 'Data validation or authorization failed on the server. Action discarded.',
+          });
+          queue.value = queue.value.filter((q) => q.id !== item.id);
+          await saveQueue();
+        } else {
+          // Temporary server/network errors - keep in queue for future retry
+          item.retryCount = (item.retryCount || 0) + 1;
+          failCount++;
+        }
       }
     }
 
@@ -146,8 +186,11 @@ export function useOfflineSync() {
         });
         return { success: true, data: response };
       } catch (err: any) {
-        // If request failed specifically due to network loss, fallback to queue
-        if (!currentlyOnline || err?.message?.includes('fetch failed') || err?.name === 'FetchError') {
+        // Only fallback to queue if it's a true network disconnection error
+        // (no status code, status 0, or navigator is offline).
+        // Let server errors (500, 502) or validation errors (422) propagate normally.
+        const isNetworkError = !currentlyOnline || !err?.status || err?.status === 0 || err?.message?.includes('fetch failed');
+        if (isNetworkError) {
           isOnline.value = false;
           return queueItem(options.url, method, options.body, options.label);
         }
@@ -160,7 +203,7 @@ export function useOfflineSync() {
   }
 
   // Internal helper to push item into queue
-  function queueItem(url: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body: any, label: string) {
+  async function queueItem(url: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body: any, label: string) {
     const newItem: QueuedAction = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       url,
@@ -172,7 +215,7 @@ export function useOfflineSync() {
     };
 
     queue.value.push(newItem);
-    saveQueue();
+    await saveQueue();
 
     push.info({
       title: 'Action Queued Offline',
@@ -187,10 +230,10 @@ export function useOfflineSync() {
   }
 
   // Initialize listeners
-  function init() {
+  async function init() {
     if (import.meta.client) {
       isOnline.value = navigator.onLine;
-      loadQueue();
+      await loadQueue();
 
       if (!syncState.listenersInitialized) {
         syncState.listenersInitialized = true;
@@ -220,8 +263,8 @@ export function useOfflineSync() {
     }
   }
 
-  onMounted(() => {
-    init();
+  onMounted(async () => {
+    await init();
   });
 
   return {

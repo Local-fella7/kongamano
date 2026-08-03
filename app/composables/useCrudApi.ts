@@ -91,10 +91,17 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
       const entity = options.dataKey ? (options.dataKey.endsWith('s') ? options.dataKey.slice(0, -1) : options.dataKey) : 'item';
       const label = `Update ${entity.charAt(0).toUpperCase() + entity.slice(1)} #${id}`;
 
+      // Extract original updated_at from memory for offline conflict detection
+      const baseItem = items.value.find((i: any) => String(i.id) === String(id));
+      const bodyWithMetadata = {
+        ...payload,
+        ...(baseItem?.updated_at ? { updated_at: baseItem.updated_at } : {}),
+      };
+
       const res = await executeOrQueue({
         url: `${options.endpoint}/${id}`,
         method: 'PUT',
-        body: payload,
+        body: bodyWithMetadata,
         label,
       });
 
@@ -120,9 +127,13 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
       const entity = options.dataKey ? (options.dataKey.endsWith('s') ? options.dataKey.slice(0, -1) : options.dataKey) : 'item';
       const label = `Delete ${entity.charAt(0).toUpperCase() + entity.slice(1)} #${id}`;
 
+      // Extract original updated_at from memory for offline conflict detection
+      const baseItem = items.value.find((i: any) => String(i.id) === String(id));
+
       const res = await executeOrQueue({
         url: `${options.endpoint}/${id}`,
         method: 'DELETE',
+        body: baseItem?.updated_at ? { updated_at: baseItem.updated_at } : undefined,
         label,
       });
 

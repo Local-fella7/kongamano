@@ -746,6 +746,8 @@ const paginatedFilteredEvents = computed(() => {
   return filteredEventsList.value.slice(start, start + crud.perPage.value);
 });
 
+const totalPages = computed(() => Math.ceil(filteredEventsList.value.length / crud.perPage.value) || 1);
+
 const eventServices = ref<EventService[]>([]);
 const eventAccommodations = ref<EventAccommodation[]>([]);
 const allServicesList = ref<Service[]>([]);

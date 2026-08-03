@@ -1,15 +1,13 @@
+import { dbStore } from './db';
+
 export async function cachedFetch<T = any>(url: string, opts?: any): Promise<T> {
   const cacheKey = `kongamano_get_cache_${url}`;
 
   // Serve cached version immediately if client-side and offline
   if (import.meta.client && !navigator.onLine) {
-    const cached = localStorage.getItem(cacheKey);
+    const cached = await dbStore.get(cacheKey);
     if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error('Failed to parse cached data for:', url, e);
-      }
+      return cached;
     }
   }
 
@@ -34,19 +32,15 @@ export async function cachedFetch<T = any>(url: string, opts?: any): Promise<T> 
 
     // Save success response to local cache
     if (import.meta.client && res) {
-      localStorage.setItem(cacheKey, JSON.stringify(res));
+      await dbStore.set(cacheKey, res);
     }
     return res;
   } catch (err) {
     // Fallback to cache if network call fails
     if (import.meta.client) {
-      const cached = localStorage.getItem(cacheKey);
+      const cached = await dbStore.get(cacheKey);
       if (cached) {
-        try {
-          return JSON.parse(cached);
-        } catch (e) {
-          console.error('Failed to parse cached fallback data for:', url, e);
-        }
+        return cached;
       }
     }
     throw err;
