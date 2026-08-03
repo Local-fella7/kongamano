@@ -12,17 +12,39 @@ export interface QueuedAction {
 
 const STORAGE_KEY = 'kongamano_offline_queue';
 
-// Singleton shared state so all page components share the same connection status and offline queue
-const isOnline = ref(true);
-const queue = ref<QueuedAction[]>([]);
-const isSyncing = ref(false);
-const lastSyncTime = ref<string | null>(null);
-let listenersInitialized = false;
+// Get or initialize global state on window to guarantee 100% singleton behavior
+// even if the bundler re-evaluates the module scope or splits code in Dev mode.
+function getGlobalSyncState() {
+  if (import.meta.client) {
+    if (!(window as any).__kongamano_offline_sync__) {
+      (window as any).__kongamano_offline_sync__ = {
+        isOnline: ref(navigator.onLine),
+        queue: ref<QueuedAction[]>([]),
+        isSyncing: ref(false),
+        lastSyncTime: ref<string | null>(null),
+        listenersInitialized: false,
+      };
+    }
+    return (window as any).__kongamano_offline_sync__;
+  }
+  // Server-side fallback state
+  return {
+    isOnline: ref(true),
+    queue: ref<QueuedAction[]>([]),
+    isSyncing: ref(false),
+    lastSyncTime: ref<string | null>(null),
+    listenersInitialized: false,
+  };
+}
 
 export function useOfflineSync() {
-  const push = usePush(); // Notivue notification engine
+  const syncState = getGlobalSyncState();
+  const isOnline = syncState.isOnline;
+  const queue = syncState.queue;
+  const isSyncing = syncState.isSyncing;
+  const lastSyncTime = syncState.lastSyncTime;
 
-  // Safely get cookie token from document.cookie or useCookie (if in setup context)
+  const push = usePush(); // Notivue notification engine
   const token = useCookie('token');
 
   // Load queue from localStorage
@@ -164,29 +186,35 @@ export function useOfflineSync() {
     };
   }
 
-  // Initialize listeners (run only once globally)
+  // Initialize listeners
   function init() {
     if (import.meta.client) {
       isOnline.value = navigator.onLine;
       loadQueue();
 
-      if (!listenersInitialized) {
-        listenersInitialized = true;
+      if (!syncState.listenersInitialized) {
+        syncState.listenersInitialized = true;
 
         window.addEventListener('online', () => {
+          // Check if we are already in online state to prevent duplicate notifications
+          // from browser-fired double events
+          if (isOnline.value === true) return;
           isOnline.value = true;
           push.info({ title: 'Online', message: 'Connection restored. Processing offline queue...' });
           processQueue();
         });
 
         window.addEventListener('offline', () => {
+          // Check if we are already in offline state to prevent duplicate notifications
+          // from browser-fired double events
+          if (isOnline.value === false) return;
           isOnline.value = false;
           push.warning({ title: 'Offline Mode', message: 'Network connection lost. Actions will be queued locally.' });
         });
       }
 
       // Auto-trigger sync on mount if online & pending items exist
-      if (isOnline.value && queue.value.length > 0) {
+      if (isOnline.value && queue.value.length > 0 && !isSyncing.value) {
         processQueue();
       }
     }
