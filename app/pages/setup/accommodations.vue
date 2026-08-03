@@ -266,14 +266,6 @@ const form = reactive({
 });
 const formError = ref('');
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-KE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
 function openCreate() {
   editingItem.value = null;
   form.name = '';

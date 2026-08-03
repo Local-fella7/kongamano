@@ -179,7 +179,9 @@ const currentPageTitle = computed(() => {
   if (p.startsWith('/registrations')) return 'Registrations';
   if (p.startsWith('/payments')) return 'Payments';
   if (p.startsWith('/agents')) return 'Agents';
+  if (p.startsWith('/notifications')) return 'Notifications';
   if (p.startsWith('/users')) return 'Users & Staff';
+  if (p.startsWith('/profile')) return 'My Profile';
   if (p.startsWith('/setup')) return 'Setup';
   return 'Kongamano';
 });
