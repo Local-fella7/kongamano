@@ -391,9 +391,9 @@ async function fetchData() {
   loading.value = true;
   try {
     const [rolesRes, featuresRes, rfRes] = await Promise.all([
-      $fetch<any>('/api/roles', { headers: authHeaders() }),
-      $fetch<any>('/api/features', { headers: authHeaders() }),
-      $fetch<any>('/api/role-features', { headers: authHeaders() }),
+      cachedFetch<any>('/api/roles'),
+      cachedFetch<any>('/api/features'),
+      cachedFetch<any>('/api/role-features'),
     ]);
 
     roles.value = Array.isArray(rolesRes?.data?.roles) ? rolesRes.data.roles : (Array.isArray(rolesRes?.data) ? rolesRes.data : []);
@@ -401,7 +401,9 @@ async function fetchData() {
     roleFeatures.value = Array.isArray(rfRes?.data?.role_features) ? rfRes.data.role_features : (Array.isArray(rfRes?.data) ? rfRes.data : []);
   } catch (err: any) {
     console.error('Failed to load role features matrix data:', err);
-    push.error({ title: 'Error', message: 'Failed to load permissions matrix.' });
+    if (import.meta.client && navigator.onLine) {
+      push.error({ title: 'Error', message: 'Failed to load permissions matrix.' });
+    }
   } finally {
     loading.value = false;
   }

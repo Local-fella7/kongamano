@@ -766,9 +766,7 @@ const formError = ref('');
 
 async function fetchEventTypes() {
   try {
-    const res = await $fetch<any>('/api/event-types', {
-      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-    });
+    const res = await cachedFetch<any>('/api/event-types');
     eventTypes.value = Array.isArray(res?.data?.event_types) ? res.data.event_types : (Array.isArray(res?.data) ? res.data : []);
   } catch (err) {
     console.error('Failed to load event types:', err);
@@ -777,10 +775,9 @@ async function fetchEventTypes() {
 
 async function fetchMasterLists() {
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
     const [sRes, aRes] = await Promise.all([
-      $fetch<any>('/api/services', { headers }),
-      $fetch<any>('/api/accommodations', { headers }),
+      cachedFetch<any>('/api/services'),
+      cachedFetch<any>('/api/accommodations'),
     ]);
     allServicesList.value = Array.isArray(sRes?.data?.services) ? sRes.data.services : (Array.isArray(sRes?.data) ? sRes.data : []);
     allAccommodationsList.value = Array.isArray(aRes?.data?.accommodations) ? aRes.data.accommodations : (Array.isArray(aRes?.data) ? aRes.data : []);

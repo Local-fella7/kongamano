@@ -257,8 +257,7 @@ watch(templateFilter, (val) => {
 async function fetchTemplates() {
   templatesLoading.value = true;
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
-    const res = await $fetch<any>('/api/notification-templates', { headers });
+    const res = await cachedFetch<any>('/api/notification-templates');
     templatesList.value = Array.isArray(res?.data?.notification_templates)
       ? res.data.notification_templates
       : (Array.isArray(res?.data) ? res.data : []);

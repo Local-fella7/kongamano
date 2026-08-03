@@ -1,3 +1,5 @@
+import { ref, onMounted } from 'vue';
+
 export interface QueuedAction {
   id: string;
   url: string;
@@ -10,13 +12,17 @@ export interface QueuedAction {
 
 const STORAGE_KEY = 'kongamano_offline_queue';
 
-export function useOfflineSync() {
-  const isOnline = ref(true);
-  const queue = ref<QueuedAction[]>([]);
-  const isSyncing = ref(false);
-  const lastSyncTime = ref<string | null>(null);
+// Singleton shared state so all page components share the same connection status and offline queue
+const isOnline = ref(true);
+const queue = ref<QueuedAction[]>([]);
+const isSyncing = ref(false);
+const lastSyncTime = ref<string | null>(null);
+let listenersInitialized = false;
 
+export function useOfflineSync() {
   const push = usePush(); // Notivue notification engine
+
+  // Safely get cookie token from document.cookie or useCookie (if in setup context)
   const token = useCookie('token');
 
   // Load queue from localStorage
@@ -63,7 +69,7 @@ export function useOfflineSync() {
           },
         });
 
-        // Remove successfully synced item
+        // Remove successfully synced item from shared queue
         queue.value = queue.value.filter((q) => q.id !== item.id);
         saveQueue();
         successCount++;
@@ -102,8 +108,11 @@ export function useOfflineSync() {
   }): Promise<{ success: boolean; data?: any; queued?: boolean; message?: string }> {
     const method = options.method || 'POST';
 
-    // If online, attempt direct network request
-    if (isOnline.value) {
+    // Check navigator.onLine as the ground truth
+    const currentlyOnline = import.meta.client ? navigator.onLine : true;
+    isOnline.value = currentlyOnline;
+
+    if (currentlyOnline) {
       try {
         const response = await $fetch<any>(options.url, {
           method,
@@ -116,7 +125,8 @@ export function useOfflineSync() {
         return { success: true, data: response };
       } catch (err: any) {
         // If request failed specifically due to network loss, fallback to queue
-        if (!navigator.onLine || err?.message?.includes('fetch failed') || err?.name === 'FetchError') {
+        if (!currentlyOnline || err?.message?.includes('fetch failed') || err?.name === 'FetchError') {
+          isOnline.value = false;
           return queueItem(options.url, method, options.body, options.label);
         }
         throw err;
@@ -154,22 +164,26 @@ export function useOfflineSync() {
     };
   }
 
-  // Initialize listeners
+  // Initialize listeners (run only once globally)
   function init() {
     if (import.meta.client) {
       isOnline.value = navigator.onLine;
       loadQueue();
 
-      window.addEventListener('online', () => {
-        isOnline.value = true;
-        push.info({ title: 'Online', message: 'Connection restored. Processing offline queue...' });
-        processQueue();
-      });
+      if (!listenersInitialized) {
+        listenersInitialized = true;
 
-      window.addEventListener('offline', () => {
-        isOnline.value = false;
-        push.warning({ title: 'Offline Mode', message: 'Network connection lost. Actions will be queued locally.' });
-      });
+        window.addEventListener('online', () => {
+          isOnline.value = true;
+          push.info({ title: 'Online', message: 'Connection restored. Processing offline queue...' });
+          processQueue();
+        });
+
+        window.addEventListener('offline', () => {
+          isOnline.value = false;
+          push.warning({ title: 'Offline Mode', message: 'Network connection lost. Actions will be queued locally.' });
+        });
+      }
 
       // Auto-trigger sync on mount if online & pending items exist
       if (isOnline.value && queue.value.length > 0) {

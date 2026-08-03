@@ -283,10 +283,9 @@ function clearFilters() {
 async function fetchDropdownData() {
   dropdownLoading.value = true;
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
     const [notifRes, regRes] = await Promise.all([
-      $fetch<any>('/api/notifications', { headers }),
-      $fetch<any>('/api/registrations', { headers }),
+      cachedFetch<any>('/api/notifications'),
+      cachedFetch<any>('/api/registrations'),
     ]);
     notificationsList.value = Array.isArray(notifRes?.data?.notifications)
       ? notifRes.data.notifications

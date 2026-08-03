@@ -360,12 +360,7 @@ function getRoleName(roleId: number) {
 async function fetchRoles() {
   rolesLoading.value = true;
   try {
-    const res = await $fetch<any>('/api/roles', {
-      headers: {
-        Authorization: `Bearer ${token.value}`,
-        Accept: 'application/json',
-      },
-    });
+    const res = await cachedFetch<any>('/api/roles');
 
     if (Array.isArray(res?.data?.roles)) {
       roles.value = res.data.roles;

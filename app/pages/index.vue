@@ -479,13 +479,12 @@ const agentsList = ref<any[]>([]);
 async function fetchDashboardData() {
   loading.value = true;
   try {
-    const headers = { Authorization: `Bearer ${token.value}`, Accept: 'application/json' };
     const [eventRes, regRes, payRes, modeRes, agentRes] = await Promise.all([
-      $fetch<any>('/api/events', { headers }),
-      $fetch<any>('/api/registrations', { headers }),
-      $fetch<any>('/api/payments', { headers }),
-      $fetch<any>('/api/payment-modes', { headers }),
-      $fetch<any>('/api/agents', { headers }),
+      cachedFetch<any>('/api/events'),
+      cachedFetch<any>('/api/registrations'),
+      cachedFetch<any>('/api/payments'),
+      cachedFetch<any>('/api/payment-modes'),
+      cachedFetch<any>('/api/agents'),
     ]);
 
     eventsList.value = Array.isArray(eventRes?.data?.events) ? eventRes.data.events : (Array.isArray(eventRes?.data) ? eventRes.data : []);
