@@ -49,8 +49,6 @@
 </template>
 
 <script setup lang="ts">
-import { useOfflineSync } from '~/composables/useOfflineSync';
-
 const { isOnline, queue, isSyncing, processQueue } = useOfflineSync();
 </script>
 
