@@ -397,17 +397,9 @@ function openEdit(user: User) {
   showModal.value = true;
 }
 
-async function openView(user: User) {
+function openView(user: User) {
   viewingUser.value = user;
   showViewModal.value = true;
-  viewLoading.value = true;
-
-  const details = await crud.fetchItem(user.id);
-  if (details) {
-    viewingUser.value = details;
-  }
-
-  viewLoading.value = false;
 }
 
 function validateForm() {
