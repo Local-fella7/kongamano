@@ -31,118 +31,125 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width: 40px;"></th>
             <th>#</th>
             <th>Feature / Module Name</th>
             <th>Feature Group</th>
+            <th>Actions Defined</th>
             <th>Created At</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <template v-for="(item, index) in crud.paginatedItems.value" :key="item.id">
-            <tr>
-              <td>
-                <button class="btn-expand-toggle" @click="toggleExpand(item.id)" title="Manage Actions">
-                  <i :class="['bi', expandedFeatureId === item.id ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
-                </button>
-              </td>
-              <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
-              <td>
-                <div class="item-name-cell">
-                  <span class="item-badge">
-                    <i class="bi bi-box-seam"></i>
-                  </span>
-                  <span class="fw-semibold text-slate-900">{{ item.name }}</span>
-                </div>
-              </td>
-              <td class="fs-7">
-                <span v-if="groupName(item.feature_group_id)" class="badge bg-green-subtle text-green-700 rounded-pill px-2-5 py-1-5 fs-8">
-                  {{ groupName(item.feature_group_id) }}
+          <tr v-for="(item, index) in crud.paginatedItems.value" :key="item.id">
+            <td class="row-index">{{ (crud.currentPage.value - 1) * crud.perPage.value + index + 1 }}</td>
+            <td>
+              <div class="item-name-cell">
+                <span class="item-badge">
+                  <i class="bi bi-box-seam"></i>
                 </span>
-                <span v-else class="text-muted fs-8">— Ungrouped</span>
-              </td>
-              <td class="text-muted fs-7">{{ item.created_at ? formatDate(item.created_at) : '—' }}</td>
-              <td class="text-end">
-                <div class="action-btns">
-                  <button class="btn-icon-action btn-view" @click="openView(item)" title="View Details">
-                    <i class="bi bi-eye-fill"></i>
-                  </button>
-                  <button class="btn-icon-action btn-edit" @click="openEdit(item)" title="Edit">
-                    <i class="bi bi-pencil-fill"></i>
-                  </button>
-                  <button class="btn-icon-action btn-delete" @click="confirmDelete(item)" title="Delete">
-                    <i class="bi bi-trash-fill"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-
-            <!-- Inline Actions Management Row -->
-            <tr v-if="expandedFeatureId === item.id" class="actions-subrow">
-              <td colspan="6">
-                <div class="actions-panel">
-                  <div class="actions-panel-header">
-                    <i class="bi bi-lightning-charge-fill"></i>
-                    <span>Actions for "{{ item.name }}"</span>
-                  </div>
-
-                  <div v-if="actionsLoading" class="text-muted fs-7 py-2">Loading actions...</div>
-
-                  <div v-else class="actions-list">
-                    <div v-if="actionsForFeature(item.id).length === 0" class="text-muted fs-7 py-2">
-                      No actions defined for this feature yet.
-                    </div>
-
-                    <div v-for="action in actionsForFeature(item.id)" :key="action.id" class="action-row">
-                      <template v-if="editingActionId === action.id">
-                        <input
-                          v-model="editingActionName"
-                          type="text"
-                          class="form-control form-control-sm"
-                          @keyup.enter="saveEditAction(action)"
-                        />
-                        <button class="btn-icon-action btn-edit" title="Save" @click="saveEditAction(action)">
-                          <i class="bi bi-check-lg"></i>
-                        </button>
-                        <button class="btn-icon-action btn-view" title="Cancel" @click="editingActionId = null">
-                          <i class="bi bi-x-lg"></i>
-                        </button>
-                      </template>
-                      <template v-else>
-                        <span class="action-name">
-                          <i class="bi bi-dot"></i>{{ action.name }}
-                        </span>
-                        <button class="btn-icon-action btn-edit" title="Edit" @click="startEditAction(action)">
-                          <i class="bi bi-pencil-fill"></i>
-                        </button>
-                        <button class="btn-icon-action btn-delete" title="Delete" @click="deleteAction(action)">
-                          <i class="bi bi-trash-fill"></i>
-                        </button>
-                      </template>
-                    </div>
-
-                    <!-- Add Action Row -->
-                    <div class="action-row action-row--add">
-                      <input
-                        v-model="newActionName"
-                        type="text"
-                        class="form-control form-control-sm"
-                        placeholder="New action name, e.g. Export, Approve..."
-                        @keyup.enter="addAction(item.id)"
-                      />
-                      <button class="btn-icon-action btn-edit" title="Add Action" :disabled="!newActionName.trim()" @click="addAction(item.id)">
-                        <i class="bi bi-plus-lg"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </td>
-            </tr>
-          </template>
+                <span class="fw-semibold text-slate-900">{{ item.name }}</span>
+              </div>
+            </td>
+            <td class="fs-7">
+              <span v-if="groupName(item.feature_group_id)" class="badge bg-green-subtle text-green-700 rounded-pill px-2-5 py-1-5 fs-8">
+                {{ groupName(item.feature_group_id) }}
+              </span>
+              <span v-else class="text-muted fs-8">— Ungrouped</span>
+            </td>
+            <td class="fs-7">
+              <span class="badge bg-slate-100 text-slate-700 rounded-pill px-2-5 py-1-5 fs-8">
+                {{ actionsForFeature(item.id).length }}
+              </span>
+            </td>
+            <td class="text-muted fs-7">{{ item.created_at ? formatDate(item.created_at) : '—' }}</td>
+            <td class="text-end">
+              <div class="action-btns">
+                <button class="btn-icon-action btn-manage-actions" @click="openManageActions(item)" title="Manage Actions">
+                  <i class="bi bi-lightning-charge-fill"></i>
+                </button>
+                <button class="btn-icon-action btn-view" @click="openView(item)" title="View Details">
+                  <i class="bi bi-eye-fill"></i>
+                </button>
+                <button class="btn-icon-action btn-edit" @click="openEdit(item)" title="Edit">
+                  <i class="bi bi-pencil-fill"></i>
+                </button>
+                <button class="btn-icon-action btn-delete" @click="confirmDelete(item)" title="Delete">
+                  <i class="bi bi-trash-fill"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
         </tbody>
       </table>
     </CommonDataTable>
+
+    <!-- Manage Actions Modal -->
+    <CommonModal
+      v-model="showActionsModal"
+      :title="`Manage Actions: ${managingFeature?.name || ''}`"
+      icon="bi-lightning-charge-fill"
+      size="md"
+    >
+      <div v-if="managingFeature">
+        <div v-if="actionsLoading" class="text-center py-4">
+          <div class="spinner-border spinner-border-sm text-success" role="status"></div>
+        </div>
+
+        <div v-else class="actions-modal-list">
+          <div v-if="actionsForFeature(managingFeature.id).length === 0" class="text-muted fs-7 text-center py-4">
+            No actions defined for this feature yet.
+          </div>
+
+          <div v-for="action in actionsForFeature(managingFeature.id)" :key="action.id" class="action-row">
+            <template v-if="editingActionId === action.id">
+              <input
+                v-model="editingActionName"
+                type="text"
+                class="form-control form-control-sm"
+                autofocus
+                @keyup.enter="saveEditAction(action)"
+                @keyup.esc="editingActionId = null"
+              />
+              <button class="btn-icon-action btn-edit" title="Save" @click="saveEditAction(action)">
+                <i class="bi bi-check-lg"></i>
+              </button>
+              <button class="btn-icon-action btn-view" title="Cancel" @click="editingActionId = null">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </template>
+            <template v-else>
+              <span class="action-name">
+                <i class="bi bi-dot"></i>{{ action.name }}
+              </span>
+              <button class="btn-icon-action btn-edit" title="Edit" @click="startEditAction(action)">
+                <i class="bi bi-pencil-fill"></i>
+              </button>
+              <button class="btn-icon-action btn-delete" title="Delete" @click="deleteAction(action)">
+                <i class="bi bi-trash-fill"></i>
+              </button>
+            </template>
+          </div>
+
+          <!-- Add Action Row -->
+          <div class="action-row action-row--add">
+            <input
+              v-model="newActionName"
+              type="text"
+              class="form-control form-control-sm"
+              placeholder="New action name, e.g. Export, Approve..."
+              @keyup.enter="addAction(managingFeature.id)"
+            />
+            <button class="btn-icon-action btn-edit" title="Add Action" :disabled="!newActionName.trim()" @click="addAction(managingFeature.id)">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button class="btn-cancel" @click="showActionsModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
 
     <!-- Create / Edit Modal -->
     <CommonModal
@@ -281,7 +288,8 @@ function groupName(groupId?: number | null): string {
 // ── Actions (inline management per feature) ──────────
 const actions = ref<Action[]>([]);
 const actionsLoading = ref(false);
-const expandedFeatureId = ref<number | null>(null);
+const showActionsModal = ref(false);
+const managingFeature = ref<Feature | null>(null);
 
 async function fetchActions() {
   actionsLoading.value = true;
@@ -301,10 +309,11 @@ function actionsForFeature(featureId: number): Action[] {
   return actions.value.filter((a) => a.feature_id === featureId);
 }
 
-function toggleExpand(featureId: number) {
-  expandedFeatureId.value = expandedFeatureId.value === featureId ? null : featureId;
+function openManageActions(feature: Feature) {
+  managingFeature.value = feature;
   newActionName.value = '';
   editingActionId.value = null;
+  showActionsModal.value = true;
 }
 
 const newActionName = ref('');
@@ -629,24 +638,18 @@ onMounted(() => {
   color: #fff;
 }
 
-.btn-expand-toggle {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--slate-500);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.18s;
+.btn-manage-actions {
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-600);
 }
 
-.btn-expand-toggle:hover {
-  background: var(--green-50);
-  color: var(--green-600);
+.btn-manage-actions:hover {
+  background: var(--slate-700);
+  color: #fff;
+  border-color: var(--slate-700);
 }
+
+.bg-slate-100 { background-color: var(--slate-100); }
 
 .modal-footer-row {
   display: flex;
@@ -722,31 +725,13 @@ onMounted(() => {
 .px-2-5 { padding-left: 0.65rem; padding-right: 0.65rem; }
 .py-1-5 { padding-top: 0.35rem; padding-bottom: 0.35rem; }
 
-/* ── Inline Actions Panel ──────────────────────────── */
-.actions-subrow td {
-  padding: 0 !important;
-  background: var(--slate-50);
-}
-
-.actions-panel {
-  padding: 1rem 1.5rem 1.25rem 3.5rem;
-}
-
-.actions-panel-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--green-700);
-  margin-bottom: 0.75rem;
-}
-
-.actions-list {
+/* ── Manage Actions Modal ──────────────────────────── */
+.actions-modal-list {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  max-width: 480px;
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
 .action-row {
