@@ -130,6 +130,28 @@
             </template>
           </div>
 
+          <!-- Suggested Actions (reused from other features) -->
+          <div v-if="suggestedActionNames.length > 0" class="suggested-actions-block">
+            <div class="suggested-actions-label fs-8 text-muted">Reuse from other features</div>
+            <div class="suggested-actions-list">
+              <label
+                v-for="name in suggestedActionNames"
+                :key="name"
+                class="form-check suggested-action-item fs-7"
+              >
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  :disabled="pendingSuggestedNames.has(name)"
+                  :checked="false"
+                  @change="addSuggestedAction(managingFeature.id, name)"
+                />
+                <span class="form-check-label">{{ name }}</span>
+                <span v-if="pendingSuggestedNames.has(name)" class="spinner-border spinner-border-sm ms-1"></span>
+              </label>
+            </div>
+          </div>
+
           <!-- Add Action Row -->
           <div class="action-row action-row--add">
             <input
@@ -309,18 +331,38 @@ function actionsForFeature(featureId: number): Action[] {
   return actions.value.filter((a) => a.feature_id === featureId);
 }
 
+const suggestedActionNames = computed<string[]>(() => {
+  if (!managingFeature.value) return [];
+  const currentNamesLower = new Set(
+    actionsForFeature(managingFeature.value.id).map((a) => a.name.trim().toLowerCase())
+  );
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const a of actions.value) {
+    const trimmed = a.name.trim();
+    const lower = trimmed.toLowerCase();
+    if (!trimmed || currentNamesLower.has(lower) || seen.has(lower)) continue;
+    seen.add(lower);
+    result.push(trimmed);
+  }
+  return result.sort((a, b) => a.localeCompare(b));
+});
+
+const pendingSuggestedNames = ref<Set<string>>(new Set());
+
 function openManageActions(feature: Feature) {
   managingFeature.value = feature;
   newActionName.value = '';
   editingActionId.value = null;
+  pendingSuggestedNames.value = new Set();
   showActionsModal.value = true;
 }
 
 const newActionName = ref('');
 
-async function addAction(featureId: number) {
-  const name = newActionName.value.trim();
-  if (!name) return;
+async function createActionForFeature(featureId: number, rawName: string): Promise<boolean> {
+  const name = rawName.trim();
+  if (!name) return false;
 
   try {
     await executeOrQueue({
@@ -330,10 +372,31 @@ async function addAction(featureId: number) {
       label: `Create Action "${name}"`,
     });
     push.success({ title: 'Success', message: `Action "${name}" added.` });
-    newActionName.value = '';
     await fetchActions();
+    return true;
   } catch (err: any) {
     push.error({ title: 'Error', message: err?.data?.message || 'Failed to add action.' });
+    return false;
+  }
+}
+
+async function addAction(featureId: number) {
+  const name = newActionName.value.trim();
+  if (!name) return;
+  if (await createActionForFeature(featureId, name)) {
+    newActionName.value = '';
+  }
+}
+
+async function addSuggestedAction(featureId: number, name: string) {
+  if (pendingSuggestedNames.value.has(name)) return;
+  pendingSuggestedNames.value.add(name);
+  pendingSuggestedNames.value = new Set(pendingSuggestedNames.value);
+  try {
+    await createActionForFeature(featureId, name);
+  } finally {
+    pendingSuggestedNames.value.delete(name);
+    pendingSuggestedNames.value = new Set(pendingSuggestedNames.value);
   }
 }
 
@@ -756,5 +819,51 @@ onMounted(() => {
   margin-top: 0.25rem;
   padding-top: 0.5rem;
   border-top: 1px dashed var(--color-border);
+}
+
+.suggested-actions-block {
+  margin-top: 0.25rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.5rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+.suggested-actions-label {
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.suggested-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 8rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.suggested-action-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: 6px;
+  color: var(--slate-700);
+  cursor: pointer;
+}
+
+.suggested-action-item:hover {
+  background: var(--green-50);
+}
+
+.suggested-action-item .form-check-input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.suggested-action-item .form-check-input:disabled {
+  cursor: not-allowed;
 }
 </style>
