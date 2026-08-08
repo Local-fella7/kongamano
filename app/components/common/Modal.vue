@@ -38,7 +38,7 @@ const props = withDefaults(
     title: string;
     icon?: string;
     variant?: 'primary' | 'danger';
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'sm' | 'md' | 'lg' | 'xl';
   }>(),
   {
     variant: 'primary',
@@ -64,6 +64,8 @@ const variantClass = computed(() => {
 const maxWidthClass = computed(() => {
   if (props.size === 'sm') return 'modal-box--sm';
   if (props.size === 'lg') return 'modal-box--lg';
+  if (props.size === 'xl') return 'modal-box--xl';
+  if (props.size === '2xl') return 'modal-box--2xl';
   return 'modal-box--md';
 });
 </script>
@@ -100,6 +102,8 @@ const maxWidthClass = computed(() => {
 .modal-box--sm { max-width: 380px; }
 .modal-box--md { max-width: 460px; }
 .modal-box--lg { max-width: 640px; }
+.modal-box--xl { max-width: 1140px; }
+.modal-box--2xl { max-width: 1320px; }
 
 @keyframes modalIn {
   from { opacity: 0; transform: translateY(-12px) scale(0.98); }

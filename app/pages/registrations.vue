@@ -11,10 +11,16 @@
           <p class="page-subheading">Manage attendee event registrations, status updates, and delegate details.</p>
         </div>
       </div>
-      <button class="btn-create" @click="openCreateModal">
-        <i class="bi bi-plus-lg fs-6"></i>
-        <span>New Registration</span>
-      </button>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-outline-primary rounded-3 px-3 py-2 fs-7 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-2xs" @click="showBulkModal = true">
+          <i class="bi bi-file-earmark-spreadsheet-fill fs-6"></i>
+          <span>Bulk Registration</span>
+        </button>
+        <button class="btn-create" @click="openCreateModal">
+          <i class="bi bi-plus-lg fs-6"></i>
+          <span>New Registration</span>
+        </button>
+      </div>
     </div>
 
     <!-- Reusable Data Table -->
@@ -395,11 +401,20 @@
       v-model="showQrModal"
       :registration="qrItem"
     />
+
+    <!-- Bulk Registration Modal -->
+    <RegistrationsBulkRegistrationModal
+      v-model="showBulkModal"
+      :events-list="eventsList"
+      :default-event-id="selectedEventFilter"
+      @imported="loadRegistrations"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import RegistrationsQrCodeModal from '~/components/registrations/QrCodeModal.vue';
+import RegistrationsBulkRegistrationModal from '~/components/registrations/BulkRegistrationModal.vue';
 
 const authStore = useAuthStore();
 const token = computed(() => authStore.token);
@@ -425,6 +440,7 @@ const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
 const showQrModal = ref(false);
+const showBulkModal = ref(false);
 
 const viewingItem = ref<Registration | null>(null);
 const editingItem = ref<Registration | null>(null);
