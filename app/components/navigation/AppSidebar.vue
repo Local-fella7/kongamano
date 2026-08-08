@@ -177,7 +177,7 @@ const navGroups = [
           { name: 'Notification Templates', to: '/setup/notification-templates', icon: 'bi-bell-fill' },
           { name: 'Feature Groups', to: '/setup/feature-groups', icon: 'bi-diagram-3-fill' },
           { name: 'Features', to: '/setup/features', icon: 'bi-toggles' },
-          { name: 'Role Features', to: '/setup/role-features', icon: 'bi-key-fill' },
+          { name: 'Role Permissions', to: '/setup/role-features', icon: 'bi-key-fill' },
         ],
       },
     ],
