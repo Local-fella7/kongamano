@@ -427,8 +427,19 @@ async function handleDelete() {
   }
 }
 
+function loadPayments() {
+  const params: Record<string, any> = {};
+  if (selectedPaymentModeFilter.value) params.payment_mode_id = selectedPaymentModeFilter.value;
+  if (selectedEventFilter.value) params.event_id = selectedEventFilter.value;
+  crud.fetchItems(params);
+}
+
+watch([selectedPaymentModeFilter, selectedEventFilter], () => {
+  loadPayments();
+});
+
 onMounted(() => {
-  crud.fetchItems();
+  loadPayments();
   fetchDropdownData();
 });
 </script>
