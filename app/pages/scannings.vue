@@ -391,10 +391,13 @@ function isServiceClaimed(serviceId: number | string): boolean {
 }
 
 async function claimService(serviceId: number | string) {
-  if (!scannedQrCode.value || !selectedEventId.value) return;
+  if (!selectedEventId.value) return;
+  // Always use the real DB qr_code from the attendee record — not the URL fallback
+  const realQrCode = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  if (!realQrCode) return;
   claimingServiceId.value = serviceId;
   try {
-    await processScan(scannedQrCode.value, 'service', serviceId);
+    await processScan(realQrCode, 'service', serviceId);
     showResultModal.value = false; // Auto-close modal once claimed
   } finally {
     claimingServiceId.value = null;
@@ -402,9 +405,12 @@ async function claimService(serviceId: number | string) {
 }
 
 async function confirmEventCheckIn() {
-  if (!scannedQrCode.value || !selectedEventId.value) return;
+  if (!selectedEventId.value) return;
+  // Always use the real DB qr_code from the attendee record — not the URL fallback
+  const realQrCode = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  if (!realQrCode) return;
   try {
-    await processScan(scannedQrCode.value, 'check_in');
+    await processScan(realQrCode, 'check_in');
     showResultModal.value = false; // Auto-close modal once checked in
   } catch {
     // Handled in processScan
@@ -434,6 +440,7 @@ watch(selectedEventId, async (newEvId) => {
   if (newEvId) {
     await fetchEventStats();
     await fetchLogs();
+    await fetchServices();
   }
 });
 
@@ -449,12 +456,13 @@ async function handleScannedUrlCode() {
   const eventIdMatch = qrCode.match(/^REG-(\d+)-/i);
   if (eventIdMatch && eventIdMatch[1]) {
     selectedEventId.value = Number(eventIdMatch[1]);
+    await fetchServices();
   }
 
   // Set scannedQrCode FIRST so isAttendeeCheckedIn computed can evaluate correctly
   scannedQrCode.value = qrCode;
 
-  // Fetch attendee data to populate modal
+  // Fetch attendee data to populate modal and get real DB qr_code
   let attendeeData: any = null;
   try {
     const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
@@ -464,6 +472,28 @@ async function handleScannedUrlCode() {
     attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
   } catch {
     // Fallback
+  }
+
+  // CRITICAL: If attendee found but qr_code is NULL in DB,
+  // call the backend /qr-code endpoint to generate + save it, then use the returned code
+  if (attendeeData && !attendeeData.qr_code) {
+    try {
+      const qrRes = await $fetch<any>(`/api/events/${selectedEventId.value}/registrations/${attendeeData.id}/qr-code`, {
+        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+      });
+      const generatedCode = qrRes?.data?.qr_code || qrRes?.qr_code || qrRes?.data?.registration?.qr_code || qrRes?.registration?.qr_code;
+      if (generatedCode) {
+        qrCode = generatedCode;
+        attendeeData.qr_code = generatedCode;
+        scannedQrCode.value = generatedCode;
+      }
+    } catch {
+      // Backend could not generate — proceed with fallback code
+    }
+  } else if (attendeeData?.qr_code) {
+    // Use the real DB qr_code for the scan
+    qrCode = attendeeData.qr_code;
+    scannedQrCode.value = attendeeData.qr_code;
   }
 
   scannedAttendee.value = attendeeData || { first_name: 'Registered', last_name: 'Delegate', phone: '', qr_code: qrCode };
@@ -521,7 +551,8 @@ async function fetchEvents() {
 
 async function fetchServices() {
   try {
-    const res = await cachedFetch<any>('/api/services');
+    const url = selectedEventId.value ? `/api/services?event_id=${selectedEventId.value}` : '/api/services';
+    const res = await cachedFetch<any>(url);
     servicesList.value = Array.isArray(res?.data?.services) ? res.data.services : (Array.isArray(res?.data) ? res.data : []);
   } catch (err) {
     console.error('Failed to fetch services:', err);
@@ -664,14 +695,25 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
   // 2. Fetch registrations list to discover actual event_id for hash codes like REG-2-C3C8BBD490EF6560
   let matchedReg: any = null;
   try {
-    const regRes = await cachedFetch<any>('/api/registrations');
+    const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+    });
     const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
     matchedReg = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
-    if (matchedReg && matchedReg.event_id) {
+    if (matchedReg?.event_id) {
       selectedEventId.value = Number(matchedReg.event_id);
+    } else if (scannedAttendee.value?.event_id) {
+      selectedEventId.value = Number(scannedAttendee.value.event_id);
+    }
+    // CRITICAL: Use the real DB qr_code if available so the backend can find it
+    // For new registrations qr_code may be NULL in DB — in that case keep fallback
+    if (matchedReg?.qr_code) {
+      qrCode = matchedReg.qr_code;
     }
   } catch {
-    // Continue with current selectedEventId
+    if (scannedAttendee.value?.event_id) {
+      selectedEventId.value = Number(scannedAttendee.value.event_id);
+    }
   }
 
   if (!selectedEventId.value) return;
@@ -679,13 +721,15 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
   const defaultServiceId = servicesList.value[0]?.id ? Number(servicesList.value[0].id) : 1;
   const activeServiceId = serviceId ? Number(serviceId) : defaultServiceId;
 
-  // Build payload based on scan_type
+  // Build payload — backend ALWAYS expects scan_type: 'check_in' (even for service scans)
+  // service_id in the payload is what tells the backend this is a service claim
   const bodyPayload: Record<string, any> = {
     qr_code: qrCode,
-    scan_type: type,
+    scan_type: 'check_in',
+    event_id: Number(selectedEventId.value),
   };
-  if (type === 'service' || serviceId) {
-    bodyPayload.service_id = activeServiceId;
+  if (serviceId) {
+    bodyPayload.service_id = parseInt(String(serviceId), 10);
   }
 
   const globalPayload: Record<string, any> = {
@@ -701,12 +745,17 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
         headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
         body: bodyPayload,
       });
-    } catch {
-      res = await $fetch<any>('/api/scannings', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-        body: globalPayload,
-      });
+    } catch (primaryErr: any) {
+      // Try global endpoint fallback, passing both body and event_id
+      try {
+        res = await $fetch<any>('/api/scannings', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+          body: globalPayload,
+        });
+      } catch (fallbackErr: any) {
+        throw primaryErr || fallbackErr;
+      }
     }
 
     const currentEventObj = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
@@ -763,8 +812,12 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
     await fetchLogsForce(); // Bypass cache to get actual server state
   } catch (err: any) {
     console.error('Scan processing error:', err);
-    const rawMsg = err?.data?.message || err?.data?.error || err?.message;
-    const msg = typeof rawMsg === 'string' ? rawMsg : (err?.data?.errors ? JSON.stringify(err.data.errors) : 'Check-in scan failed. Please verify QR code or attendee registration.');
+    console.error('Scan error data:', err?.data);
+    const serverErr = err?.data?.errors
+      ? (typeof err.data.errors === 'object' ? Object.values(err.data.errors).flat().join(', ') : JSON.stringify(err.data.errors))
+      : null;
+    const rawMsg = serverErr || err?.data?.message || err?.data?.error || err?.message;
+    const msg = typeof rawMsg === 'string' ? rawMsg : 'Check-in scan failed. Please verify QR code or attendee registration.';
     scanFeedback.value = { type: 'error', message: msg };
     push.error({ title: 'Scan Validation Error', message: msg });
   }

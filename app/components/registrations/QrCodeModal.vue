@@ -77,14 +77,36 @@ async function generateQrCode() {
     return;
   }
 
+  loading.value = true;
+  error.value = null;
+
   try {
     const regId = props.registration.id;
     const eventId = props.registration.event_id;
-    const endpoint = eventId
-      ? `/api/events/${eventId}/registrations/${regId}/qr-code`
-      : `/api/registrations/${regId}/qr-code`;
+    const { useAuthStore } = await import('~/stores/auth');
+    const auth = useAuthStore();
+    const token = auth.token;
 
-    const rawCode = props.registration.qr_code || `REG-${eventId}-${regId}`;
+    // Always call the backend QR endpoint so it generates/returns the real DB qr_code
+    // This ensures new registrations (where qr_code is NULL in DB) get it populated
+    let rawCode: string = props.registration.qr_code || '';
+    try {
+      const endpoint = eventId
+        ? `/api/events/${eventId}/registrations/${regId}/qr-code`
+        : `/api/registrations/${regId}/qr-code`;
+      const res = await $fetch<any>(endpoint, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      // Backend may return qr_code in various shapes
+      const backendCode = res?.data?.qr_code || res?.qr_code || res?.data?.registration?.qr_code || res?.registration?.qr_code;
+      if (backendCode) rawCode = backendCode;
+    } catch {
+      // Backend endpoint unavailable — use local fallback below
+    }
+
+    // Final fallback: construct REG-{event_id}-{id} which the backend also accepts
+    if (!rawCode) rawCode = `REG-${eventId}-${regId}`;
+
     const origin = import.meta.client ? window.location.origin : '';
     const fullQrUrl = `${origin}/scannings?code=${encodeURIComponent(rawCode)}`;
 
@@ -97,19 +119,8 @@ async function generateQrCode() {
       },
     });
   } catch (err: any) {
-    console.error('Failed to load or render QR code:', err);
-    // Fallback client-side QR code generation if endpoint fails or returns error
-    try {
-      const rawCode = props.registration.qr_code || `REG-${props.registration.event_id}-${props.registration.id}`;
-      const origin = import.meta.client ? window.location.origin : '';
-      const fullQrUrl = `${origin}/scannings?code=${encodeURIComponent(rawCode)}`;
-      qrDataUrl.value = await QRCode.toDataURL(fullQrUrl, {
-        width: 250,
-        margin: 2,
-      });
-    } catch {
-      error.value = 'Failed to generate QR code.';
-    }
+    console.error('Failed to generate QR code:', err);
+    error.value = 'Failed to generate QR code.';
   } finally {
     loading.value = false;
   }
