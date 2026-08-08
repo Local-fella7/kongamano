@@ -1,7 +1,6 @@
-export interface Feature {
+export interface FeatureGroup {
   id: number;
   name: string;
-  feature_group_id?: number | null;
   created_at?: string;
   updated_at?: string;
 }
