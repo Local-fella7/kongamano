@@ -63,8 +63,7 @@
             <th>Delegate Name</th>
             <th>Contact & Location</th>
             <th>Event</th>
-            <th>Payment Mode</th>
-            <th>Amount (TZS)</th>
+            <th>Event Fee</th>
             <th>Status</th>
             <th class="text-end">Actions</th>
           </tr>
@@ -102,14 +101,8 @@
               </span>
             </td>
             <td>
-              <span class="badge payment-mode-pill rounded-pill border px-3 py-1 fs-8 fw-semibold">
-                <i class="bi bi-wallet2 me-1"></i>
-                {{ reg.payment_mode?.name || getPaymentModeName(reg.payment_mode_id) }}
-              </span>
-            </td>
-            <td>
-              <span class="fw-bold text-slate-900 fs-7">
-                {{ formatCurrency(reg.amount) }}
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fs-8 fw-bold">
+                TZS {{ Number(reg.event?.price || getEventPrice(reg.event_id)).toLocaleString('en-US') }}
               </span>
             </td>
             <td>
@@ -125,8 +118,9 @@
               <div class="d-flex align-items-center justify-content-end gap-1.5">
                 <button
                   class="btn btn-outline-primary btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
+                  :disabled="reg.status !== 'Confirmed'"
                   @click="openQrModal(reg)"
-                  title="View QR Code"
+                  :title="reg.status === 'Confirmed' ? 'View QR Code Entry Pass' : 'QR Code locked until full payment is confirmed'"
                 >
                   <i class="bi bi-qr-code small-action-icon"></i>
                 </button>
@@ -260,27 +254,6 @@
             </select>
           </div>
 
-          <div class="col-md-6">
-            <label class="form-label fs-7 fw-semibold">Payment Mode</label>
-            <select v-model.number="form.payment_mode_id" class="form-select form-select-sm rounded-3">
-              <option value="">Select Payment Mode...</option>
-              <option v-for="pm in paymentModesList" :key="pm.id" :value="pm.id">{{ pm.name }}</option>
-            </select>
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label required fs-7 fw-semibold">Amount (TZS)</label>
-            <input
-              v-model.number="form.amount"
-              type="number"
-              min="0"
-              step="100"
-              class="form-control form-control-sm rounded-3"
-              placeholder="e.g. 4000"
-              required
-            />
-          </div>
-
           <div class="col-md-12">
             <label class="form-label required fs-7 fw-semibold">Registration Status</label>
             <select v-model="form.status" class="form-select form-select-sm rounded-3" required>
@@ -351,12 +324,10 @@
             <span class="fw-semibold text-slate-900">{{ [viewingItem.ward, viewingItem.district, viewingItem.region].filter(Boolean).join(', ') || 'N/A' }}</span>
           </div>
           <div class="col-6">
-            <span class="text-muted d-block fs-8">Payment Mode</span>
-            <span class="fw-semibold text-slate-900">{{ viewingItem.payment_mode?.name || getPaymentModeName(viewingItem.payment_mode_id) }}</span>
-          </div>
-          <div class="col-6">
-            <span class="text-muted d-block fs-8">Amount Paid</span>
-            <span class="fw-bold text-slate-900">{{ formatCurrency(viewingItem.amount) }}</span>
+            <span class="text-muted d-block fs-8">Event Fee</span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fs-8 fw-bold">
+              TZS {{ Number(viewingItem.event?.price || getEventPrice(viewingItem.event_id)).toLocaleString('en-US') }}
+            </span>
           </div>
         </div>
 
@@ -604,6 +575,11 @@ function getStatusBadgeClass(status: string) {
   return 'status-badge--completed';
 }
 
+function getEventPrice(eventId: number) {
+  const found = eventsList.value.find(e => e.id === eventId);
+  return found ? (found.price || 0) : 0;
+}
+
 function formatCurrency(val?: number | string) {
   if (val === undefined || val === null || val === '') return 'TZS 0';
   const num = typeof val === 'string' ? parseFloat(val) : val;
@@ -683,29 +659,31 @@ async function handleSubmit() {
     formError.value = 'Please select an event.';
     return;
   }
-  if (form.amount === '' || form.amount === null || form.amount === undefined || Number(form.amount) < 0) {
-    formError.value = 'Please enter a valid amount.';
-    return;
-  }
   if (!form.status) {
     formError.value = 'Please select a registration status.';
     return;
   }
+  formError.value = '';
+
+  const defaultModeId = paymentModesList.value[0]?.id || 1;
+  const targetEvent = eventsList.value.find(e => Number(e.id) === Number(form.event_id));
+  const eventPrice = targetEvent ? Number(targetEvent.price || 0) : 0;
 
   const payload: Record<string, any> = {
     event_id: Number(form.event_id),
     first_name: form.first_name.trim(),
     last_name: form.last_name.trim(),
-    gender: form.gender,
-    phone: form.phone.trim(),
-    email: form.email.trim(),
-    region: form.region || null,
-    district: form.district || null,
-    ward: form.ward || null,
-    payment_mode_id: form.payment_mode_id ? Number(form.payment_mode_id) : undefined,
-    amount: Number(form.amount) || 0,
-    status: form.status,
+    gender: form.gender || 'Male',
+    payment_mode_id: Number(form.payment_mode_id || defaultModeId),
+    amount: Number(form.amount || eventPrice),
+    status: form.status || 'Pending',
   };
+
+  if (form.phone && form.phone.trim()) payload.phone = form.phone.trim();
+  if (form.email && form.email.trim()) payload.email = form.email.trim();
+  if (form.region && form.region.trim()) payload.region = form.region.trim();
+  if (form.district && form.district.trim()) payload.district = form.district.trim();
+  if (form.ward && form.ward.trim()) payload.ward = form.ward.trim();
 
   const success = editingItem.value
     ? await crud.updateItem(editingItem.value.id, payload)

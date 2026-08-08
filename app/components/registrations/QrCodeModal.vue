@@ -71,9 +71,11 @@ watch(
 
 async function generateQrCode() {
   if (!props.registration) return;
-  loading.value = true;
-  error.value = null;
-  qrDataUrl.value = '';
+  if (props.registration.status !== 'Confirmed' && props.registration.payment_status !== 'Fully Paid') {
+    error.value = 'QR Code Pass is locked. Full payment is required to generate entry pass.';
+    loading.value = false;
+    return;
+  }
 
   try {
     const regId = props.registration.id;
@@ -82,10 +84,11 @@ async function generateQrCode() {
       ? `/api/events/${eventId}/registrations/${regId}/qr-code`
       : `/api/registrations/${regId}/qr-code`;
 
-    const res = await cachedFetch<any>(endpoint);
-    const qrString = res?.data?.qr_code || res?.qr_code || res?.data || JSON.stringify({ id: regId, event_id: eventId });
+    const rawCode = props.registration.qr_code || `REG-${eventId}-${regId}`;
+    const origin = import.meta.client ? window.location.origin : '';
+    const fullQrUrl = `${origin}/scannings?code=${encodeURIComponent(rawCode)}`;
 
-    qrDataUrl.value = await QRCode.toDataURL(String(qrString), {
+    qrDataUrl.value = await QRCode.toDataURL(fullQrUrl, {
       width: 250,
       margin: 2,
       color: {
@@ -97,12 +100,10 @@ async function generateQrCode() {
     console.error('Failed to load or render QR code:', err);
     // Fallback client-side QR code generation if endpoint fails or returns error
     try {
-      const fallbackPayload = JSON.stringify({
-        id: props.registration.id,
-        name: `${props.registration.first_name || ''} ${props.registration.last_name || ''}`.trim(),
-        event_id: props.registration.event_id,
-      });
-      qrDataUrl.value = await QRCode.toDataURL(fallbackPayload, {
+      const rawCode = props.registration.qr_code || `REG-${props.registration.event_id}-${props.registration.id}`;
+      const origin = import.meta.client ? window.location.origin : '';
+      const fullQrUrl = `${origin}/scannings?code=${encodeURIComponent(rawCode)}`;
+      qrDataUrl.value = await QRCode.toDataURL(fullQrUrl, {
         width: 250,
         margin: 2,
       });

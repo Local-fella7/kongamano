@@ -291,7 +291,9 @@ async function handleLogin() {
         message: `Welcome back, ${authStore.user?.first_name || username.value}!`,
       });
 
-      navigateTo('/');
+      const route = useRoute();
+      const redirectTarget = (route.query.redirect as string) || '/';
+      navigateTo(redirectTarget);
     } else {
       errorMessage.value = response?.message || 'Invalid username or PIN.';
       push.error({ title: 'Login Failed', message: errorMessage.value });

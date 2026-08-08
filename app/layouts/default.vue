@@ -187,6 +187,7 @@ const currentPageTitle = computed(() => {
   if (p === '/') return 'Dashboard';
   if (p.startsWith('/events')) return 'Events';
   if (p.startsWith('/registrations')) return 'Registrations';
+  if (p.startsWith('/scannings')) return 'Scannings & Check-ins';
   if (p.startsWith('/payments')) return 'Payments';
   if (p.startsWith('/agents')) return 'Agents';
   if (p.startsWith('/notifications')) return 'Notifications';
