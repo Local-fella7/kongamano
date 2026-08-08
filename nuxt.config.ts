@@ -14,7 +14,11 @@ export default defineNuxtConfig({
   ],
   app: {
     head: {
-      link: []
+      title: 'Kongamano - Management System',
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/mana%20ministries.png' },
+        { rel: 'apple-touch-icon', href: '/mana%20ministries.png' }
+      ]
     }
   },
   googleFonts: {

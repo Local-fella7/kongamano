@@ -1,0 +1,4090 @@
+{
+    "info": {
+        "_postman_id": "kongamano-api-collection",
+        "name": "Kongamano API",
+        "description": "Kongamano REST API (CodeIgniter 4).\n\n1. Set `baseUrl` (default: http://localhost/kongamano).\n2. Run **Login** \u2014 the token is saved automatically.\n3. All other requests use Bearer auth via collection variable `token`.\n\nDefault dev credentials: admin / 1234",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+            }
+        ]
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost/kongamano"
+        },
+        {
+            "key": "token",
+            "value": ""
+        },
+        {
+            "key": "id",
+            "value": "1"
+        }
+    ],
+    "item": [
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"admin\",\n    \"pin\": \"1234\"\n}"
+                        },
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "if (json.data && json.data.token) {",
+                                    "    pm.collectionVariables.set(\"token\", json.data.token);",
+                                    "    console.log(\"Token saved to collection variable: token\");",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Me",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "me"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/forgot-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "forgot-password"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"admin\",\n    \"mobile\": \"0700000000\"\n}"
+                        },
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    }
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/reset-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "reset-password"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"admin\",\n    \"otp\": \"123456\",\n    \"pin\": \"5678\",\n    \"pin_confirmation\": \"5678\"\n}"
+                        },
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Users",
+            "item": [
+                {
+                    "name": "List Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List Users by Role",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users?role_id=%7B%7Brole_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users"
+                            ],
+                            "query": [
+                                {
+                                    "key": "role_id",
+                                    "value": "{{role_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Show User",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"first_name\": \"Jane\",\n    \"last_name\": \"Doe\",\n    \"username\": \"jdoe\",\n    \"pin\": \"1234\",\n    \"mobile\": \"0712345678\",\n    \"role_id\": 1\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update User",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users",
+                                "{{id}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"first_name\": \"Jane\",\n    \"last_name\": \"Doe\",\n    \"username\": \"jdoe\",\n    \"mobile\": \"0712345678\",\n    \"role_id\": 1\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Delete User",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Setup",
+            "item": [
+                {
+                    "name": "Payment Modes",
+                    "item": [
+                        {
+                            "name": "List Payment Modes",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/payment-modes",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "payment-modes"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Payment Modes",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/payment-modes/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "payment-modes",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Payment Modes",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/payment-modes",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "payment-modes"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Cheque\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Payment Modes",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/payment-modes/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "payment-modes",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Mobile Money\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Payment Modes",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/payment-modes/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "payment-modes",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Notification Templates",
+                    "item": [
+                        {
+                            "name": "List Notification Templates",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-templates",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-templates"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Notification Templates",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-templates/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-templates",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Notification Templates",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-templates",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-templates"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"welcome_email\",\n    \"title\": \"Welcome Email\",\n    \"content\": \"Hello {{first_name}}, welcome to Kongamano.\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Notification Templates",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-templates/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-templates",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"welcome_email\",\n    \"title\": \"Welcome to Kongamano\",\n    \"content\": \"Hello {{first_name}}, welcome to Kongamano.\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Notification Templates",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-templates/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-templates",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Event Types",
+                    "item": [
+                        {
+                            "name": "List Event Types",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-types",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-types"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Event Types",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-types/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-types",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Event Types",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-types",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-types"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Workshop\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Event Types",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-types/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-types",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Seminar\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Event Types",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-types/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-types",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Roles",
+                    "item": [
+                        {
+                            "name": "List Roles",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/roles",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "roles"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Roles",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/roles/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "roles",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Roles",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/roles",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "roles"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Supervisor\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Roles",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/roles/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "roles",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Coordinator\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Roles",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/roles/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "roles",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Feature Groups",
+                    "item": [
+                        {
+                            "name": "List Feature Groups",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/feature-groups",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "feature-groups"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Feature Groups",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/feature-groups/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "feature-groups",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Feature Groups",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/feature-groups",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "feature-groups"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Finance\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Feature Groups",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/feature-groups/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "feature-groups",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Operations\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Feature Groups",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/feature-groups/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "feature-groups",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Feature Hierarchy",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/features/hierarchy",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "features",
+                                "hierarchy"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Feature Hierarchy for Role",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/features/hierarchy?role_id=%7B%7Brole_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "features",
+                                "hierarchy"
+                            ],
+                            "query": [
+                                {
+                                    "key": "role_id",
+                                    "value": "{{role_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Features",
+                    "item": [
+                        {
+                            "name": "List Features",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/features",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "features"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Features",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/features/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "features",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Features",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/features",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "features"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"feature_group_id\": 1,\n    \"name\": \"Scannings\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Features",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/features/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "features",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"feature_group_id\": 1,\n    \"name\": \"Reports\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Features",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/features/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "features",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Actions",
+                    "item": [
+                        {
+                            "name": "List Actions",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/actions",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "actions"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Actions",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/actions/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "actions",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Actions",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/actions",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "actions"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"feature_id\": 1,\n    \"name\": \"Export\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Actions",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/actions/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "actions",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"feature_id\": 1,\n    \"name\": \"Approve\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Actions",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/actions/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "actions",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Role Actions",
+                    "item": [
+                        {
+                            "name": "List Role Actions",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/role-actions?role_id=%7B%7Brole_id%7D%7D&feature_id=%7B%7Bfeature_id%7D%7D?role_id=%7B%7Brole_id%7D%7D&feature_id=%7B%7Bfeature_id%7D%7D",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "role-actions?role_id=%7B%7Brole_id%7D%7D&feature_id=%7B%7Bfeature_id%7D%7D"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "role_id",
+                                            "value": "{{role_id}}"
+                                        },
+                                        {
+                                            "key": "feature_id",
+                                            "value": "{{feature_id}}"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Role Actions",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/role-actions/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "role-actions",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Role Actions",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/role-actions",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "role-actions"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"role_id\": 1,\n    \"action_id\": 1\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Role Actions",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/role-actions/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "role-actions",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Titles",
+                    "item": [
+                        {
+                            "name": "List Titles",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/titles",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "titles"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Titles",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/titles/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "titles",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Titles",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/titles",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "titles"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Ms\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Titles",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/titles/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "titles",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Dr\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Titles",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/titles/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "titles",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Services",
+                    "item": [
+                        {
+                            "name": "List Services",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/services",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "services"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Services",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/services/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "services",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Services",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/services",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "services"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Registration Desk\",\n    \"start_time\": \"08:00:00\",\n    \"end_time\": \"17:00:00\",\n    \"requires_scan\": false\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Services",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/services/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "services",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Registration Desk\",\n    \"start_time\": \"08:00:00\",\n    \"end_time\": \"18:00:00\",\n    \"requires_scan\": true\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Services",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/services/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "services",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Accommodations",
+                    "item": [
+                        {
+                            "name": "List Accommodations",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/accommodations",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "accommodations"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Accommodations",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/accommodations/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "accommodations",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Accommodations",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/accommodations",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "accommodations"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Grand Hotel\",\n    \"capacity\": 100,\n    \"country\": \"Kenya\",\n    \"district\": \"Nairobi\",\n    \"city\": \"Nairobi\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Accommodations",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/accommodations/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "accommodations",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Grand Hotel\",\n    \"capacity\": 120,\n    \"country\": \"Kenya\",\n    \"district\": \"Nairobi\",\n    \"city\": \"Nairobi\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Accommodations",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/accommodations/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "accommodations",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Events",
+            "item": [
+                {
+                    "name": "Events",
+                    "item": [
+                        {
+                            "name": "List Events",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/events",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "events"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Events",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/events/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "events",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Events",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/events",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "events"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"event_type_id\": 1,\n    \"name\": \"Annual Conference 2026\",\n    \"date_from\": \"2026-11-01 09:00:00\",\n    \"date_to\": \"2026-11-03 17:00:00\",\n    \"location\": \"Nairobi\",\n    \"description\": \"Main annual event.\",\n    \"price\": 5000\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Events",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/events/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "events",
+                                        "{{id}}"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"event_type_id\": 1,\n    \"name\": \"Annual Conference 2026\",\n    \"date_from\": \"2026-11-01 09:00:00\",\n    \"date_to\": \"2026-11-03 18:00:00\",\n    \"location\": \"Nairobi\",\n    \"description\": \"Updated description.\",\n    \"price\": 5500\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Events",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/events/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "events",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Event Services",
+                    "item": [
+                        {
+                            "name": "List Event Services",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-services?event_id=%7B%7Bevent_id%7D%7D?event_id=%7B%7Bevent_id%7D%7D",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-services?event_id=%7B%7Bevent_id%7D%7D"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "event_id",
+                                            "value": "{{event_id}}"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Event Services",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-services/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-services",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Event Services",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-services",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-services"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"event_id\": 1,\n    \"service_id\": 1\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Event Services",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-services/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-services",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Event Accommodations",
+                    "item": [
+                        {
+                            "name": "List Event Accommodations",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-accommodations?event_id=%7B%7Bevent_id%7D%7D?event_id=%7B%7Bevent_id%7D%7D",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-accommodations?event_id=%7B%7Bevent_id%7D%7D"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "event_id",
+                                            "value": "{{event_id}}"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Event Accommodations",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-accommodations/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-accommodations",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Event Accommodations",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-accommodations",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-accommodations"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"event_id\": 1,\n    \"accommodation_id\": 1\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Event Accommodations",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/event-accommodations/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "event-accommodations",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Event Registrations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/registrations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "registrations"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Register Person for Event",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/registrations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "registrations"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"first_name\": \"Grace\",\n    \"last_name\": \"Mwangi\",\n    \"gender\": \"Female\",\n    \"phone\": \"0755123456\",\n    \"email\": \"grace.mwangi@example.com\",\n    \"region\": \"Dar es Salaam\",\n    \"district\": \"Ilala\",\n    \"ward\": \"Kivukoni\",\n    \"payment_mode_id\": 1,\n    \"status\": \"Pending\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Bulk Register People",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/registrations/bulk",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "registrations",
+                                "bulk"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"registrations\": [\n        {\n            \"first_name\": \"Alice\",\n            \"last_name\": \"Kimani\",\n            \"phone\": \"0755111111\",\n            \"region\": \"Dar es Salaam\",\n            \"district\": \"Ilala\",\n            \"ward\": \"Kivukoni\"\n        },\n        {\n            \"first_name\": \"Bob\",\n            \"last_name\": \"Otieno\",\n            \"phone\": \"0755222222\",\n            \"region\": \"Dar es Salaam\",\n            \"district\": \"Ilala\",\n            \"ward\": \"Kivukoni\"\n        }\n    ]\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Show Event Registration",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/registrations/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "registrations",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Event Registration",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/registrations/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "registrations",
+                                "{{id}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"first_name\": \"Grace\",\n    \"last_name\": \"Mwangi Updated\",\n    \"gender\": \"Female\",\n    \"phone\": \"0755123456\",\n    \"email\": \"grace.mwangi@example.com\",\n    \"region\": \"Dar es Salaam\",\n    \"district\": \"Ilala\",\n    \"ward\": \"Kivukoni\",\n    \"payment_mode_id\": 1,\n    \"status\": \"Confirmed\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Remove Event Registration",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/registrations/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "registrations",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Registration QR Code",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/registrations/{{id}}/qr-code",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "registrations",
+                                "{{id}}",
+                                "qr-code"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List Event Scans",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/scannings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "scannings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Scan QR at Event",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/scannings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "scannings"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"qr_code\": \"REG-1-TEST001\",\n    \"scan_type\": \"check_in\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Scan QR for Service",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/scannings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "scannings"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"qr_code\": \"REG-1-TEST001\",\n    \"scan_type\": \"check_in\",\n    \"service_id\": 2\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "List Event Payments",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "payments"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List Event Payments by Registration",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/payments?registration_id=%7B%7Bregistration_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "payments"
+                            ],
+                            "query": [
+                                {
+                                    "key": "registration_id",
+                                    "value": "{{registration_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Show Event Payment",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/payments/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "payments",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Event Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "payments"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"registration_id\": 1,\n    \"payment_mode_id\": 1,\n    \"amount\": 2500,\n    \"reference_no\": \"PAY-001\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Event Payment",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/payments/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "payments",
+                                "{{id}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"registration_id\": 1,\n    \"payment_mode_id\": 1,\n    \"amount\": 3000,\n    \"reference_no\": \"PAY-001-UPD\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Event Payment",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events/{{event_id}}/payments/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events",
+                                "{{event_id}}",
+                                "payments",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Agents",
+            "item": [
+                {
+                    "name": "List Agents",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agents",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agents"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List Agents by User",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agents?user_id=%7B%7Buser_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agents"
+                            ],
+                            "query": [
+                                {
+                                    "key": "user_id",
+                                    "value": "{{user_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Show Agent",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agents/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agents",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Agent",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agents",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agents"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Nairobi Agent\",\n    \"user_id\": 1,\n    \"registration_no\": \"AG-100\",\n    \"country\": \"Kenya\",\n    \"region\": \"Nairobi\",\n    \"district\": \"Westlands\",\n    \"ward\": \"Kilimani\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Agent",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agents/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agents",
+                                "{{id}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Nairobi Agent\",\n    \"user_id\": 1,\n    \"registration_no\": \"AG-101\",\n    \"country\": \"Kenya\",\n    \"region\": \"Nairobi\",\n    \"district\": \"Westlands\",\n    \"ward\": \"Parklands\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Agent",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agents/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agents",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Registrations",
+            "item": [
+                {
+                    "name": "Tanzania Locations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations/tanzania-locations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations",
+                                "tanzania-locations"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Tanzania Districts",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations/tanzania-locations?region=Dar+es+Salaam",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations",
+                                "tanzania-locations"
+                            ],
+                            "query": [
+                                {
+                                    "key": "region",
+                                    "value": "Dar es Salaam"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Tanzania Wards",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations/tanzania-locations?region=Dar+es+Salaam&district=Ilala",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations",
+                                "tanzania-locations"
+                            ],
+                            "query": [
+                                {
+                                    "key": "region",
+                                    "value": "Dar es Salaam"
+                                },
+                                {
+                                    "key": "district",
+                                    "value": "Ilala"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List Registrations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List by Event",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List by Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations?status=Confirmed",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations"
+                            ],
+                            "query": [
+                                {
+                                    "key": "status",
+                                    "value": "Confirmed"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Show Registration",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Registration",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"event_id\": 1,\n    \"first_name\": \"Mary\",\n    \"last_name\": \"Wanjiku\",\n    \"gender\": \"Female\",\n    \"phone\": \"0745678901\",\n    \"email\": \"mary.wanjiku@example.com\",\n    \"region\": \"Dar es Salaam\",\n    \"district\": \"Ilala\",\n    \"ward\": \"Kivukoni\",\n    \"payment_mode_id\": 1,\n    \"status\": \"Pending\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Registration",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations",
+                                "{{id}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"event_id\": 1,\n    \"first_name\": \"Mary\",\n    \"last_name\": \"Wanjiku\",\n    \"gender\": \"Female\",\n    \"phone\": \"0745678901\",\n    \"email\": \"mary.wanjiku@example.com\",\n    \"region\": \"Dar es Salaam\",\n    \"district\": \"Ilala\",\n    \"ward\": \"Kivukoni\",\n    \"payment_mode_id\": 1,\n    \"status\": \"Confirmed\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Get Registration QR Code",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations/{{id}}/qr-code",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations",
+                                "{{id}}",
+                                "qr-code"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Registration",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/registrations/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "registrations",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Payments",
+            "item": [
+                {
+                    "name": "List Payments",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List by Registration",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments?registration_id=%7B%7Bregistration_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments"
+                            ],
+                            "query": [
+                                {
+                                    "key": "registration_id",
+                                    "value": "{{registration_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List by Event",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Show Payment",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"event_id\": 1,\n    \"registration_id\": 1,\n    \"payment_mode_id\": 1,\n    \"amount\": 2500,\n    \"reference_no\": \"PAY-001\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Payment",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "{{id}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"event_id\": 1,\n    \"registration_id\": 1,\n    \"payment_mode_id\": 1,\n    \"amount\": 3000,\n    \"reference_no\": \"PAY-001-UPD\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Payment",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Scannings",
+            "item": [
+                {
+                    "name": "List Scans",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/scannings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "scannings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List by Event",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/scannings?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "scannings"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Show Scan",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/scannings/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "scannings",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Record Scan",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/scannings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "scannings"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"event_id\": 1,\n    \"qr_code\": \"REG-1-TEST001\",\n    \"scan_type\": \"check_in\"\n}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Reports",
+            "item": [
+                {
+                    "name": "List Reports Catalog",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Events Catalog PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/events-catalog/pdf",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "events-catalog",
+                                "pdf"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Event Summary PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/event-summary/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "event-summary",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Registrations List PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/registrations-list/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "registrations-list",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Registration Status PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/registration-status/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "registration-status",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Unpaid Registrations PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/unpaid-registrations/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "unpaid-registrations",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Payments Ledger PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/payments-ledger/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "payments-ledger",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Event Revenue PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/event-revenue/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "event-revenue",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Check-In Log PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/scannings-log/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "scannings-log",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Attendance Summary PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/attendance-summary/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "attendance-summary",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Agents Directory PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/agents-directory/pdf",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "agents-directory",
+                                "pdf"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Users Directory PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/users-directory/pdf",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "users-directory",
+                                "pdf"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Operations Dashboard PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/operations-dashboard/pdf?event_id=%7B%7Bevent_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "operations-dashboard",
+                                "pdf"
+                            ],
+                            "query": [
+                                {
+                                    "key": "event_id",
+                                    "value": "{{event_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Setup Reference PDF",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/reports/setup-reference/pdf",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "reports",
+                                "setup-reference",
+                                "pdf"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Notifications",
+            "item": [
+                {
+                    "name": "List Notifications",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List by Template",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications?notification_template_id=%7B%7Bnotification_template_id%7D%7D",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications"
+                            ],
+                            "query": [
+                                {
+                                    "key": "notification_template_id",
+                                    "value": "{{notification_template_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Show Notification",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Notification",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"notification_date\": \"2026-10-01\",\n    \"notification_time\": \"09:00:00\",\n    \"notification_template_id\": 1\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Notification",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                "{{id}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"notification_date\": \"2026-10-01\",\n    \"notification_time\": \"10:00:00\",\n    \"notification_template_id\": 1\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Notification",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications/{{id}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                "{{id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Notification Registrations",
+                    "item": [
+                        {
+                            "name": "List Notification Registrations",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-registrations?notification_id=%7B%7Bnotification_id%7D%7D&registration_id=%7B%7Bregistration_id%7D%7D?notification_id=%7B%7Bnotification_id%7D%7D&registration_id=%7B%7Bregistration_id%7D%7D",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-registrations?notification_id=%7B%7Bnotification_id%7D%7D&registration_id=%7B%7Bregistration_id%7D%7D"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "notification_id",
+                                            "value": "{{notification_id}}"
+                                        },
+                                        {
+                                            "key": "registration_id",
+                                            "value": "{{registration_id}}"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Show Notification Registrations",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-registrations/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-registrations",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Create Notification Registrations",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-registrations",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-registrations"
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"registration_id\": 1,\n    \"notification_id\": 1\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Notification Registrations",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/notification-registrations/{{id}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "notification-registrations",
+                                        "{{id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
