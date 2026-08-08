@@ -223,6 +223,7 @@ const showConfirmPin = ref(false);
 
 function formatExpiry(value: string) {
   return new Date(value).toLocaleString('en-KE', {
+    timeZone: 'Africa/Nairobi',
     day: '2-digit',
     month: 'short',
     year: 'numeric',

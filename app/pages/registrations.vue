@@ -589,10 +589,23 @@ function formatCurrency(val?: number | string) {
 function formatDate(dateStr?: string) {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr.replace(' ', 'T')).toLocaleDateString('en-US', {
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim());
+    if (isDateOnly) {
+      const parts = dateStr.split('-');
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).toLocaleDateString('en-US', {
+        timeZone: 'Africa/Nairobi',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+    return new Date(dateStr.replace(' ', 'T')).toLocaleString('en-US', {
+      timeZone: 'Africa/Nairobi',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   } catch {
     return dateStr;

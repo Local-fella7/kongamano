@@ -327,10 +327,15 @@ const selectedEventName = computed(() => {
 });
 
 const isAttendeeCheckedIn = computed(() => {
-  if (!scannedQrCode.value) return false;
-  return logs.value.some(
-    (l: any) => l.qr_code === scannedQrCode.value && (l.scan_type === 'check_in' || !l.service_id)
-  );
+  if (!scannedQrCode.value && !scannedAttendee.value?.id) return false;
+  const regId = scannedAttendee.value?.id;
+  return logs.value.some((l: any) => {
+    const logQr = l.qr_code || l.registration?.qr_code || '';
+    const logRegId = l.registration_id || l.registration?.id;
+    const matchesQr = logQr === scannedQrCode.value;
+    const matchesRegId = regId && Number(logRegId) === Number(regId);
+    return (matchesQr || matchesRegId) && (l.scan_type === 'check_in');
+  });
 });
 
 // Filter services:
@@ -347,10 +352,15 @@ const availableScannableServices = computed(() => {
     const requiresScan = srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined;
     if (!requiresScan) return false;
 
-    // 2. Check if already claimed for this QR code
-    const alreadyClaimed = logs.value.some(
-      (l: any) => l.qr_code === scannedQrCode.value && (l.service_id === Number(srv.id) || l.service?.id === Number(srv.id))
-    );
+    // 2. Check if already claimed for this attendee (by qr_code or registration_id)
+    const regId = scannedAttendee.value?.id;
+    const alreadyClaimed = logs.value.some((l: any) => {
+      const logQr = l.qr_code || l.registration?.qr_code || '';
+      const logRegId = l.registration_id || l.registration?.id;
+      const matchesAttendee = logQr === scannedQrCode.value || (regId && Number(logRegId) === Number(regId));
+      const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
+      return matchesAttendee && matchesService;
+    });
     if (alreadyClaimed) return false;
 
     // 3. Time window check if start_time and end_time exist
@@ -369,10 +379,15 @@ const activeCurrentService = computed(() => {
 });
 
 function isServiceClaimed(serviceId: number | string): boolean {
-  if (!scannedQrCode.value) return false;
-  return logs.value.some(
-    (l: any) => l.qr_code === scannedQrCode.value && (l.service_id === Number(serviceId) || l.service?.id === Number(serviceId))
-  );
+  const regId = scannedAttendee.value?.id;
+  if (!scannedQrCode.value && !regId) return false;
+  return logs.value.some((l: any) => {
+    const logQr = l.qr_code || l.registration?.qr_code || '';
+    const logRegId = l.registration_id || l.registration?.id;
+    const matchesAttendee = logQr === scannedQrCode.value || (regId && Number(logRegId) === Number(regId));
+    const matchesService = l.service_id === Number(serviceId) || l.service?.id === Number(serviceId);
+    return matchesAttendee && matchesService;
+  });
 }
 
 async function claimService(serviceId: number | string) {
@@ -426,14 +441,41 @@ const route = useRoute();
 
 async function handleScannedUrlCode() {
   const code = route.query.code;
-  if (code) {
-    const codeFromUrl = String(code);
-    const eventIdMatch = codeFromUrl.match(/^REG-(\d+)-/i);
-    if (eventIdMatch && eventIdMatch[1]) {
-      selectedEventId.value = Number(eventIdMatch[1]);
-    }
-    await processScan(codeFromUrl, 'check_in');
+  if (!code) return;
+
+  let qrCode = String(code).trim();
+
+  // Extract event_id from code pattern REG-{event_id}-...
+  const eventIdMatch = qrCode.match(/^REG-(\d+)-/i);
+  if (eventIdMatch && eventIdMatch[1]) {
+    selectedEventId.value = Number(eventIdMatch[1]);
   }
+
+  // Set scannedQrCode FIRST so isAttendeeCheckedIn computed can evaluate correctly
+  scannedQrCode.value = qrCode;
+
+  // Fetch attendee data to populate modal
+  let attendeeData: any = null;
+  try {
+    const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+    });
+    const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
+    attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
+  } catch {
+    // Fallback
+  }
+
+  scannedAttendee.value = attendeeData || { first_name: 'Registered', last_name: 'Delegate', phone: '', qr_code: qrCode };
+
+  // If attendee is already checked in — just open modal to show next service
+  if (isAttendeeCheckedIn.value) {
+    showResultModal.value = true;
+    return;
+  }
+
+  // Not yet checked in — trigger the check-in scan
+  await processScan(qrCode, 'check_in');
 }
 
 watch(
@@ -448,6 +490,16 @@ watch(
 onMounted(async () => {
   await fetchEvents();
   await fetchServices();
+  // Must fetch logs BEFORE processScan so isAttendeeCheckedIn has accurate data
+  // when page reloads from phone scanning the QR URL
+  if (route.query.code) {
+    const codeFromUrl = String(route.query.code);
+    const eventIdMatch = codeFromUrl.match(/^REG-(\d+)-/i);
+    if (eventIdMatch && eventIdMatch[1]) {
+      selectedEventId.value = Number(eventIdMatch[1]);
+    }
+    await fetchLogsForce(); // Bypass cache — get real server state before showing modal
+  }
   await handleScannedUrlCode();
 });
 
@@ -503,6 +555,19 @@ async function fetchLogs() {
     logs.value = [];
   } finally {
     loadingLogs.value = false;
+  }
+}
+
+// Force-fetch logs bypassing IndexedDB cache so freshly recorded scans appear immediately
+async function fetchLogsForce() {
+  if (!selectedEventId.value) return;
+  try {
+    const res = await $fetch<any>(`/api/scannings?event_id=${selectedEventId.value}`, {
+      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+    });
+    logs.value = Array.isArray(res?.data?.scannings) ? res.data.scannings : (Array.isArray(res?.data) ? res.data : []);
+  } catch {
+    // Silently keep existing logs if force fetch fails
   }
 }
 
@@ -682,8 +747,20 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
       push.success({ title: 'Success', message: `Check-in for ${eventName} processed successfully!` });
     }
 
+    // Optimistically inject the new scan record into logs immediately so the UI
+    // reacts instantly without waiting for the server round-trip
+    logs.value = [
+      ...logs.value,
+      {
+        qr_code: qrCode,
+        scan_type: type,
+        service_id: serviceId ? Number(serviceId) : null,
+        event_id: Number(selectedEventId.value),
+      },
+    ];
+
     await fetchEventStats();
-    await fetchLogs();
+    await fetchLogsForce(); // Bypass cache to get actual server state
   } catch (err: any) {
     console.error('Scan processing error:', err);
     const rawMsg = err?.data?.message || err?.data?.error || err?.message;
@@ -707,8 +784,10 @@ async function handleManualCheckin() {
 function formatDate(dateStr: string) {
   try {
     return new Date(dateStr.replace(' ', 'T')).toLocaleString('en-US', {
+      timeZone: 'Africa/Nairobi',
       month: 'short',
       day: 'numeric',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
