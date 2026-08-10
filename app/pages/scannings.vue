@@ -593,7 +593,7 @@ async function confirmEventCheckOut() {
   if (!realQrCode) return;
   try {
     await processScan(realQrCode, 'check_out');
-    showResultModal.value = true;
+    showResultModal.value = false;
   } catch {
     // Handled in processScan
   }
