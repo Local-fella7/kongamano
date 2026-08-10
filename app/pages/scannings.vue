@@ -680,14 +680,8 @@ async function handleScannedUrlCode() {
 
   scannedAttendee.value = attendeeData || { first_name: 'Registered', last_name: 'Delegate', phone: '', qr_code: qrCode };
 
-  // If attendee is already checked in — just open modal to show next service
-  if (isAttendeeCheckedIn.value) {
-    showResultModal.value = true;
-    return;
-  }
-
-  // Not yet checked in — trigger the check-in scan
-  await processScan(qrCode, 'check_in');
+  // Open modal so staff can inspect delegate details and click Check-In button manually
+  showResultModal.value = true;
 }
 
 watch(
@@ -806,7 +800,31 @@ async function startScanner() {
         isProcessingScan.value = true;
 
         try {
-          await processScan(decodedText, 'check_in');
+          // Clean scanned QR code text
+          let qrCode = decodedText.trim();
+          if (qrCode.includes('?code=')) {
+            const urlParts = qrCode.split('?code=');
+            if (urlParts[1]) {
+              qrCode = decodeURIComponent(urlParts[1].split('&')[0]);
+            }
+          }
+
+          scannedQrCode.value = qrCode;
+
+          // Fetch attendee details to populate verification modal
+          let attendeeData: any = null;
+          try {
+            const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+              headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+            });
+            const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
+            attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
+          } catch {
+            // Fallback
+          }
+
+          scannedAttendee.value = attendeeData || { first_name: 'Registered', last_name: 'Delegate', phone: '', qr_code: qrCode };
+          showResultModal.value = true;
         } finally {
           // Allow re-scanning after 3 seconds timeout
           setTimeout(() => {
