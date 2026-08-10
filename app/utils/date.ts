@@ -21,8 +21,12 @@ export function formatDate(dateStr?: string | null): string {
         year: 'numeric',
       });
     }
-    // For datetime strings, convert to EAT
-    const date = new Date(dateStr.replace(' ', 'T'));
+    // For datetime strings, convert to EAT (Africa/Nairobi, UTC+3)
+    let parseable = dateStr.trim().replace(' ', 'T');
+    if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+      parseable += 'Z';
+    }
+    const date = new Date(parseable);
     if (Number.isNaN(date.getTime())) return dateStr;
     return date.toLocaleString('en-KE', {
       timeZone: 'Africa/Nairobi',
@@ -31,6 +35,7 @@ export function formatDate(dateStr?: string | null): string {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: true,
     });
   } catch {
     return dateStr;

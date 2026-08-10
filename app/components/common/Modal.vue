@@ -192,4 +192,26 @@ const maxWidthClass = computed(() => {
 :global([data-theme="dark"]) .modal-body-content .text-slate-900 {
   color: #e6edf3 !important;
 }
+
+/* ── Mobile Responsive Bottom Sheet ── */
+@media (max-width: 576px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-box {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 24px !important;
+    border-top-right-radius: 24px !important;
+    max-height: 90vh;
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+}
 </style>

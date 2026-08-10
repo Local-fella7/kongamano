@@ -187,8 +187,15 @@
                 <code class="px-2 py-1 bg-slate-100 rounded text-slate-800 fs-8">{{ log.qr_code }}</code>
               </td>
               <td>
-                <span class="badge rounded-pill border px-2.5 py-1 fs-8 fw-semibold" :class="log.scan_type === 'check_in' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200'">
-                  {{ log.scan_type === 'check_in' ? 'Event Check-in' : 'Service Scan' }}
+                <span
+                  class="badge rounded-pill border px-2.5 py-1 fs-8 fw-semibold"
+                  :class="{
+                    'bg-purple-50 text-purple-700 border-purple-200': log.service_id || log.service || log.scan_type === 'service',
+                    'bg-rose-50 text-rose-700 border-rose-200': !log.service_id && !log.service && log.scan_type === 'check_out',
+                    'bg-emerald-50 text-emerald-700 border-emerald-200': !log.service_id && !log.service && log.scan_type !== 'check_out'
+                  }"
+                >
+                  {{ (log.service_id || log.service || log.scan_type === 'service') ? 'Service Scan' : (log.scan_type === 'check_out' ? 'Event Check-out' : 'Event Check-in') }}
                 </span>
               </td>
               <td>
@@ -223,43 +230,63 @@
         </div>
 
         <!-- Delegate Information -->
-        <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 border mb-3">
-          <div class="avatar-circle-lg bg-emerald-500 text-white fw-bold fs-5 shadow-2xs d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50%;">
+        <div class="d-flex align-items-center flex-wrap gap-2 gap-sm-3 p-3 bg-light rounded-3 border mb-3">
+          <div class="avatar-circle-lg bg-emerald-500 text-white fw-bold fs-5 shadow-2xs d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; border-radius: 50%;">
             {{ scannedAttendee.first_name?.[0] || 'D' }}{{ scannedAttendee.last_name?.[0] || '' }}
           </div>
-          <div>
+          <div class="flex-grow-1">
             <h6 class="fw-bold text-slate-900 mb-0 fs-6">{{ scannedAttendee.first_name }} {{ scannedAttendee.last_name }}</h6>
-            <div class="d-flex align-items-center gap-2 fs-8 text-muted mt-0.5">
+            <div class="d-flex align-items-center flex-wrap gap-1 gap-sm-2 fs-8 text-muted mt-0.5">
               <span><i class="bi bi-phone me-1"></i>{{ scannedAttendee.phone || 'No phone' }}</span>
-              <span>•</span>
-              <code>{{ scannedAttendee.qr_code || scannedQrCode }}</code>
+              <span class="d-none d-sm-inline">•</span>
+              <code class="d-inline-block">{{ scannedAttendee.qr_code || scannedQrCode }}</code>
             </div>
           </div>
-          <span v-if="isAttendeeCheckedIn" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fs-8 fw-bold ms-auto">
-            <i class="bi bi-check-circle-fill me-1"></i> Checked In
-          </span>
-          <span v-else class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fs-8 fw-bold ms-auto">
-            <i class="bi bi-clock-history me-1"></i> Not Checked In
-          </span>
+          <div class="w-100 w-sm-auto mt-1 mt-sm-0">
+            <span v-if="isAttendeeCheckedOutToday" class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
+              <i class="bi bi-door-closed-fill me-1"></i> Checked Out Today
+            </span>
+            <span v-else-if="isAttendeeCheckedIn" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
+              <i class="bi bi-check-circle-fill me-1"></i> Checked In
+            </span>
+            <span v-else class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
+              <i class="bi bi-clock-history me-1"></i> Not Checked In Today
+            </span>
+          </div>
         </div>
 
         <!-- Sequential Action Card (Check-in or Current Active Service) -->
         <div class="mb-3">
-          <!-- Option A: Attendee Needs General Check-in First -->
+          <!-- Option A: Not Checked In Right Now (First Check-in OR Re-entry Check-in) -->
           <div v-if="!isAttendeeCheckedIn" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
-            <h6 class="fw-bold text-slate-900 fs-7 mb-1">General Event Entry Check-in</h6>
-            <p class="fs-8 text-muted mb-3">Record event entry check-in for this delegate.</p>
+            <div v-if="isReentryToday" class="alert alert-warning py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-triangle-fill fs-6 text-amber-600"></i>
+              <span><strong>Re-Entry Alert:</strong> This delegate has already checked in earlier today and is checking in again.</span>
+            </div>
+
+            <h6 class="fw-bold text-slate-900 fs-7 mb-1">
+              {{ isReentryToday ? 'Re-Entry Check-in Required' : 'Today\'s Event Entry Check-in' }}
+            </h6>
+            <p class="fs-8 text-muted mb-3">
+              {{ isReentryToday ? 'Delegate checked out earlier today. Confirm re-entry check-in to unlock services.' : 'Record event entry check-in for today before claiming services.' }}
+            </p>
+
             <button
               type="button"
               class="btn btn-emerald btn-md w-100 rounded-3 py-2 fw-bold shadow-2xs"
               @click="confirmEventCheckIn"
             >
-              <i class="bi bi-qr-code-scan me-1.5"></i> Confirm Entry & Check-in
+              <i class="bi bi-qr-code-scan me-1.5"></i> {{ isReentryToday ? 'Confirm Re-Entry & Check-in' : 'Confirm Entry & Check-in Today' }}
             </button>
           </div>
 
-          <!-- Option B: Attendee Checked-in → Show Next Active Service Card -->
+          <!-- Option B: Currently Checked-in → Show Next Active Service Card (No Check-In button!) -->
           <div v-else-if="activeCurrentService" class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle">
+            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
+              <span>Notice: This person has checked in again today (Re-entered).</span>
+            </div>
+
             <div class="d-flex align-items-center justify-content-between mb-2">
               <span class="fs-8 text-uppercase fw-bold text-primary tracking-wider">Active Service Window</span>
               <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-700 border fs-8">
@@ -268,22 +295,66 @@
             </div>
             <h5 class="fw-extrabold text-slate-900 fs-6 mb-1">{{ activeCurrentService.name }}</h5>
             <p class="fs-8 text-muted mb-3">{{ activeCurrentService.description || 'Scan to claim service privilege.' }}</p>
+            
+            <div class="d-flex flex-column gap-2">
+              <button
+                type="button"
+                class="btn btn-primary btn-md w-100 rounded-3 py-2 fw-bold shadow-2xs"
+                :disabled="claimingServiceId === activeCurrentService.id"
+                @click="claimService(activeCurrentService.id)"
+              >
+                <span v-if="claimingServiceId === activeCurrentService.id" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-gift-fill me-1.5"></i> Claim & Record Service Access
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-outline-danger btn-sm w-100 rounded-3 py-1.5 fw-semibold fs-8"
+                @click="confirmEventCheckOut"
+              >
+                <i class="bi bi-door-closed me-1"></i> Check-Out Delegate
+              </button>
+            </div>
+          </div>
+
+          <!-- Option C: All active services claimed today -->
+          <div v-else-if="areAllServicesClaimedToday" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
+            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
+              <span>Notice: This person has checked in again today (Re-entered).</span>
+            </div>
+
+            <i class="bi bi-check-circle-fill text-emerald-600 fs-2 d-block mb-1"></i>
+            <h6 class="fw-bold text-slate-900 fs-7 mb-1">All Services Claimed For Today!</h6>
+            <p class="fs-8 text-muted mb-3">All scheduled services for today have been claimed by this attendee.</p>
+            
             <button
               type="button"
-              class="btn btn-primary btn-md w-100 rounded-3 py-2 fw-bold shadow-2xs"
-              :disabled="claimingServiceId === activeCurrentService.id"
-              @click="claimService(activeCurrentService.id)"
+              class="btn btn-outline-danger btn-sm w-100 rounded-3 py-1.5 fw-semibold fs-8"
+              @click="confirmEventCheckOut"
             >
-              <span v-if="claimingServiceId === activeCurrentService.id" class="spinner-border spinner-border-sm me-2"></span>
-              <i v-else class="bi bi-gift-fill me-1.5"></i> Claim & Record Service Access
+              <i class="bi bi-door-closed me-1"></i> Check-Out Delegate
             </button>
           </div>
 
-          <!-- Option C: All active services claimed or no active service in current time window -->
-          <div v-else class="p-4 text-center bg-light rounded-3 border">
-            <i class="bi bi-shield-check text-emerald-600 fs-2 d-block mb-2"></i>
-            <h6 class="fw-bold text-slate-900 fs-7 mb-1">All Current Privileges Settled</h6>
-            <p class="fs-8 text-muted mb-0">No active unclaimed services available for this attendee at this time.</p>
+          <!-- Option D: Checked in, but no active service in current time window right now -->
+          <div v-else class="p-3 bg-light rounded-3 border text-center">
+            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
+              <span>Notice: This person has checked in again today (Re-entered).</span>
+            </div>
+
+            <i class="bi bi-clock-history text-amber-500 fs-2 d-block mb-1"></i>
+            <h6 class="fw-bold text-slate-900 fs-7 mb-1">No Active Service Right Now</h6>
+            <p class="fs-8 text-muted mb-3">Delegate is checked in today. No scannable service is active in this current time window.</p>
+            
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm w-100 rounded-3 py-1.5 fw-semibold fs-8"
+              @click="confirmEventCheckOut"
+            >
+              <i class="bi bi-door-closed me-1"></i> Check-Out Delegate
+            </button>
           </div>
         </div>
 
@@ -326,24 +397,85 @@ const selectedEventName = computed(() => {
   return ev?.name || `Event #${selectedEventId.value}`;
 });
 
-const isAttendeeCheckedIn = computed(() => {
-  if (!scannedQrCode.value && !scannedAttendee.value?.id) return false;
+// Daily helper function (EAT timezone YYYY-MM-DD)
+function getTodayDateStr(): string {
+  const d = new Date();
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }); // YYYY-MM-DD format
+}
+
+// Get all logs for current scanned attendee sorted newest first
+const attendeeTodayLogs = computed(() => {
   const regId = scannedAttendee.value?.id;
-  return logs.value.some((l: any) => {
+  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  if (!realQr && !regId) return [];
+  const todayStr = getTodayDateStr();
+
+  const filtered = logs.value.filter((l: any) => {
     const logQr = l.qr_code || l.registration?.qr_code || '';
     const logRegId = l.registration_id || l.registration?.id;
-    const matchesQr = logQr === scannedQrCode.value;
-    const matchesRegId = regId && Number(logRegId) === Number(regId);
-    return (matchesQr || matchesRegId) && (l.scan_type === 'check_in');
+    const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
+    if (!matchesAttendee) return false;
+
+    // Filter by today's date in EAT
+    if (l.created_at) {
+      let parseable = String(l.created_at).trim().replace(' ', 'T');
+      if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+        parseable += 'Z';
+      }
+      const logDateStr = new Date(parseable).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      return logDateStr === todayStr;
+    }
+    return true; // Optimistic entries without server created_at yet
   });
+
+  return filtered.sort((a: any, b: any) => {
+    const parseTime = (val: any) => {
+      if (!val) return 0;
+      let p = String(val).trim().replace(' ', 'T');
+      if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
+      return new Date(p).getTime();
+    };
+    const timeA = a.created_at ? parseTime(a.created_at) : (Number(a.id) || 999999999);
+    const timeB = b.created_at ? parseTime(b.created_at) : (Number(b.id) || 999999999);
+    return timeB - timeA; // Strict newest first
+  });
+});
+
+// Attendee is checked in TODAY if they have a check_in scan today AND their latest scan today is NOT a check_out
+const isAttendeeCheckedIn = computed(() => {
+  const logsToday = attendeeTodayLogs.value;
+  if (logsToday.length === 0) return false;
+
+  const latestScan = logsToday[0];
+  if (latestScan?.scan_type === 'check_out') {
+    return false; // Checked out today → requires new check-in!
+  }
+
+  return logsToday.some((l: any) => l.scan_type === 'check_in' || !l.service_id);
+});
+
+// Check if attendee is currently checked out today
+const isAttendeeCheckedOutToday = computed(() => {
+  const logsToday = attendeeTodayLogs.value;
+  return logsToday.length > 0 && logsToday[0]?.scan_type === 'check_out';
+});
+
+// Number of check-ins recorded for this attendee today
+const checkInCountToday = computed(() => {
+  return attendeeTodayLogs.value.filter((l: any) => l.scan_type === 'check_in').length;
+});
+
+// Check if attendee has checked in multiple times or checked out and is re-entering today
+const isReentryToday = computed(() => {
+  return checkInCountToday.value > 1 || (checkInCountToday.value >= 1 && isAttendeeCheckedOutToday.value);
 });
 
 // Filter services:
 // 1. requires_scan is true (or 1 / undefined default)
-// 2. Omit services that have ALREADY been claimed for this QR code
+// 2. Omit services that have ALREADY been claimed TODAY for this attendee
 // 3. Time window check (start_time <= current_time <= end_time if provided)
 const availableScannableServices = computed(() => {
-  if (!scannedQrCode.value) return [];
+  if (!scannedQrCode.value && !scannedAttendee.value?.id) return [];
   const now = new Date();
   const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
@@ -352,14 +484,21 @@ const availableScannableServices = computed(() => {
     const requiresScan = srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined;
     if (!requiresScan) return false;
 
-    // 2. Check if already claimed for this attendee (by qr_code or registration_id)
+    // 2. Check if already claimed TODAY for this attendee
     const regId = scannedAttendee.value?.id;
+    const todayStr = getTodayDateStr();
     const alreadyClaimed = logs.value.some((l: any) => {
       const logQr = l.qr_code || l.registration?.qr_code || '';
       const logRegId = l.registration_id || l.registration?.id;
       const matchesAttendee = logQr === scannedQrCode.value || (regId && Number(logRegId) === Number(regId));
       const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
-      return matchesAttendee && matchesService;
+
+      let isToday = true;
+      if (l.created_at) {
+        const logDateStr = new Date(l.created_at.replace(' ', 'T')).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+        isToday = logDateStr === todayStr;
+      }
+      return matchesAttendee && matchesService && isToday;
     });
     if (alreadyClaimed) return false;
 
@@ -378,27 +517,59 @@ const activeCurrentService = computed(() => {
   return availableScannableServices.value[0] || null;
 });
 
+// Check if all scannable services for today have already been claimed by this attendee
+const areAllServicesClaimedToday = computed(() => {
+  if (servicesList.value.length === 0) return false;
+  const regId = scannedAttendee.value?.id;
+  const todayStr = getTodayDateStr();
+
+  const scannableServices = servicesList.value.filter((srv: any) =>
+    srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined
+  );
+  if (scannableServices.length === 0) return false;
+
+  return scannableServices.every((srv: any) => {
+    return logs.value.some((l: any) => {
+      const logQr = l.qr_code || l.registration?.qr_code || '';
+      const logRegId = l.registration_id || l.registration?.id;
+      const matchesAttendee = logQr === scannedQrCode.value || (regId && Number(logRegId) === Number(regId));
+      const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
+      let isToday = true;
+      if (l.created_at) {
+        const logDateStr = new Date(l.created_at.replace(' ', 'T')).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+        isToday = logDateStr === todayStr;
+      }
+      return matchesAttendee && matchesService && isToday;
+    });
+  });
+});
+
 function isServiceClaimed(serviceId: number | string): boolean {
   const regId = scannedAttendee.value?.id;
   if (!scannedQrCode.value && !regId) return false;
+  const todayStr = getTodayDateStr();
   return logs.value.some((l: any) => {
     const logQr = l.qr_code || l.registration?.qr_code || '';
     const logRegId = l.registration_id || l.registration?.id;
     const matchesAttendee = logQr === scannedQrCode.value || (regId && Number(logRegId) === Number(regId));
     const matchesService = l.service_id === Number(serviceId) || l.service?.id === Number(serviceId);
-    return matchesAttendee && matchesService;
+    let isToday = true;
+    if (l.created_at) {
+      const logDateStr = new Date(l.created_at.replace(' ', 'T')).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      isToday = logDateStr === todayStr;
+    }
+    return matchesAttendee && matchesService && isToday;
   });
 }
 
 async function claimService(serviceId: number | string) {
   if (!selectedEventId.value) return;
-  // Always use the real DB qr_code from the attendee record — not the URL fallback
   const realQrCode = scannedAttendee.value?.qr_code || scannedQrCode.value;
   if (!realQrCode) return;
   claimingServiceId.value = serviceId;
   try {
     await processScan(realQrCode, 'service', serviceId);
-    showResultModal.value = false; // Auto-close modal once claimed
+    showResultModal.value = false;
   } finally {
     claimingServiceId.value = null;
   }
@@ -406,12 +577,23 @@ async function claimService(serviceId: number | string) {
 
 async function confirmEventCheckIn() {
   if (!selectedEventId.value) return;
-  // Always use the real DB qr_code from the attendee record — not the URL fallback
   const realQrCode = scannedAttendee.value?.qr_code || scannedQrCode.value;
   if (!realQrCode) return;
   try {
     await processScan(realQrCode, 'check_in');
-    showResultModal.value = false; // Auto-close modal once checked in
+    showResultModal.value = false;
+  } catch {
+    // Handled in processScan
+  }
+}
+
+async function confirmEventCheckOut() {
+  if (!selectedEventId.value) return;
+  const realQrCode = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  if (!realQrCode) return;
+  try {
+    await processScan(realQrCode, 'check_out');
+    showResultModal.value = false;
   } catch {
     // Handled in processScan
   }
@@ -721,11 +903,13 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
   const defaultServiceId = servicesList.value[0]?.id ? Number(servicesList.value[0].id) : 1;
   const activeServiceId = serviceId ? Number(serviceId) : defaultServiceId;
 
-  // Build payload — backend ALWAYS expects scan_type: 'check_in' (even for service scans)
-  // service_id in the payload is what tells the backend this is a service claim
+  // Build payload — backend validation rule for scan_type accepts 'check_in' or 'check_out'
+  // When claiming a service, scan_type is 'check_in' and service_id identifies the claimed service
+  const validBackendScanType = type === 'check_out' ? 'check_out' : 'check_in';
+
   const bodyPayload: Record<string, any> = {
     qr_code: qrCode,
-    scan_type: 'check_in',
+    scan_type: validBackendScanType,
     event_id: Number(selectedEventId.value),
   };
   if (serviceId) {
@@ -786,14 +970,15 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
     scannedQrCode.value = qrCode;
     showResultModal.value = true;
 
+    const scanLabel = type === 'check_out' ? 'Check-out' : (type === 'service' ? 'Service access' : 'Check-in');
     scanFeedback.value = {
       type: 'success',
-      message: `Check-in recorded for QR code ${qrCode} at ${eventName}`,
+      message: `${scanLabel} recorded for QR code ${qrCode} at ${eventName}`,
     };
     if (res?.queued) {
-      push.success({ title: 'Queued', message: `Scan for ${eventName} queued for sync.` });
+      push.success({ title: 'Queued', message: `${scanLabel} for ${eventName} queued for sync.` });
     } else {
-      push.success({ title: 'Success', message: `Check-in for ${eventName} processed successfully!` });
+      push.success({ title: 'Success', message: `${scanLabel} for ${eventName} processed successfully!` });
     }
 
     // Optimistically inject the new scan record into logs immediately so the UI
@@ -834,15 +1019,25 @@ async function handleManualCheckin() {
   }
 }
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return '—';
   try {
-    return new Date(dateStr.replace(' ', 'T')).toLocaleString('en-US', {
+    let parseable = dateStr.trim().replace(' ', 'T');
+    // If no timezone offset is specified in server timestamp string, append 'Z' to treat as UTC
+    if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+      parseable += 'Z';
+    }
+    const d = new Date(parseable);
+    if (Number.isNaN(d.getTime())) return dateStr;
+
+    return d.toLocaleString('en-KE', {
       timeZone: 'Africa/Nairobi',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: true,
     });
   } catch {
     return dateStr;
@@ -900,6 +1095,10 @@ function formatDate(dateStr: string) {
 .text-purple-700 { color: #7e22ce; }
 .border-purple-200 { border-color: #e9d5ff !important; }
 .border-emerald-200 { border-color: #a7f3d0 !important; }
+
+.bg-rose-50 { background-color: #fff1f2; }
+.text-rose-700 { color: #be123c; }
+.border-rose-200 { border-color: #fecdd3 !important; }
 
 .btn-emerald {
   background-color: var(--green-500);
