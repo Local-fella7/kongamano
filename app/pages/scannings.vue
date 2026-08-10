@@ -12,210 +12,219 @@
         </div>
       </div>
 
-      <!-- Target Event Selector -->
-      <div class="d-flex align-items-center gap-2">
-        <select v-model="selectedEventId" class="form-select rounded-3 py-2 px-3 border-slate-200 fs-7 fw-semibold shadow-2xs" style="min-width: 220px;">
+      <!-- Action Buttons -->
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <button
+          class="btn btn-outline-primary rounded-3 py-2 px-3 fw-semibold fs-7 shadow-2xs d-flex align-items-center gap-2"
+          :disabled="!selectedEventId"
+          @click="showManualModal = true"
+        >
+          <i class="bi bi-keyboard-fill"></i>
+          <span>Manual Check-in</span>
+        </button>
+
+        <button
+          class="btn btn-emerald rounded-3 py-2 px-3 fw-bold fs-7 shadow-2xs d-flex align-items-center gap-2"
+          :disabled="!selectedEventId"
+          @click="openCameraModal"
+        >
+          <i class="bi bi-camera-fill"></i>
+          <span>Start Camera Scanner</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Standardized Data Table -->
+    <CommonDataTable
+      v-model:searchQuery="searchQuery"
+      v-model:currentPage="currentPage"
+      v-model:perPage="perPage"
+      :loading="loadingLogs"
+      :totalCount="filteredLogs.length"
+      :totalPages="totalPages"
+      :startIndex="startIndex"
+      :endIndex="endIndex"
+    >
+      <template #filters>
+        <!-- Target Event Filter Dropdown -->
+        <select
+          v-model="selectedEventId"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 220px;"
+        >
           <option value="" disabled>Select Event to Scan...</option>
           <option v-for="ev in eventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
         </select>
-      </div>
-    </div>
 
-    <!-- Executive Ticker Stat Cards -->
-    <div class="row g-3 mb-4">
-      <div class="col-12 col-sm-4">
-        <div class="stat-card p-3 rounded-4 bg-white border shadow-2xs d-flex align-items-center gap-3">
-          <div class="stat-icon-circle bg-emerald-50 text-emerald-600">
-            <i class="bi bi-person-check-fill fs-5"></i>
-          </div>
-          <div>
-            <span class="d-block fs-8 text-muted fw-semibold text-uppercase">Check-ins</span>
-            <span class="fs-4 fw-extrabold text-slate-900">{{ checkedInCount }}</span>
-          </div>
-        </div>
-      </div>
+        <!-- Scan Type Filter Dropdown -->
+        <select
+          v-model="selectedScanTypeFilter"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 175px;"
+        >
+          <option value="">All Scan Types</option>
+          <option value="check_in">Event Check-in</option>
+          <option value="service">Service Access</option>
+          <option value="check_out">Event Check-out</option>
+        </select>
+      </template>
 
-      <div class="col-12 col-sm-4">
-        <div class="stat-card p-3 rounded-4 bg-white border shadow-2xs d-flex align-items-center gap-3">
-          <div class="stat-icon-circle bg-blue-50 text-blue-600">
-            <i class="bi bi-people-fill fs-5"></i>
-          </div>
-          <div>
-            <span class="d-block fs-8 text-muted fw-semibold text-uppercase">Total Registrations</span>
-            <span class="fs-4 fw-extrabold text-slate-900">{{ totalRegistrationsCount }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-sm-4">
-        <div class="stat-card p-3 rounded-4 bg-white border shadow-2xs d-flex align-items-center gap-3">
-          <div class="stat-icon-circle bg-purple-50 text-purple-600">
-            <i class="bi bi-percent fs-5"></i>
-          </div>
-          <div>
-            <span class="d-block fs-8 text-muted fw-semibold text-uppercase">Check-in Rate</span>
-            <span class="fs-4 fw-extrabold text-slate-900">{{ attendancePercentage }}%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Scanner & Manual Entry Grid -->
-    <div class="row g-4 mb-4">
-      <!-- Camera Reader Card -->
-      <div class="col-12 col-lg-7">
-        <div class="card border-0 shadow-2xs rounded-4 p-4 h-100 bg-white">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <h5 class="fw-bold text-slate-900 fs-6 mb-0 d-flex align-items-center gap-2">
-              <i class="bi bi-camera-fill text-emerald-600"></i> Live QR Scanner
-            </h5>
-            <div class="d-flex align-items-center gap-2">
-              <button
-                v-if="!scanningActive"
-                class="btn btn-emerald btn-sm rounded-3 fw-semibold fs-8 px-3"
-                :disabled="!selectedEventId"
-                @click="startScanner"
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Attendee / Delegate</th>
+            <th>QR Code</th>
+            <th>Scan Type</th>
+            <th>Service</th>
+            <th>Scanned At</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(log, idx) in paginatedLogs" :key="log.id || idx">
+            <td class="row-index">{{ startIndex + idx }}</td>
+            <td>
+              <span class="fw-bold text-slate-900 fs-7 d-block">
+                {{ log.registration ? `${log.registration.first_name} ${log.registration.last_name}` : (log.attendee_name || 'Delegate') }}
+              </span>
+              <span class="fs-8 text-muted">{{ log.registration?.phone || '—' }}</span>
+            </td>
+            <td>
+              <code class="px-2 py-1 bg-slate-100 rounded text-slate-800 fs-8">{{ log.qr_code }}</code>
+            </td>
+            <td>
+              <span
+                class="badge rounded-pill border px-2.5 py-1 fs-8 fw-semibold"
+                :class="{
+                  'bg-purple-50 text-purple-700 border-purple-200': log.service_id || log.service || log.scan_type === 'service',
+                  'bg-rose-50 text-rose-700 border-rose-200': !log.service_id && !log.service && log.scan_type === 'check_out',
+                  'bg-emerald-50 text-emerald-700 border-emerald-200': !log.service_id && !log.service && log.scan_type !== 'check_out'
+                }"
               >
-                <i class="bi bi-play-fill me-1"></i> Start Camera
-              </button>
+                {{ (log.service_id || log.service || log.scan_type === 'service') ? 'Service Scan' : (log.scan_type === 'check_out' ? 'Event Check-out' : 'Event Check-in') }}
+              </span>
+            </td>
+            <td>
+              <span class="fs-8 text-slate-700 fw-semibold">{{ log.service?.name || log.service_name || '—' }}</span>
+            </td>
+            <td>
+              <span class="fs-8 text-muted">{{ log.created_at ? formatDate(log.created_at) : '—' }}</span>
+            </td>
+            <td class="text-end">
               <button
-                v-else
-                class="btn btn-outline-danger btn-sm rounded-3 fw-semibold fs-8 px-3"
-                @click="stopScanner"
+                class="btn btn-outline-primary btn-sm rounded-3 fw-semibold fs-8 py-1.5 px-2.5 shadow-2xs"
+                @click="openVerifyForLog(log)"
+                title="View Verification Details"
               >
-                <i class="bi bi-stop-fill me-1"></i> Stop Camera
+                <i class="bi bi-eye-fill me-1"></i> Verify
               </button>
-            </div>
-          </div>
+            </td>
+          </tr>
+          <tr v-if="!loadingLogs && paginatedLogs.length === 0">
+            <td colspan="7" class="text-center py-4 text-muted fs-8">
+              No scan logs found matching your filters.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </CommonDataTable>
 
-          <!-- Html5Qrcode Reader Container -->
-          <div class="scanner-viewport-wrapper rounded-3 border bg-slate-900 position-relative overflow-hidden mb-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
-            <div id="qr-reader" style="width: 100%;"></div>
+    <!-- Pop-up Modal 1: Live Camera QR Scanner -->
+    <CommonModal
+      v-model="showCameraModal"
+      title="Live Camera QR Scanner"
+      icon="bi-camera-fill"
+      size="md"
+      @close="stopScanner"
+    >
+      <div class="p-1">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <span class="fs-8 fw-bold text-uppercase text-muted">Scanning Event: {{ selectedEventName }}</span>
+          <button
+            v-if="!scanningActive"
+            class="btn btn-emerald btn-sm rounded-3 fw-semibold fs-8 px-3"
+            @click="startScanner"
+          >
+            <i class="bi bi-play-fill me-1"></i> Start Camera
+          </button>
+          <button
+            v-else
+            class="btn btn-outline-danger btn-sm rounded-3 fw-semibold fs-8 px-3"
+            @click="stopScanner"
+          >
+            <i class="bi bi-stop-fill me-1"></i> Stop Camera
+          </button>
+        </div>
 
-            <div v-if="!scanningActive" class="text-center text-slate-400 p-4">
-              <i class="bi bi-qr-code-scan fs-1 d-block mb-2 opacity-50"></i>
-              <p class="fs-7 mb-0">Select an event and click "Start Camera" to scan badges.</p>
-            </div>
-          </div>
-
-          <div v-if="scanFeedback" class="alert fs-8 py-2 px-3 mb-0 rounded-3 shadow-2xs" :class="scanFeedback.type === 'success' ? 'alert-success' : 'alert-danger'">
-            <i :class="['bi me-1.5', scanFeedback.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill']"></i>
-            {{ scanFeedback.message }}
+        <div class="scanner-viewport-wrapper rounded-3 border bg-slate-900 position-relative overflow-hidden mb-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
+          <div id="qr-reader" style="width: 100%;"></div>
+          <div v-if="!scanningActive" class="text-center text-slate-400 p-4">
+            <i class="bi bi-qr-code-scan fs-1 d-block mb-2 opacity-50"></i>
+            <p class="fs-7 mb-0">Click "Start Camera" to scan attendee badges.</p>
           </div>
         </div>
-      </div>
 
-      <!-- Manual Check-in Fallback Card -->
-      <div class="col-12 col-lg-5">
-        <div class="card border-0 shadow-2xs rounded-4 p-4 h-100 bg-white">
-          <h5 class="fw-bold text-slate-900 fs-6 mb-3 d-flex align-items-center gap-2">
-            <i class="bi bi-keyboard-fill text-slate-600"></i> Manual QR Check-in
-          </h5>
-          <form @submit.prevent="handleManualCheckin">
-            <div class="mb-3">
-              <label class="form-label fs-8 fw-bold text-uppercase text-muted">QR Code / Registration ID</label>
-              <input
-                v-model="manualQrCode"
-                type="text"
-                class="form-control form-control-sm rounded-3 py-2"
-                placeholder="e.g. REG-1-TEST001"
-                :disabled="!selectedEventId || submitting"
-                required
-              />
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label fs-8 fw-bold text-uppercase text-muted">Scan Type</label>
-              <select v-model="scanType" class="form-select form-select-sm rounded-3 py-2">
-                <option value="check_in">Event Check-in</option>
-                <option value="service">Service Access</option>
-              </select>
-            </div>
-
-            <div v-if="scanType === 'service'" class="mb-3">
-              <label class="form-label fs-8 fw-bold text-uppercase text-muted">Service</label>
-              <select v-model.number="selectedServiceId" class="form-select form-select-sm rounded-3 py-2" required>
-                <option value="" disabled>Select service...</option>
-                <option v-for="s in servicesList" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              class="btn btn-emerald w-100 rounded-3 py-2 fw-semibold fs-7 shadow-2xs mt-2"
-              :disabled="!selectedEventId || submitting"
-            >
-              <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-              Process Check-in
-            </button>
-          </form>
+        <div v-if="scanFeedback" class="alert fs-8 py-2 px-3 mb-0 rounded-3 shadow-2xs" :class="scanFeedback.type === 'success' ? 'alert-success' : 'alert-danger'">
+          <i :class="['bi me-1.5', scanFeedback.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill']"></i>
+          {{ scanFeedback.message }}
         </div>
       </div>
-    </div>
+    </CommonModal>
 
-    <!-- Scannings Log Table -->
-    <div class="card border-0 shadow-2xs rounded-4 p-4 bg-white">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h5 class="fw-bold text-slate-900 fs-6 mb-0">Check-in Logs</h5>
-        <button class="btn btn-outline-secondary btn-sm rounded-3 fs-8 fw-semibold" @click="fetchLogs" :disabled="loadingLogs">
-          <i class="bi bi-arrow-clockwise me-1" :class="{ 'spin': loadingLogs }"></i> Refresh Logs
-        </button>
-      </div>
+    <!-- Pop-up Modal 2: Manual QR Check-in -->
+    <CommonModal
+      v-model="showManualModal"
+      title="Manual QR Check-in"
+      icon="bi-keyboard-fill"
+      size="md"
+    >
+      <form @submit.prevent="handleManualCheckin">
+        <div class="mb-3">
+          <label class="form-label fs-8 fw-bold text-uppercase text-muted">QR Code / Registration ID</label>
+          <input
+            v-model="manualQrCode"
+            type="text"
+            class="form-control form-control-sm rounded-3 py-2"
+            placeholder="e.g. REG-1-TEST001"
+            :disabled="submitting"
+            required
+          />
+        </div>
 
-      <div class="table-responsive rounded-3 border">
-        <table class="data-table mb-0">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Attendee / Delegate</th>
-              <th>QR Code</th>
-              <th>Scan Type</th>
-              <th>Service</th>
-              <th>Scanned At</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(log, idx) in logs" :key="log.id || idx">
-              <td class="row-index">{{ idx + 1 }}</td>
-              <td>
-                <span class="fw-bold text-slate-900 fs-7 d-block">
-                  {{ log.registration ? `${log.registration.first_name} ${log.registration.last_name}` : (log.attendee_name || 'Delegate') }}
-                </span>
-                <span class="fs-8 text-muted">{{ log.registration?.phone || '—' }}</span>
-              </td>
-              <td>
-                <code class="px-2 py-1 bg-slate-100 rounded text-slate-800 fs-8">{{ log.qr_code }}</code>
-              </td>
-              <td>
-                <span
-                  class="badge rounded-pill border px-2.5 py-1 fs-8 fw-semibold"
-                  :class="{
-                    'bg-purple-50 text-purple-700 border-purple-200': log.service_id || log.service || log.scan_type === 'service',
-                    'bg-rose-50 text-rose-700 border-rose-200': !log.service_id && !log.service && log.scan_type === 'check_out',
-                    'bg-emerald-50 text-emerald-700 border-emerald-200': !log.service_id && !log.service && log.scan_type !== 'check_out'
-                  }"
-                >
-                  {{ (log.service_id || log.service || log.scan_type === 'service') ? 'Service Scan' : (log.scan_type === 'check_out' ? 'Event Check-out' : 'Event Check-in') }}
-                </span>
-              </td>
-              <td>
-                <span class="fs-8 text-slate-700 fw-semibold">{{ log.service?.name || log.service_name || '—' }}</span>
-              </td>
-              <td>
-                <span class="fs-8 text-muted">{{ log.created_at ? formatDate(log.created_at) : '—' }}</span>
-              </td>
-            </tr>
-            <tr v-if="!loadingLogs && logs.length === 0">
-              <td colspan="6" class="text-center py-4 text-muted fs-8">
-                No scan logs found for the selected event.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+        <div class="mb-3">
+          <label class="form-label fs-8 fw-bold text-uppercase text-muted">Scan Type</label>
+          <select v-model="scanType" class="form-select form-select-sm rounded-3 py-2">
+            <option value="check_in">Event Check-in</option>
+            <option value="service">Service Access</option>
+          </select>
+        </div>
 
-    <!-- Interactive Scan Result Modal -->
+        <div v-if="scanType === 'service'" class="mb-3">
+          <label class="form-label fs-8 fw-bold text-uppercase text-muted">Service</label>
+          <select v-model.number="selectedServiceId" class="form-select form-select-sm rounded-3 py-2" required>
+            <option value="" disabled>Select service...</option>
+            <option v-for="s in servicesList" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary btn-sm rounded-3 px-3 py-2 fw-semibold fs-7" @click="showManualModal = false">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-emerald btn-sm rounded-3 px-4 py-2 fw-semibold fs-7 shadow-2xs"
+            :disabled="submitting"
+          >
+            <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+            Process Check-in
+          </button>
+        </div>
+      </form>
+    </CommonModal>
+
+    <!-- Pop-up Modal 3: Attendee Scan Verification -->
     <CommonModal
       v-model="showResultModal"
       title="Attendee Scan Verification"
@@ -379,18 +388,20 @@ const eventsList = ref<any[]>([]);
 const servicesList = ref<any[]>([]);
 const selectedEventId = ref<number | string>('');
 
-const checkedInCount = ref<number>(0);
-const totalRegistrationsCount = ref<number>(0);
-const attendancePercentage = computed(() => {
-  if (!totalRegistrationsCount.value) return 0;
-  return Math.round((checkedInCount.value / totalRegistrationsCount.value) * 100);
-});
-
-// Interactive Verification Modal state
+// Modal visibility states
+const showCameraModal = ref(false);
+const showManualModal = ref(false);
 const showResultModal = ref(false);
+
 const scannedAttendee = ref<any>(null);
 const scannedQrCode = ref<string>('');
 const claimingServiceId = ref<number | string | null>(null);
+
+// Filters & Pagination
+const searchQuery = ref('');
+const selectedScanTypeFilter = ref('');
+const currentPage = ref(1);
+const perPage = ref(10);
 
 const selectedEventName = computed(() => {
   const ev = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
@@ -425,7 +436,7 @@ const attendeeTodayLogs = computed(() => {
       const logDateStr = new Date(parseable).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
       return logDateStr === todayStr;
     }
-    return true; // Optimistic entries without server created_at yet
+    return true;
   });
 
   return filtered.sort((a: any, b: any) => {
@@ -437,7 +448,7 @@ const attendeeTodayLogs = computed(() => {
     };
     const timeA = a.created_at ? parseTime(a.created_at) : (Number(a.id) || 999999999);
     const timeB = b.created_at ? parseTime(b.created_at) : (Number(b.id) || 999999999);
-    return timeB - timeA; // Strict newest first
+    return timeB - timeA;
   });
 });
 
@@ -471,20 +482,15 @@ const isReentryToday = computed(() => {
 });
 
 // Filter services:
-// 1. requires_scan is true (or 1 / undefined default)
-// 2. Omit services that have ALREADY been claimed TODAY for this attendee
-// 3. Time window check (start_time <= current_time <= end_time if provided)
 const availableScannableServices = computed(() => {
   if (!scannedQrCode.value && !scannedAttendee.value?.id) return [];
   const now = new Date();
   const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
   return servicesList.value.filter((srv: any) => {
-    // 1. Check requires_scan
     const requiresScan = srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined;
     if (!requiresScan) return false;
 
-    // 2. Check if already claimed TODAY for this attendee
     const regId = scannedAttendee.value?.id;
     const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
     const todayStr = getTodayDateStr();
@@ -505,7 +511,6 @@ const availableScannableServices = computed(() => {
     });
     if (alreadyClaimed) return false;
 
-    // 3. Time window check if start_time and end_time exist
     if (srv.start_time && srv.end_time) {
       if (currentTimeStr < srv.start_time || currentTimeStr > srv.end_time) {
         return false;
@@ -520,7 +525,6 @@ const activeCurrentService = computed(() => {
   return availableScannableServices.value[0] || null;
 });
 
-// Check if all scannable services for today have already been claimed by this attendee
 const areAllServicesClaimedToday = computed(() => {
   if (servicesList.value.length === 0) return false;
   const regId = scannedAttendee.value?.id;
@@ -549,24 +553,6 @@ const areAllServicesClaimedToday = computed(() => {
     });
   });
 });
-
-function isServiceClaimed(serviceId: number | string): boolean {
-  const regId = scannedAttendee.value?.id;
-  if (!scannedQrCode.value && !regId) return false;
-  const todayStr = getTodayDateStr();
-  return logs.value.some((l: any) => {
-    const logQr = l.qr_code || l.registration?.qr_code || '';
-    const logRegId = l.registration_id || l.registration?.id;
-    const matchesAttendee = logQr === scannedQrCode.value || (regId && Number(logRegId) === Number(regId));
-    const matchesService = l.service_id === Number(serviceId) || l.service?.id === Number(serviceId);
-    let isToday = true;
-    if (l.created_at) {
-      const logDateStr = new Date(l.created_at.replace(' ', 'T')).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
-      isToday = logDateStr === todayStr;
-    }
-    return matchesAttendee && matchesService && isToday;
-  });
-}
 
 async function claimService(serviceId: number | string) {
   if (!selectedEventId.value) return;
@@ -624,9 +610,42 @@ const submitting = ref(false);
 const logs = ref<any[]>([]);
 const loadingLogs = ref(false);
 
+// Table Filtered & Paginated List
+const filteredLogs = computed(() => {
+  let list = logs.value;
+
+  if (selectedScanTypeFilter.value) {
+    if (selectedScanTypeFilter.value === 'service') {
+      list = list.filter((l: any) => l.service_id || l.service || l.scan_type === 'service');
+    } else {
+      list = list.filter((l: any) => !l.service_id && !l.service && l.scan_type === selectedScanTypeFilter.value);
+    }
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    list = list.filter((l: any) => {
+      const name = `${l.registration?.first_name || ''} ${l.registration?.last_name || ''} ${l.attendee_name || ''}`.toLowerCase();
+      const phone = (l.registration?.phone || '').toLowerCase();
+      const qr = (l.qr_code || '').toLowerCase();
+      return name.includes(q) || phone.includes(q) || qr.includes(q);
+    });
+  }
+
+  return list;
+});
+
+const totalPages = computed(() => Math.ceil(filteredLogs.value.length / perPage.value) || 1);
+const startIndex = computed(() => (currentPage.value - 1) * perPage.value + 1);
+const endIndex = computed(() => Math.min(currentPage.value * perPage.value, filteredLogs.value.length));
+
+const paginatedLogs = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredLogs.value.slice(start, start + perPage.value);
+});
+
 watch(selectedEventId, async (newEvId) => {
   if (newEvId) {
-    await fetchEventStats();
     await fetchLogs();
     await fetchServices();
   }
@@ -639,18 +658,14 @@ async function handleScannedUrlCode() {
   if (!code) return;
 
   let qrCode = String(code).trim();
-
-  // Extract event_id from code pattern REG-{event_id}-...
   const eventIdMatch = qrCode.match(/^REG-(\d+)-/i);
   if (eventIdMatch && eventIdMatch[1]) {
     selectedEventId.value = Number(eventIdMatch[1]);
     await fetchServices();
   }
 
-  // Set scannedQrCode FIRST so isAttendeeCheckedIn computed can evaluate correctly
   scannedQrCode.value = qrCode;
 
-  // Fetch attendee data to populate modal and get real DB qr_code
   let attendeeData: any = null;
   try {
     const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
@@ -662,8 +677,6 @@ async function handleScannedUrlCode() {
     // Fallback
   }
 
-  // CRITICAL: If attendee found but qr_code is NULL in DB,
-  // call the backend /qr-code endpoint to generate + save it, then use the returned code
   if (attendeeData && !attendeeData.qr_code) {
     try {
       const qrRes = await $fetch<any>(`/api/events/${selectedEventId.value}/registrations/${attendeeData.id}/qr-code`, {
@@ -676,17 +689,14 @@ async function handleScannedUrlCode() {
         scannedQrCode.value = generatedCode;
       }
     } catch {
-      // Backend could not generate — proceed with fallback code
+      // Fallback
     }
   } else if (attendeeData?.qr_code) {
-    // Use the real DB qr_code for the scan
     qrCode = attendeeData.qr_code;
     scannedQrCode.value = attendeeData.qr_code;
   }
 
   scannedAttendee.value = attendeeData || { first_name: 'Registered', last_name: 'Delegate', phone: '', qr_code: qrCode };
-
-  // Open modal so staff can inspect delegate details and click Check-In button manually
   showResultModal.value = true;
 }
 
@@ -702,15 +712,13 @@ watch(
 onMounted(async () => {
   await fetchEvents();
   await fetchServices();
-  // Must fetch logs BEFORE processScan so isAttendeeCheckedIn has accurate data
-  // when page reloads from phone scanning the QR URL
   if (route.query.code) {
     const codeFromUrl = String(route.query.code);
     const eventIdMatch = codeFromUrl.match(/^REG-(\d+)-/i);
     if (eventIdMatch && eventIdMatch[1]) {
       selectedEventId.value = Number(eventIdMatch[1]);
     }
-    await fetchLogsForce(); // Bypass cache — get real server state before showing modal
+    await fetchLogsForce();
   }
   await handleScannedUrlCode();
 });
@@ -741,18 +749,6 @@ async function fetchServices() {
   }
 }
 
-async function fetchEventStats() {
-  if (!selectedEventId.value) return;
-  try {
-    const regRes = await cachedFetch<any>(`/api/registrations?event_id=${selectedEventId.value}`);
-    const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-    totalRegistrationsCount.value = regList.length;
-    checkedInCount.value = regList.filter((r: any) => r.status === 'Confirmed' || r.checked_in).length;
-  } catch (err) {
-    console.error('Failed to fetch event stats:', err);
-  }
-}
-
 async function fetchLogs() {
   if (!selectedEventId.value) return;
   loadingLogs.value = true;
@@ -771,7 +767,6 @@ async function fetchLogs() {
   }
 }
 
-// Force-fetch logs bypassing IndexedDB cache so freshly recorded scans appear immediately
 async function fetchLogsForce() {
   if (!selectedEventId.value) return;
   try {
@@ -780,8 +775,29 @@ async function fetchLogsForce() {
     });
     logs.value = Array.isArray(res?.data?.scannings) ? res.data.scannings : (Array.isArray(res?.data) ? res.data : []);
   } catch {
-    // Silently keep existing logs if force fetch fails
+    // Fallback
   }
+}
+
+function openCameraModal() {
+  showCameraModal.value = true;
+  startScanner();
+}
+
+async function openVerifyForLog(log: any) {
+  scannedQrCode.value = log.qr_code;
+  let attendeeData = log.registration;
+  if (!attendeeData) {
+    try {
+      const regRes = await cachedFetch<any>(`/api/registrations?event_id=${selectedEventId.value}`);
+      const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
+      attendeeData = regList.find((r: any) => r.qr_code === log.qr_code || String(r.id) === String(log.registration_id));
+    } catch {
+      // Fallback
+    }
+  }
+  scannedAttendee.value = attendeeData || { first_name: log.attendee_name || 'Registered', last_name: 'Delegate', phone: '', qr_code: log.qr_code };
+  showResultModal.value = true;
 }
 
 async function startScanner() {
@@ -790,7 +806,6 @@ async function startScanner() {
   lastScannedCode.value = '';
   isProcessingScan.value = false;
 
-  // Check Secure Context (Mobile browsers require HTTPS or localhost for camera access)
   if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
     scanFeedback.value = {
       type: 'error',
@@ -805,18 +820,15 @@ async function startScanner() {
     }
     scanningActive.value = true;
 
-    // Discover available camera devices for robust selection on mobile phones
     let cameraConfig: any = { facingMode: 'environment' };
     try {
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length > 0) {
-        const backCamera = devices.find(d => 
-          /back|rear|environment/i.test(d.label)
-        );
+        const backCamera = devices.find(d => /back|rear|environment/i.test(d.label));
         cameraConfig = backCamera ? backCamera.id : devices[devices.length - 1].id;
       }
     } catch {
-      // Fall back to facingMode constraint if getCameras fails
+      // Fallback
     }
 
     const config = {
@@ -832,15 +844,11 @@ async function startScanner() {
       cameraConfig,
       config,
       async (decodedText) => {
-        // Prevent rapid duplicate scans while processing or scanning the same code repeatedly
-        if (isProcessingScan.value || decodedText === lastScannedCode.value) {
-          return;
-        }
+        if (isProcessingScan.value || decodedText === lastScannedCode.value) return;
         lastScannedCode.value = decodedText;
         isProcessingScan.value = true;
 
         try {
-          // Clean scanned QR code text
           let qrCode = decodedText.trim();
           if (qrCode.includes('?code=')) {
             const urlParts = qrCode.split('?code=');
@@ -851,7 +859,6 @@ async function startScanner() {
 
           scannedQrCode.value = qrCode;
 
-          // Fetch attendee details to populate verification modal
           let attendeeData: any = null;
           try {
             const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
@@ -864,9 +871,9 @@ async function startScanner() {
           }
 
           scannedAttendee.value = attendeeData || { first_name: 'Registered', last_name: 'Delegate', phone: '', qr_code: qrCode };
+          showCameraModal.value = false;
           showResultModal.value = true;
         } finally {
-          // Allow re-scanning after 3 seconds timeout
           setTimeout(() => {
             isProcessingScan.value = false;
             lastScannedCode.value = '';
@@ -902,8 +909,7 @@ async function stopScanner() {
   }
 }
 
-async function processScan(rawScannedText: string, type: 'check_in' | 'service', serviceId?: number | string) {
-  // Extract clean QR code string if camera scanned full URL (e.g. http://localhost:3000/scannings?code=REG-1-3)
+async function processScan(rawScannedText: string, type: 'check_in' | 'service' | 'check_out', serviceId?: number | string) {
   let qrCode = rawScannedText.trim();
   if (qrCode.includes('?code=')) {
     const urlParts = qrCode.split('?code=');
@@ -918,7 +924,6 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
       qrCode = parsed.qr_code || parsed.code || (parsed.id ? `REG-${parsed.event_id || selectedEventId.value}-${parsed.id}` : rawScannedText);
     }
   } catch {
-    // Check if string was duplicated by rapid reader concatenation (e.g., REG-1-3REG-1-3)
     const len = qrCode.length;
     if (len > 4 && len % 2 === 0) {
       const half1 = qrCode.substring(0, len / 2);
@@ -929,13 +934,11 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
     }
   }
 
-  // 1. Check if qrCode starts with REG-{event_id}-
   const prefixMatch = qrCode.match(/^REG-(\d+)-/i);
   if (prefixMatch && prefixMatch[1]) {
     selectedEventId.value = Number(prefixMatch[1]);
   }
 
-  // 2. Fetch registrations list to discover actual event_id for hash codes like REG-2-C3C8BBD490EF6560
   let matchedReg: any = null;
   try {
     const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
@@ -948,8 +951,6 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
     } else if (scannedAttendee.value?.event_id) {
       selectedEventId.value = Number(scannedAttendee.value.event_id);
     }
-    // CRITICAL: Use the real DB qr_code if available so the backend can find it
-    // For new registrations qr_code may be NULL in DB — in that case keep fallback
     if (matchedReg?.qr_code) {
       qrCode = matchedReg.qr_code;
     }
@@ -961,13 +962,7 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
 
   if (!selectedEventId.value) return;
 
-  const defaultServiceId = servicesList.value[0]?.id ? Number(servicesList.value[0].id) : 1;
-  const activeServiceId = serviceId ? Number(serviceId) : defaultServiceId;
-
-  // Build payload — backend validation rule for scan_type accepts 'check_in' or 'check_out'
-  // When claiming a service, scan_type is 'check_in' and service_id identifies the claimed service
   const validBackendScanType = type === 'check_out' ? 'check_out' : 'check_in';
-
   const bodyPayload: Record<string, any> = {
     qr_code: qrCode,
     scan_type: validBackendScanType,
@@ -991,7 +986,6 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
         body: bodyPayload,
       });
     } catch (primaryErr: any) {
-      // Try global endpoint fallback, passing both body and event_id
       try {
         res = await $fetch<any>('/api/scannings', {
           method: 'POST',
@@ -1006,7 +1000,6 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
     const currentEventObj = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
     const eventName = currentEventObj?.name || `Event #${selectedEventId.value}`;
 
-    // Look up full registration details using qrCode or ID
     let attendeeData = res?.data?.registration || res?.registration || res?.data?.attendee;
     if (!attendeeData || !attendeeData.first_name) {
       try {
@@ -1014,7 +1007,7 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
         const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
         attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
       } catch {
-        // Fallback placeholder
+        // Fallback
       }
     }
 
@@ -1029,7 +1022,6 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
 
     scannedAttendee.value = attendeeData;
     scannedQrCode.value = qrCode;
-    showResultModal.value = true;
 
     const scanLabel = type === 'check_out' ? 'Check-out' : (type === 'service' ? 'Service access' : 'Check-in');
     scanFeedback.value = {
@@ -1042,23 +1034,20 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service',
       push.success({ title: 'Success', message: `${scanLabel} for ${eventName} processed successfully!` });
     }
 
-    // Optimistically inject the new scan record into logs immediately so the UI
-    // reacts instantly without waiting for the server round-trip
     logs.value = [
-      ...logs.value,
       {
         qr_code: qrCode,
         scan_type: type,
         service_id: serviceId ? Number(serviceId) : null,
         event_id: Number(selectedEventId.value),
+        created_at: new Date().toISOString(),
       },
+      ...logs.value,
     ];
 
-    await fetchEventStats();
-    await fetchLogsForce(); // Bypass cache to get actual server state
+    await fetchLogsForce();
   } catch (err: any) {
     console.error('Scan processing error:', err);
-    console.error('Scan error data:', err?.data);
     const serverErr = err?.data?.errors
       ? (typeof err.data.errors === 'object' ? Object.values(err.data.errors).flat().join(', ') : JSON.stringify(err.data.errors))
       : null;
@@ -1075,6 +1064,8 @@ async function handleManualCheckin() {
   try {
     await processScan(manualQrCode.value.trim(), scanType.value, selectedServiceId.value);
     manualQrCode.value = '';
+    showManualModal.value = false;
+    showResultModal.value = true;
   } finally {
     submitting.value = false;
   }
@@ -1084,7 +1075,6 @@ function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
   try {
     let parseable = dateStr.trim().replace(' ', 'T');
-    // If no timezone offset is specified in server timestamp string, append 'Z' to treat as UTC
     if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
       parseable += 'Z';
     }
@@ -1131,16 +1121,6 @@ function formatDate(dateStr?: string | null): string {
   justify-content: center;
   font-size: 1.25rem;
   box-shadow: inset 0 0 0 1px rgba(46, 125, 34, 0.15);
-}
-
-.stat-icon-circle {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .bg-emerald-50 { background-color: #ecfdf5; }
@@ -1207,14 +1187,5 @@ function formatDate(dateStr?: string | null): string {
   color: var(--slate-300);
   font-size: 0.8rem;
   width: 40px;
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 </style>
