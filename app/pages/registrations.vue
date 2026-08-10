@@ -458,12 +458,12 @@ onMounted(() => {
 // Location API Calls
 function extractLocationList(res: any, key: string): string[] {
   const pluralKey = key.endsWith('y') ? `${key.slice(0, -1)}ies` : `${key}s`;
-  const raw = res?.data?.[pluralKey] || res?.data?.[key] || res?.data || res || [];
+  const raw = res?.data?.[pluralKey] ?? res?.data?.[key] ?? (Array.isArray(res?.data) ? res.data : null) ?? res?.[pluralKey] ?? res?.[key] ?? (Array.isArray(res) ? res : []);
   if (!Array.isArray(raw)) return [];
   return raw.map((item: any) => {
     if (typeof item === 'string') return item;
     if (typeof item === 'object' && item !== null) {
-      return item.name || item[key] || item.title || Object.values(item)[0] || String(item);
+      return item.name || item.title || item[key] || Object.values(item)[0] || String(item);
     }
     return String(item);
   }).filter(Boolean);

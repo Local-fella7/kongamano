@@ -114,54 +114,223 @@
       </table>
     </CommonDataTable>
 
-    <!-- Create Modal -->
+    <!-- 2-Column Create Modal -->
     <CommonModal
       v-model="showModal"
-      title="Add Notification Registration"
-      icon="bi-plus-circle-fill"
-      size="md"
+      title="Link Delegates to Notification"
+      icon="bi-envelope-plus-fill"
+      size="xl"
     >
       <form @submit.prevent="handleSubmit">
-        <div class="mb-3">
-          <label class="form-label fw-semibold text-slate-700">Notification <span class="text-danger">*</span></label>
-          <select
-            v-model="form.notification_id"
-            class="form-select py-2 rounded-3"
-            :disabled="dropdownLoading"
-            required
-            autofocus
-          >
-            <option value="" disabled>Select a notification</option>
-            <option v-for="n in notificationsList" :key="n.id" :value="n.id">
-              {{ getNotificationOptionLabel(n) }}
-            </option>
-          </select>
-          <small v-if="dropdownLoading" class="text-muted fs-8 d-block mt-1">Loading notifications...</small>
-        </div>
+        <div class="row g-4">
+          <!-- Left Column: Member/Delegate Selection -->
+          <div class="col-lg-7 d-flex flex-column border-end pe-lg-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="fw-bold text-slate-900 mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-people-fill text-green-600"></i>
+                Select Delegates
+              </h6>
+              <span class="badge bg-slate-100 text-slate-700 rounded-pill px-2.5 py-1 fs-8 fw-semibold">
+                {{ filteredModalRegistrations.length }} Available
+              </span>
+            </div>
 
-        <div class="mb-4">
-          <label class="form-label fw-semibold text-slate-700">Delegate Registration <span class="text-danger">*</span></label>
-          <select
-            v-model="form.registration_id"
-            class="form-select py-2 rounded-3"
-            :disabled="dropdownLoading"
-            required
-          >
-            <option value="" disabled>Select a delegate</option>
-            <option v-for="r in registrationsList" :key="r.id" :value="r.id">
-              {{ getRegistrationName(r) }} — {{ r.phone || r.email || `#${r.id}` }}
-            </option>
-          </select>
-        </div>
+            <!-- Search Bar -->
+            <div class="position-relative mb-3 search-input-wrapper">
+              <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-7"></i>
+              <input
+                v-model="memberSearch"
+                type="text"
+                class="form-control form-control-sm ps-5 rounded-3 py-2 fs-7"
+                placeholder="Search member by name, phone, or email..."
+              />
+              <button
+                v-if="memberSearch"
+                type="button"
+                class="btn btn-sm btn-link text-muted position-absolute top-50 end-0 translate-middle-y me-2 p-0 text-decoration-none"
+                @click="memberSearch = ''"
+              >
+                <i class="bi bi-x-circle-fill"></i>
+              </button>
+            </div>
 
-        <div v-if="formError" class="invalid-feedback d-block mb-3">{{ formError }}</div>
+            <!-- Status Filter Pills -->
+            <div class="d-flex align-items-center gap-1.5 flex-wrap mb-3">
+              <button
+                v-for="status in statusFilterOptions"
+                :key="status.value"
+                type="button"
+                class="btn-status-pill d-inline-flex align-items-center gap-1.5"
+                :class="{ 'btn-status-pill-active': selectedStatusFilter === status.value }"
+                @click="selectedStatusFilter = status.value"
+              >
+                <i :class="['bi', status.icon, 'fs-8']"></i>
+                <span>{{ status.label }}</span>
+              </button>
+            </div>
 
-        <div class="modal-footer-row">
-          <button type="button" class="btn-cancel" @click="showModal = false">Cancel</button>
-          <button type="submit" class="btn-submit" :disabled="crud.saving.value">
-            <span v-if="crud.saving.value" class="spinner-border spinner-border-sm me-2"></span>
-            Add Registration
-          </button>
+            <!-- Bulk Select Action Bar -->
+            <div class="d-flex align-items-center justify-content-between p-2.5 bulk-action-bar rounded-3 mb-3 fs-7">
+              <div class="form-check mb-0 d-flex align-items-center ps-0">
+                <input
+                  id="selectAllMembers"
+                  type="checkbox"
+                  class="custom-checkbox me-2.5 ms-1"
+                  :checked="isAllFilteredSelected"
+                  :indeterminate="isSomeFilteredSelected"
+                  @change="toggleSelectAllFiltered"
+                />
+                <label for="selectAllMembers" class="form-check-label fw-semibold text-slate-700 cursor-pointer select-none">
+                  Select All Visible ({{ filteredModalRegistrations.length }})
+                </label>
+              </div>
+              <span class="text-muted fs-8 fw-medium">
+                {{ selectedRegistrationIds.length }} Selected Total
+              </span>
+            </div>
+
+            <!-- Scrollable Member Cards List -->
+            <div class="member-scroll-list pe-1 flex-grow-1" style="max-height: 340px; overflow-y: auto;">
+              <div v-if="filteredModalRegistrations.length === 0" class="text-center py-5 text-muted fs-7">
+                <i class="bi bi-person-x fs-2 d-block text-slate-300 mb-2"></i>
+                No delegates found matching your criteria.
+              </div>
+
+              <div
+                v-for="reg in filteredModalRegistrations"
+                :key="reg.id"
+                class="member-card d-flex align-items-center justify-content-between p-2.5 rounded-3 mb-2 border transition-all cursor-pointer"
+                :class="selectedRegistrationIds.includes(reg.id) ? 'member-card-selected' : 'border-slate-200 bg-white'"
+                @click="toggleSelectRegistration(reg.id)"
+              >
+                <div class="d-flex align-items-center gap-3">
+                  <input
+                    type="checkbox"
+                    class="custom-checkbox ms-2 me-2.5 cursor-pointer"
+                    :checked="selectedRegistrationIds.includes(reg.id)"
+                    @click.stop
+                    @change="toggleSelectRegistration(reg.id)"
+                  />
+                  <div class="delegate-avatar bg-slate-100 text-slate-700 fw-bold fs-8 rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                    {{ getInitialsByReg(reg) }}
+                  </div>
+                  <div>
+                    <h6 class="fw-semibold text-slate-900 mb-0 fs-7">{{ getRegistrationName(reg) }}</h6>
+                    <small class="text-muted fs-8">
+                      <i class="bi bi-telephone me-1"></i>{{ reg.phone || reg.email || 'No contact' }}
+                    </small>
+                  </div>
+                </div>
+
+                <span
+                  class="badge rounded-pill px-2.5 py-1 fs-8 text-capitalize me-2"
+                  :class="getStatusBadgeClass(reg.status)"
+                >
+                  {{ reg.status || 'Registered' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Notification Selection & Review -->
+          <div class="col-lg-5 d-flex flex-column ps-lg-4">
+            <h6 class="fw-bold text-slate-900 mb-3 d-flex align-items-center gap-2">
+              <i class="bi bi-bell-fill text-green-600"></i>
+              Notification & Review
+            </h6>
+
+            <!-- Select Notification Dropdown -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold text-slate-700 fs-7">Select Scheduled Notification <span class="text-danger">*</span></label>
+              <select
+                v-model="form.notification_id"
+                class="form-select form-select-sm py-2 rounded-3 fs-7"
+                :disabled="dropdownLoading"
+                required
+              >
+                <option value="" disabled>Select a notification...</option>
+                <option v-for="n in notificationsList" :key="n.id" :value="n.id">
+                  {{ getNotificationOptionLabel(n) }}
+                </option>
+              </select>
+              <small v-if="dropdownLoading" class="text-muted fs-8 d-block mt-1">Loading notifications...</small>
+            </div>
+
+            <!-- Dynamic Notification Content Preview Card -->
+            <div v-if="selectedNotificationObj" class="p-3 bg-green-50 border border-green-200 rounded-3 mb-3">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-bold text-green-900 fs-7">
+                  <i class="bi bi-chat-left-text me-1"></i>
+                  {{ selectedNotificationObj.notification_template?.title || 'Template Content' }}
+                </span>
+                <span class="badge bg-green-200 text-green-800 fs-8 fw-semibold rounded-pill">
+                  {{ selectedNotificationObj.notification_date ? formatDate(selectedNotificationObj.notification_date) : 'Scheduled' }}
+                </span>
+              </div>
+              <p class="text-slate-700 fs-8 mb-0 text-break" style="white-space: pre-wrap; max-height: 80px; overflow-y: auto;">
+                {{ selectedNotificationObj.notification_template?.content || 'No content preview available.' }}
+              </p>
+            </div>
+
+            <!-- Selected Delegates Review Panel -->
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <label class="form-label fw-semibold text-slate-700 fs-7 mb-0">
+                Selected Delegates ({{ selectedRegistrationIds.length }})
+              </label>
+              <button
+                v-if="selectedRegistrationIds.length > 0"
+                type="button"
+                class="btn btn-link btn-xs text-danger text-decoration-none p-0 fw-semibold fs-8"
+                @click="selectedRegistrationIds = []"
+              >
+                Clear All
+              </button>
+            </div>
+
+            <div class="selected-review-list flex-grow-1 border rounded-3 p-2 bg-slate-50 mb-3" style="max-height: 180px; overflow-y: auto;">
+              <div v-if="selectedRegistrationIds.length === 0" class="text-center py-4 text-muted fs-8">
+                No delegates selected yet. Pick delegates from the left column.
+              </div>
+
+              <div
+                v-for="id in selectedRegistrationIds"
+                :key="id"
+                class="selected-item-chip d-flex align-items-center justify-content-between p-2 bg-white rounded-2 mb-1.5 border border-slate-200 shadow-2xs"
+              >
+                <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                  <div class="avatar-mini bg-green-100 text-green-800 fw-bold fs-8 rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
+                    {{ getInitials(id) }}
+                  </div>
+                  <span class="fw-medium text-slate-900 fs-8 text-truncate">
+                    {{ getRegistrationNameById(id) }}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="btn-remove-chip"
+                  title="Remove"
+                  @click="removeSelectedRegistration(id)"
+                >
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Validation Error Alert -->
+            <div v-if="formError" class="alert alert-danger py-2 px-3 fs-8 mb-3 rounded-3">
+              <i class="bi bi-exclamation-circle-fill me-1"></i>
+              {{ formError }}
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div class="modal-footer-row mt-auto pt-2 border-top">
+              <button type="button" class="btn-cancel" @click="showModal = false">Cancel</button>
+              <button type="submit" class="btn-submit" :disabled="crud.saving.value || selectedRegistrationIds.length === 0">
+                <span v-if="crud.saving.value" class="spinner-border spinner-border-sm me-2"></span>
+                Link {{ selectedRegistrationIds.length }} Delegate{{ selectedRegistrationIds.length === 1 ? '' : 's' }}
+              </button>
+            </div>
+          </div>
         </div>
       </form>
     </CommonModal>
@@ -356,22 +525,121 @@ function getInitials(regId: number) {
   return `${f}${l}`.toUpperCase();
 }
 
-// Modal state
+// Modal State & Multi-Select Logic
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
 const viewingItem = ref<NotificationRegistration | null>(null);
 const deletingItem = ref<NotificationRegistration | null>(null);
 
+const memberSearch = ref('');
+const selectedStatusFilter = ref('all');
+const selectedRegistrationIds = ref<number[]>([]);
+
+const statusFilterOptions = [
+  { label: 'All', value: 'all', icon: 'bi-people-fill' },
+  { label: 'Confirmed / Approved', value: 'confirmed', icon: 'bi-patch-check-fill' },
+  { label: 'Pending', value: 'pending', icon: 'bi-hourglass-split' },
+  { label: 'Checked In', value: 'attended', icon: 'bi-person-check-fill' },
+];
+
 const form = reactive({
   notification_id: '' as number | '',
-  registration_id: '' as number | '',
 });
 const formError = ref('');
 
+const selectedNotificationObj = computed(() => {
+  if (!form.notification_id) return null;
+  return notificationsList.value.find((n) => n.id === Number(form.notification_id)) || null;
+});
+
+const filteredModalRegistrations = computed(() => {
+  return registrationsList.value.filter((reg) => {
+    // Status filter
+    if (selectedStatusFilter.value !== 'all') {
+      const regStatus = (reg.status || '').toLowerCase();
+      const target = selectedStatusFilter.value.toLowerCase();
+      if (target === 'confirmed') {
+        if (!['confirmed', 'approved', 'completed', 'active', 'verified'].includes(regStatus)) return false;
+      } else if (regStatus !== target) {
+        return false;
+      }
+    }
+    // Search query filter
+    if (memberSearch.value.trim()) {
+      const q = memberSearch.value.toLowerCase().trim();
+      const fullName = `${reg.first_name || ''} ${reg.last_name || ''}`.toLowerCase();
+      const phone = (reg.phone || '').toLowerCase();
+      const email = (reg.email || '').toLowerCase();
+      const idStr = String(reg.id);
+      return fullName.includes(q) || phone.includes(q) || email.includes(q) || idStr.includes(q);
+    }
+    return true;
+  });
+});
+
+const isAllFilteredSelected = computed(() => {
+  const visible = filteredModalRegistrations.value;
+  if (visible.length === 0) return false;
+  return visible.every((reg) => selectedRegistrationIds.value.includes(reg.id));
+});
+
+const isSomeFilteredSelected = computed(() => {
+  const visible = filteredModalRegistrations.value;
+  if (visible.length === 0) return false;
+  const count = visible.filter((reg) => selectedRegistrationIds.value.includes(reg.id)).length;
+  return count > 0 && count < visible.length;
+});
+
+function toggleSelectRegistration(id: number) {
+  const index = selectedRegistrationIds.value.indexOf(id);
+  if (index > -1) {
+    selectedRegistrationIds.value.splice(index, 1);
+  } else {
+    selectedRegistrationIds.value.push(id);
+  }
+}
+
+function removeSelectedRegistration(id: number) {
+  const index = selectedRegistrationIds.value.indexOf(id);
+  if (index > -1) {
+    selectedRegistrationIds.value.splice(index, 1);
+  }
+}
+
+function toggleSelectAllFiltered() {
+  const visibleIds = filteredModalRegistrations.value.map((r) => r.id);
+  if (isAllFilteredSelected.value) {
+    // Deselect all visible
+    selectedRegistrationIds.value = selectedRegistrationIds.value.filter((id) => !visibleIds.includes(id));
+  } else {
+    // Select all visible (union)
+    const newSet = new Set([...selectedRegistrationIds.value, ...visibleIds]);
+    selectedRegistrationIds.value = Array.from(newSet);
+  }
+}
+
+function getInitialsByReg(reg: any) {
+  const f = reg?.first_name?.[0] || 'D';
+  const l = reg?.last_name?.[0] || '';
+  return `${f}${l}`.toUpperCase();
+}
+
+function getStatusBadgeClass(status?: string) {
+  const s = (status || '').toLowerCase();
+  if (['confirmed', 'approved', 'completed', 'active', 'verified'].includes(s)) {
+    return 'status-badge-confirmed';
+  }
+  if (s === 'pending') return 'status-badge-pending';
+  if (s === 'attended' || s === 'checked_in') return 'status-badge-attended';
+  return 'bg-slate-100 text-slate-700 border border-slate-200';
+}
+
 function openCreateModal() {
   form.notification_id = notificationsList.value[0]?.id || '';
-  form.registration_id = registrationsList.value[0]?.id || '';
+  memberSearch.value = '';
+  selectedStatusFilter.value = 'all';
+  selectedRegistrationIds.value = [];
   formError.value = '';
   showModal.value = true;
 }
@@ -388,25 +656,45 @@ function confirmDelete(item: NotificationRegistration) {
 
 async function handleSubmit() {
   if (!form.notification_id) {
-    formError.value = 'Please select a notification.';
+    formError.value = 'Please select a scheduled notification.';
     return;
   }
-  if (!form.registration_id) {
-    formError.value = 'Please select a delegate registration.';
+  if (selectedRegistrationIds.value.length === 0) {
+    formError.value = 'Please select at least one delegate from the list.';
     return;
   }
   formError.value = '';
 
-  const success = await crud.createItem(
-    {
-      notification_id: Number(form.notification_id),
-      registration_id: Number(form.registration_id),
-    },
-    'Delegate added to notification successfully.'
-  );
+  const notificationId = Number(form.notification_id);
+  const targets = [...selectedRegistrationIds.value];
+  crud.saving.value = true;
+  let successCount = 0;
 
-  if (success) {
-    showModal.value = false;
+  try {
+    for (const regId of targets) {
+      const ok = await crud.createItem(
+        {
+          notification_id: notificationId,
+          registration_id: regId,
+        },
+        undefined // Silent toast per item in batch
+      );
+      if (ok) successCount++;
+    }
+
+    if (successCount > 0) {
+      showModal.value = false;
+      const notivue = useNotivue();
+      if (notivue) {
+        notivue.success(`Linked ${successCount} delegate${successCount === 1 ? '' : 's'} to notification successfully.`);
+      }
+      crud.fetchItems();
+    }
+  } catch (err) {
+    console.error('Batch registration failed:', err);
+    formError.value = 'Failed to link some delegates. Please check inputs and try again.';
+  } finally {
+    crud.saving.value = false;
   }
 }
 
@@ -695,9 +983,177 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.bg-green-subtle { background-color: var(--green-50); }
-.text-green-700 { color: var(--green-700); }
-.border-green-200 { border-color: var(--green-200) !important; }
+/* Premium Palette & Custom Modal Theme Styling */
+.modal-header-accent {
+  background: linear-gradient(135deg, rgba(67, 118, 108, 0.08) 0%, rgba(248, 250, 229, 0.4) 100%);
+  border-left: 4px solid #43766C;
+}
+
+.search-input-wrapper input {
+  background: #F8FAE5;
+  border-color: #d1d8be;
+  transition: all 0.2s ease;
+}
+
+.search-input-wrapper input:focus {
+  background: #ffffff;
+  border-color: #43766C;
+  box-shadow: 0 0 0 3px rgba(67, 118, 108, 0.15);
+}
+
+.btn-status-pill {
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #76453B;
+  border: 1px solid #d1d8be;
+  cursor: pointer;
+}
+
+.btn-status-pill:hover {
+  background: #F8FAE5;
+  color: #43766C;
+}
+
+.btn-status-pill-active {
+  background: #43766C !important;
+  color: #F8FAE5 !important;
+  border-color: #43766C !important;
+  box-shadow: 0 2px 8px rgba(67, 118, 108, 0.25);
+}
+
+.bulk-action-bar {
+  background: #F8FAE5;
+  border: 1px solid #e2e8d3;
+}
+
+.custom-checkbox {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  border-radius: 6px !important;
+  border: 2px solid #B19470 !important;
+  cursor: pointer;
+  float: none !important;
+  flex-shrink: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.custom-checkbox:hover {
+  border-color: #43766C;
+}
+
+.custom-checkbox:checked {
+  background-color: #43766C;
+  border-color: #43766C;
+  box-shadow: 0 2px 6px rgba(67, 118, 108, 0.3);
+}
+
+.custom-checkbox:checked::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid #F8FAE5;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.custom-checkbox:indeterminate {
+  background-color: #B19470;
+  border-color: #B19470;
+}
+
+.custom-checkbox:indeterminate::after {
+  content: '';
+  width: 8px;
+  height: 2px;
+  background-color: #F8FAE5;
+}
+
+.member-card {
+  border-color: #e5e9db;
+  background: #ffffff;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.member-card:hover {
+  background: #F8FAE5;
+  border-color: #B19470;
+  transform: translateY(-1px);
+}
+
+.member-card-selected {
+  background: rgba(67, 118, 108, 0.07) !important;
+  border-color: #43766C !important;
+  box-shadow: inset 0 0 0 1px #43766C, 0 2px 8px rgba(67, 118, 108, 0.08);
+}
+
+.preview-card-theme {
+  background: #F8FAE5;
+  border: 1px solid #d8e0c8;
+}
+
+.status-badge-confirmed {
+  background-color: rgba(67, 118, 108, 0.12);
+  color: #43766C;
+  border: 1px solid rgba(67, 118, 108, 0.3);
+}
+
+.status-badge-pending {
+  background-color: rgba(177, 148, 112, 0.15);
+  color: #76453B;
+  border: 1px solid rgba(177, 148, 112, 0.3);
+}
+
+.status-badge-attended {
+  background-color: rgba(118, 69, 59, 0.1);
+  color: #76453B;
+  border: 1px solid rgba(118, 69, 59, 0.25);
+}
+
+.selected-item-chip {
+  background: #ffffff;
+  border: 1px solid #d8e0c8;
+  transition: all 0.15s ease;
+}
+
+.selected-item-chip:hover {
+  border-color: #43766C;
+}
+
+.btn-remove-chip {
+  background: rgba(118, 69, 59, 0.08);
+  border: none;
+  color: #76453B;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  transition: all 0.15s;
+}
+
+.btn-remove-chip:hover {
+  color: #ffffff;
+  background: #76453B;
+}
 
 @media (max-width: 767.98px) {
   .filter-select {

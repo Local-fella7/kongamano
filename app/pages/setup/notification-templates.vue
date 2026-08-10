@@ -89,7 +89,7 @@
           />
         </div>
 
-        <div class="mb-4">
+        <div class="mb-3">
           <label class="form-label fw-semibold text-slate-700">Display Title <span class="text-danger">*</span></label>
           <input
             v-model="form.title"
@@ -98,6 +98,17 @@
             placeholder="e.g. Welcome to Kongamano Conference"
             required
           />
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-slate-700">Template Content <span class="text-danger">*</span></label>
+          <textarea
+            v-model="form.content"
+            class="form-control"
+            rows="4"
+            placeholder="e.g. Hello {{first_name}}, welcome to Kongamano."
+            required
+          ></textarea>
           <div v-if="formError" class="invalid-feedback d-block mt-1">{{ formError }}</div>
         </div>
 
@@ -127,6 +138,11 @@
             <h6 class="fw-bold text-slate-900 mb-0">{{ viewingItem.name }}</h6>
             <span class="fs-7 text-muted fw-medium">{{ viewingItem.title }}</span>
           </div>
+        </div>
+
+        <div v-if="viewingItem.content" class="mb-3 p-3 bg-white border rounded-3 fs-7 text-slate-800">
+          <span class="text-muted d-block fs-8 fw-semibold mb-1">Content:</span>
+          <p class="mb-0 text-break" style="white-space: pre-wrap;">{{ viewingItem.content }}</p>
         </div>
 
         <div class="row g-2 text-slate-700 fs-7">
@@ -194,6 +210,7 @@ function openView(item: NotificationTemplate) {
 const form = reactive({
   name: '',
   title: '',
+  content: '',
 });
 const formError = ref('');
 
@@ -201,6 +218,7 @@ function openCreate() {
   editingItem.value = null;
   form.name = '';
   form.title = '';
+  form.content = '';
   formError.value = '';
   showModal.value = true;
 }
@@ -209,13 +227,14 @@ function openEdit(item: NotificationTemplate) {
   editingItem.value = item;
   form.name = item.name;
   form.title = item.title;
+  form.content = item.content || '';
   formError.value = '';
   showModal.value = true;
 }
 
 async function handleSubmit() {
-  if (!form.name.trim() || !form.title.trim()) {
-    formError.value = 'Both key and title are required.';
+  if (!form.name.trim() || !form.title.trim() || !form.content.trim()) {
+    formError.value = 'Name, title, and content are all required.';
     return;
   }
   formError.value = '';
@@ -223,6 +242,7 @@ async function handleSubmit() {
   const payload = {
     name: form.name.trim().toLowerCase().replace(/\s+/g, '_'),
     title: form.title.trim(),
+    content: form.content.trim(),
   };
 
   let success = false;
@@ -243,6 +263,7 @@ async function handleSubmit() {
     showModal.value = false;
     form.name = '';
     form.title = '';
+    form.content = '';
   }
 }
 
