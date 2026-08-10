@@ -148,8 +148,8 @@ const navGroups = [
     title: 'Management',
     items: [
       { name: 'Registrations', to: '/registrations', icon: 'bi-people-fill' },
-      { name: 'Scannings', to: '/scannings', icon: 'bi-qr-code-scan' },
       { name: 'Payments', to: '/payments', icon: 'bi-credit-card-fill' },
+      { name: 'Scannings', to: '/scannings', icon: 'bi-qr-code-scan' },
       { name: 'Agents', to: '/agents', icon: 'bi-person-badge-fill' },
       {
         name: 'Notifications',
