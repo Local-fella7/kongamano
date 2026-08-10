@@ -157,7 +157,7 @@ function isSelected(day: Date) {
 }
 
 function formatAriaDate(day: Date) {
-  return day.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  return day.toLocaleDateString('en-US', { timeZone: 'Africa/Nairobi', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 async function open() {

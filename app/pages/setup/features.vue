@@ -8,7 +8,7 @@
         </div>
         <div>
           <h2 class="page-heading">System Features & Modules</h2>
-          <p class="page-subheading">Manage available module features that can be granted to user roles.</p>
+          <p class="page-subheading">Manage available module features, their group, and the actions that can be granted to user roles.</p>
         </div>
       </div>
       <button class="btn-create" @click="openCreate">
@@ -33,6 +33,8 @@
           <tr>
             <th>#</th>
             <th>Feature / Module Name</th>
+            <th>Feature Group</th>
+            <th>Actions Defined</th>
             <th>Created At</th>
             <th class="text-end">Actions</th>
           </tr>
@@ -48,9 +50,23 @@
                 <span class="fw-semibold text-slate-900">{{ item.name }}</span>
               </div>
             </td>
+            <td class="fs-7">
+              <span v-if="groupName(item.feature_group_id)" class="badge bg-green-subtle text-green-700 rounded-pill px-2-5 py-1-5 fs-8">
+                {{ groupName(item.feature_group_id) }}
+              </span>
+              <span v-else class="text-muted fs-8">— Ungrouped</span>
+            </td>
+            <td class="fs-7">
+              <span class="badge bg-slate-100 text-slate-700 rounded-pill px-2-5 py-1-5 fs-8">
+                {{ actionsForFeature(item.id).length }}
+              </span>
+            </td>
             <td class="text-muted fs-7">{{ item.created_at ? formatDate(item.created_at) : '—' }}</td>
             <td class="text-end">
               <div class="action-btns">
+                <button class="btn-icon-action btn-manage-actions" @click="openManageActions(item)" title="Manage Actions">
+                  <i class="bi bi-lightning-charge-fill"></i>
+                </button>
                 <button class="btn-icon-action btn-view" @click="openView(item)" title="View Details">
                   <i class="bi bi-eye-fill"></i>
                 </button>
@@ -67,6 +83,96 @@
       </table>
     </CommonDataTable>
 
+    <!-- Manage Actions Modal -->
+    <CommonModal
+      v-model="showActionsModal"
+      :title="`Manage Actions: ${managingFeature?.name || ''}`"
+      icon="bi-lightning-charge-fill"
+      size="md"
+    >
+      <div v-if="managingFeature">
+        <div v-if="actionsLoading" class="text-center py-4">
+          <div class="spinner-border spinner-border-sm text-success" role="status"></div>
+        </div>
+
+        <div v-else class="actions-modal-list">
+          <div v-if="actionsForFeature(managingFeature.id).length === 0" class="text-muted fs-7 text-center py-4">
+            No actions defined for this feature yet.
+          </div>
+
+          <div v-for="action in actionsForFeature(managingFeature.id)" :key="action.id" class="action-row">
+            <template v-if="editingActionId === action.id">
+              <input
+                v-model="editingActionName"
+                type="text"
+                class="form-control form-control-sm"
+                autofocus
+                @keyup.enter="saveEditAction(action)"
+                @keyup.esc="editingActionId = null"
+              />
+              <button class="btn-icon-action btn-edit" title="Save" @click="saveEditAction(action)">
+                <i class="bi bi-check-lg"></i>
+              </button>
+              <button class="btn-icon-action btn-view" title="Cancel" @click="editingActionId = null">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </template>
+            <template v-else>
+              <span class="action-name">
+                <i class="bi bi-dot"></i>{{ action.name }}
+              </span>
+              <button class="btn-icon-action btn-edit" title="Edit" @click="startEditAction(action)">
+                <i class="bi bi-pencil-fill"></i>
+              </button>
+              <button class="btn-icon-action btn-delete" title="Delete" @click="deleteAction(action)">
+                <i class="bi bi-trash-fill"></i>
+              </button>
+            </template>
+          </div>
+
+          <!-- Suggested Actions (reused from other features) -->
+          <div v-if="suggestedActionNames.length > 0" class="suggested-actions-block">
+            <div class="suggested-actions-label fs-8 text-muted">Reuse from other features</div>
+            <div class="suggested-actions-list">
+              <label
+                v-for="name in suggestedActionNames"
+                :key="name"
+                class="form-check suggested-action-item fs-7"
+              >
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  :disabled="pendingSuggestedNames.has(name)"
+                  :checked="false"
+                  @change="addSuggestedAction(managingFeature.id, name)"
+                />
+                <span class="form-check-label">{{ name }}</span>
+                <span v-if="pendingSuggestedNames.has(name)" class="spinner-border spinner-border-sm ms-1"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Add Action Row -->
+          <div class="action-row action-row--add">
+            <input
+              v-model="newActionName"
+              type="text"
+              class="form-control form-control-sm"
+              placeholder="New action name, e.g. Export, Approve..."
+              @keyup.enter="addAction(managingFeature.id)"
+            />
+            <button class="btn-icon-action btn-edit" title="Add Action" :disabled="!newActionName.trim()" @click="addAction(managingFeature.id)">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 text-end">
+          <button class="btn-cancel" @click="showActionsModal = false">Close</button>
+        </div>
+      </div>
+    </CommonModal>
+
     <!-- Create / Edit Modal -->
     <CommonModal
       v-model="showModal"
@@ -74,7 +180,7 @@
       :icon="editingItem ? 'bi-pencil-square' : 'bi-plus-circle-fill'"
     >
       <form @submit.prevent="handleSubmit">
-        <div class="mb-4">
+        <div class="mb-3">
           <label class="form-label fw-semibold text-slate-700">Feature Name <span class="text-danger">*</span></label>
           <input
             v-model="form.name"
@@ -86,6 +192,14 @@
             autofocus
           />
           <div v-if="formError" class="invalid-feedback d-block mt-1">{{ formError }}</div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-slate-700">Feature Group</label>
+          <select v-model="form.feature_group_id" class="form-select">
+            <option :value="null">— Ungrouped —</option>
+            <option v-for="g in featureGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
+          </select>
         </div>
 
         <div class="modal-footer-row">
@@ -116,6 +230,10 @@
         </div>
 
         <div class="row g-2 text-slate-700 fs-7">
+          <div class="col-6">
+            <span class="text-muted d-block fs-8">Feature Group</span>
+            <span class="fw-semibold">{{ groupName(viewingItem.feature_group_id) || '— Ungrouped' }}</span>
+          </div>
           <div class="col-6">
             <span class="text-muted d-block fs-8">Created At</span>
             <span class="fw-semibold">{{ viewingItem.created_at ? formatDate(viewingItem.created_at) : '—' }}</span>
@@ -159,12 +277,171 @@
 
 <script setup lang="ts">
 import type { Feature } from '~/types/feature';
+import type { FeatureGroup } from '~/types/feature-group';
+import type { Action } from '~/types/action';
 
 definePageMeta({ layout: 'default' });
 
+const push = usePush();
+const { executeOrQueue } = useOfflineSync();
+
 const crud = useCrudApi<Feature>({ endpoint: '/api/features', dataKey: 'features' });
 
-// Modal state
+// ── Feature Groups (for the select) ──────────────────
+const featureGroups = ref<FeatureGroup[]>([]);
+
+async function fetchFeatureGroups() {
+  try {
+    const res = await cachedFetch<any>('/api/feature-groups');
+    featureGroups.value = Array.isArray(res?.data?.feature_groups)
+      ? res.data.feature_groups
+      : (Array.isArray(res?.data) ? res.data : []);
+  } catch (err) {
+    console.error('Failed to load feature groups:', err);
+  }
+}
+
+function groupName(groupId?: number | null): string {
+  if (!groupId) return '';
+  const found = featureGroups.value.find((g) => g.id === groupId);
+  return found ? found.name : '';
+}
+
+// ── Actions (inline management per feature) ──────────
+const actions = ref<Action[]>([]);
+const actionsLoading = ref(false);
+const showActionsModal = ref(false);
+const managingFeature = ref<Feature | null>(null);
+
+async function fetchActions() {
+  actionsLoading.value = true;
+  try {
+    const res = await cachedFetch<any>('/api/actions');
+    actions.value = Array.isArray(res?.data?.actions)
+      ? res.data.actions
+      : (Array.isArray(res?.data) ? res.data : []);
+  } catch (err) {
+    console.error('Failed to load actions:', err);
+  } finally {
+    actionsLoading.value = false;
+  }
+}
+
+function actionsForFeature(featureId: number): Action[] {
+  return actions.value.filter((a) => a.feature_id === featureId);
+}
+
+const suggestedActionNames = computed<string[]>(() => {
+  if (!managingFeature.value) return [];
+  const currentNamesLower = new Set(
+    actionsForFeature(managingFeature.value.id).map((a) => a.name.trim().toLowerCase())
+  );
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const a of actions.value) {
+    const trimmed = a.name.trim();
+    const lower = trimmed.toLowerCase();
+    if (!trimmed || currentNamesLower.has(lower) || seen.has(lower)) continue;
+    seen.add(lower);
+    result.push(trimmed);
+  }
+  return result.sort((a, b) => a.localeCompare(b));
+});
+
+const pendingSuggestedNames = ref<Set<string>>(new Set());
+
+function openManageActions(feature: Feature) {
+  managingFeature.value = feature;
+  newActionName.value = '';
+  editingActionId.value = null;
+  pendingSuggestedNames.value = new Set();
+  showActionsModal.value = true;
+}
+
+const newActionName = ref('');
+
+async function createActionForFeature(featureId: number, rawName: string): Promise<boolean> {
+  const name = rawName.trim();
+  if (!name) return false;
+
+  try {
+    await executeOrQueue({
+      url: '/api/actions',
+      method: 'POST',
+      body: { feature_id: featureId, name },
+      label: `Create Action "${name}"`,
+    });
+    push.success({ title: 'Success', message: `Action "${name}" added.` });
+    await fetchActions();
+    return true;
+  } catch (err: any) {
+    push.error({ title: 'Error', message: err?.data?.message || 'Failed to add action.' });
+    return false;
+  }
+}
+
+async function addAction(featureId: number) {
+  const name = newActionName.value.trim();
+  if (!name) return;
+  if (await createActionForFeature(featureId, name)) {
+    newActionName.value = '';
+  }
+}
+
+async function addSuggestedAction(featureId: number, name: string) {
+  if (pendingSuggestedNames.value.has(name)) return;
+  pendingSuggestedNames.value.add(name);
+  pendingSuggestedNames.value = new Set(pendingSuggestedNames.value);
+  try {
+    await createActionForFeature(featureId, name);
+  } finally {
+    pendingSuggestedNames.value.delete(name);
+    pendingSuggestedNames.value = new Set(pendingSuggestedNames.value);
+  }
+}
+
+const editingActionId = ref<number | null>(null);
+const editingActionName = ref('');
+
+function startEditAction(action: Action) {
+  editingActionId.value = action.id;
+  editingActionName.value = action.name;
+}
+
+async function saveEditAction(action: Action) {
+  const name = editingActionName.value.trim();
+  if (!name) return;
+
+  try {
+    await executeOrQueue({
+      url: `/api/actions/${action.id}`,
+      method: 'PUT',
+      body: { feature_id: action.feature_id, name },
+      label: `Update Action #${action.id}`,
+    });
+    push.success({ title: 'Success', message: `Action updated to "${name}".` });
+    editingActionId.value = null;
+    await fetchActions();
+  } catch (err: any) {
+    push.error({ title: 'Error', message: err?.data?.message || 'Failed to update action.' });
+  }
+}
+
+async function deleteAction(action: Action) {
+  try {
+    await executeOrQueue({
+      url: `/api/actions/${action.id}`,
+      method: 'DELETE',
+      label: `Delete Action #${action.id}`,
+    });
+    push.success({ title: 'Deleted', message: `Action "${action.name}" removed.` });
+    await fetchActions();
+  } catch (err: any) {
+    push.error({ title: 'Error', message: err?.data?.message || 'Failed to delete action.' });
+  }
+}
+
+// ── Feature CRUD Modals ───────────────────────────────
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
@@ -177,12 +454,16 @@ function openView(item: Feature) {
   showViewModal.value = true;
 }
 
-const form = reactive({ name: '' });
+const form = reactive<{ name: string; feature_group_id: number | null }>({
+  name: '',
+  feature_group_id: null,
+});
 const formError = ref('');
 
 function openCreate() {
   editingItem.value = null;
   form.name = '';
+  form.feature_group_id = null;
   formError.value = '';
   showModal.value = true;
 }
@@ -190,6 +471,7 @@ function openCreate() {
 function openEdit(item: Feature) {
   editingItem.value = item;
   form.name = item.name;
+  form.feature_group_id = item.feature_group_id ?? null;
   formError.value = '';
   showModal.value = true;
 }
@@ -201,16 +483,21 @@ async function handleSubmit() {
   }
   formError.value = '';
 
+  const payload = {
+    name: form.name,
+    feature_group_id: form.feature_group_id,
+  };
+
   let success = false;
   if (editingItem.value) {
     success = await crud.updateItem(
       editingItem.value.id,
-      { name: form.name },
+      payload,
       `Feature "${form.name}" updated successfully.`
     );
   } else {
     success = await crud.createItem(
-      { name: form.name },
+      payload,
       `Feature "${form.name}" created successfully.`
     );
   }
@@ -240,6 +527,8 @@ async function handleDelete() {
 
 onMounted(() => {
   crud.fetchItems();
+  fetchFeatureGroups();
+  fetchActions();
 });
 </script>
 
@@ -373,6 +662,12 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.18s;
   background: transparent;
+  flex-shrink: 0;
+}
+
+.btn-icon-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-view {
@@ -391,7 +686,7 @@ onMounted(() => {
   color: var(--green-600);
 }
 
-.btn-edit:hover {
+.btn-edit:hover:not(:disabled) {
   background: var(--green-500);
   color: #fff;
 }
@@ -405,6 +700,19 @@ onMounted(() => {
   background: var(--red-500);
   color: #fff;
 }
+
+.btn-manage-actions {
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-600);
+}
+
+.btn-manage-actions:hover {
+  background: var(--slate-700);
+  color: #fff;
+  border-color: var(--slate-700);
+}
+
+.bg-slate-100 { background-color: var(--slate-100); }
 
 .modal-footer-row {
   display: flex;
@@ -472,6 +780,90 @@ onMounted(() => {
 
 .btn-danger-confirm:disabled {
   opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.bg-green-subtle { background-color: var(--green-50); }
+.text-green-700 { color: var(--green-700); }
+.px-2-5 { padding-left: 0.65rem; padding-right: 0.65rem; }
+.py-1-5 { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+
+/* ── Manage Actions Modal ──────────────────────────── */
+.actions-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-row .form-control {
+  flex: 1;
+}
+
+.action-name {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--slate-700);
+  display: flex;
+  align-items: center;
+}
+
+.action-row--add {
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+.suggested-actions-block {
+  margin-top: 0.25rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.5rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+.suggested-actions-label {
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.suggested-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 8rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.suggested-action-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: 6px;
+  color: var(--slate-700);
+  cursor: pointer;
+}
+
+.suggested-action-item:hover {
+  background: var(--green-50);
+}
+
+.suggested-action-item .form-check-input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.suggested-action-item .form-check-input:disabled {
   cursor: not-allowed;
 }
 </style>

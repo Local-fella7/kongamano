@@ -1,0 +1,1210 @@
+<template>
+  <div class="scannings-page d-flex flex-column min-vh-100">
+    <!-- Page Header -->
+    <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+      <div class="d-flex align-items-center gap-3">
+        <div class="header-icon-box">
+          <i class="bi bi-qr-code-scan"></i>
+        </div>
+        <div>
+          <h2 class="page-heading">Scannings & Check-ins</h2>
+          <p class="page-subheading">Live attendee check-in scanner and event service access logs.</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <button
+          class="btn btn-outline-primary rounded-3 py-2 px-3 fw-semibold fs-7 shadow-2xs d-flex align-items-center gap-2"
+          :disabled="!selectedEventId"
+          @click="showManualModal = true"
+        >
+          <i class="bi bi-keyboard-fill"></i>
+          <span>Manual Check-in</span>
+        </button>
+
+        <button
+          class="btn btn-emerald rounded-3 py-2 px-3 fw-bold fs-7 shadow-2xs d-flex align-items-center gap-2"
+          :disabled="!selectedEventId"
+          @click="openCameraModal"
+        >
+          <i class="bi bi-camera-fill"></i>
+          <span>Start Camera Scanner</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Standardized Data Table -->
+    <CommonDataTable
+      v-model:searchQuery="searchQuery"
+      v-model:currentPage="currentPage"
+      v-model:perPage="perPage"
+      :loading="loadingLogs"
+      :totalCount="filteredLogs.length"
+      :totalPages="totalPages"
+      :startIndex="startIndex"
+      :endIndex="endIndex"
+    >
+      <template #filters>
+        <!-- Target Event Filter Dropdown -->
+        <select
+          v-model="selectedEventId"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 220px;"
+        >
+          <option value="" disabled>Select Event to Scan...</option>
+          <option v-for="ev in activeEventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
+        </select>
+
+        <!-- Scan Type Filter Dropdown -->
+        <select
+          v-model="selectedScanTypeFilter"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 175px;"
+        >
+          <option value="">All Scan Types</option>
+          <option value="check_in">Event Check-in</option>
+          <option value="service">Service Access</option>
+          <option value="check_out">Event Check-out</option>
+        </select>
+      </template>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Attendee / Delegate</th>
+            <th>QR Code</th>
+            <th>Scan Type</th>
+            <th>Service</th>
+            <th>Scanned At</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(log, idx) in paginatedLogs" :key="log.id || idx">
+            <td class="row-index">{{ startIndex + idx }}</td>
+            <td>
+              <span class="fw-bold text-slate-900 fs-7 d-block">
+                {{ log.registration ? `${log.registration.first_name} ${log.registration.last_name}` : (log.attendee_name || 'Delegate') }}
+              </span>
+              <span class="fs-8 text-muted">{{ log.registration?.phone || '—' }}</span>
+            </td>
+            <td>
+              <code class="px-2 py-1 bg-slate-100 rounded text-slate-800 fs-8">{{ log.qr_code }}</code>
+            </td>
+            <td>
+              <span
+                class="badge rounded-pill border px-2.5 py-1 fs-8 fw-semibold"
+                :class="{
+                  'bg-purple-50 text-purple-700 border-purple-200': log.service_id || log.service || log.scan_type === 'service',
+                  'bg-rose-50 text-rose-700 border-rose-200': !log.service_id && !log.service && log.scan_type === 'check_out',
+                  'bg-emerald-50 text-emerald-700 border-emerald-200': !log.service_id && !log.service && log.scan_type !== 'check_out'
+                }"
+              >
+                {{ (log.service_id || log.service || log.scan_type === 'service') ? 'Service Scan' : (log.scan_type === 'check_out' ? 'Event Check-out' : 'Event Check-in') }}
+              </span>
+            </td>
+            <td>
+              <span class="fs-8 text-slate-700 fw-semibold">{{ log.service?.name || log.service_name || '—' }}</span>
+            </td>
+            <td>
+              <span class="fs-8 text-muted">{{ log.created_at ? formatDate(log.created_at) : '—' }}</span>
+            </td>
+            <td class="text-end">
+              <button
+                class="btn btn-outline-primary btn-sm rounded-3 fw-semibold fs-8 py-1.5 px-2.5 shadow-2xs"
+                @click="openVerifyForLog(log)"
+                title="View Verification Details"
+              >
+                <i class="bi bi-eye-fill me-1"></i> Verify
+              </button>
+            </td>
+          </tr>
+          <tr v-if="!loadingLogs && paginatedLogs.length === 0">
+            <td colspan="7" class="text-center py-4 text-muted fs-8">
+              No scan logs found matching your filters.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </CommonDataTable>
+
+    <!-- Pop-up Modal 1: Live Camera QR Scanner -->
+    <CommonModal
+      v-model="showCameraModal"
+      title="Live Camera QR Scanner"
+      icon="bi-camera-fill"
+      size="md"
+      @close="stopScanner"
+    >
+      <div class="p-1">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <span class="fs-8 fw-bold text-uppercase text-muted">Scanning Event: {{ selectedEventName }}</span>
+          <button
+            v-if="!scanningActive"
+            class="btn btn-emerald btn-sm rounded-3 fw-semibold fs-8 px-3"
+            @click="startScanner"
+          >
+            <i class="bi bi-play-fill me-1"></i> Start Camera
+          </button>
+          <button
+            v-else
+            class="btn btn-outline-danger btn-sm rounded-3 fw-semibold fs-8 px-3"
+            @click="stopScanner"
+          >
+            <i class="bi bi-stop-fill me-1"></i> Stop Camera
+          </button>
+        </div>
+
+        <div class="scanner-viewport-wrapper rounded-3 border bg-slate-900 position-relative overflow-hidden mb-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
+          <div id="qr-reader" style="width: 100%;"></div>
+          <div v-if="!scanningActive" class="text-center text-slate-400 p-4">
+            <i class="bi bi-qr-code-scan fs-1 d-block mb-2 opacity-50"></i>
+            <p class="fs-7 mb-0">Click "Start Camera" to scan attendee badges.</p>
+          </div>
+        </div>
+
+        <div v-if="scanFeedback" class="alert fs-8 py-2 px-3 mb-0 rounded-3 shadow-2xs" :class="scanFeedback.type === 'success' ? 'alert-success' : 'alert-danger'">
+          <i :class="['bi me-1.5', scanFeedback.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill']"></i>
+          {{ scanFeedback.message }}
+        </div>
+      </div>
+    </CommonModal>
+
+    <!-- Pop-up Modal 2: Manual QR Check-in -->
+    <CommonModal
+      v-model="showManualModal"
+      title="Manual QR Check-in"
+      icon="bi-keyboard-fill"
+      size="md"
+    >
+      <form @submit.prevent="handleManualCheckin">
+        <div class="mb-3">
+          <label class="form-label fs-8 fw-bold text-uppercase text-muted">QR Code / Registration ID</label>
+          <input
+            v-model="manualQrCode"
+            type="text"
+            class="form-control form-control-sm rounded-3 py-2"
+            placeholder="e.g. REG-1-TEST001"
+            :disabled="submitting"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fs-8 fw-bold text-uppercase text-muted">Scan Type</label>
+          <select v-model="scanType" class="form-select form-select-sm rounded-3 py-2">
+            <option value="check_in">Event Check-in</option>
+            <option value="service">Service Access</option>
+          </select>
+        </div>
+
+        <div v-if="scanType === 'service'" class="mb-3">
+          <label class="form-label fs-8 fw-bold text-uppercase text-muted">Service</label>
+          <select v-model.number="selectedServiceId" class="form-select form-select-sm rounded-3 py-2" required>
+            <option value="" disabled>Select service...</option>
+            <option v-for="s in servicesList" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary btn-sm rounded-3 px-3 py-2 fw-semibold fs-7" @click="showManualModal = false">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-emerald btn-sm rounded-3 px-4 py-2 fw-semibold fs-7 shadow-2xs"
+            :disabled="submitting"
+          >
+            <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+            Process Check-in
+          </button>
+        </div>
+      </form>
+    </CommonModal>
+
+    <!-- Pop-up Modal 3: Attendee Scan Verification -->
+    <CommonModal
+      v-model="showResultModal"
+      title="Attendee Scan Verification"
+      icon="bi-patch-check-fill"
+      size="md"
+    >
+      <div v-if="scannedAttendee" class="p-1">
+        <!-- Event Name Banner -->
+        <div class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 mb-3 text-center">
+          <span class="fs-8 text-uppercase text-emerald-700 fw-bold d-block tracking-wider">Target Event</span>
+          <h5 class="fw-extrabold text-slate-900 mb-0 fs-6 mt-0.5">{{ selectedEventName }}</h5>
+        </div>
+
+        <!-- Delegate Information -->
+        <div class="d-flex align-items-center flex-wrap gap-2 gap-sm-3 p-3 bg-light rounded-3 border mb-3">
+          <div class="avatar-circle-lg bg-emerald-500 text-white fw-bold fs-5 shadow-2xs d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; border-radius: 50%;">
+            {{ scannedAttendee.first_name?.[0] || 'D' }}{{ scannedAttendee.last_name?.[0] || '' }}
+          </div>
+          <div class="flex-grow-1">
+            <h6 class="fw-bold text-slate-900 mb-0 fs-6">{{ scannedAttendee.first_name }} {{ scannedAttendee.last_name }}</h6>
+            <div class="d-flex align-items-center flex-wrap gap-1 gap-sm-2 fs-8 text-muted mt-0.5">
+              <span><i class="bi bi-phone me-1"></i>{{ scannedAttendee.phone || 'No phone' }}</span>
+              <span class="d-none d-sm-inline">•</span>
+              <code class="d-inline-block">{{ scannedAttendee.qr_code || scannedQrCode }}</code>
+            </div>
+          </div>
+          <div class="w-100 w-sm-auto mt-1 mt-sm-0">
+            <span v-if="isAttendeeCheckedOutToday" class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
+              <i class="bi bi-door-closed-fill me-1"></i> Checked Out Today
+            </span>
+            <span v-else-if="isAttendeeCheckedIn" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
+              <i class="bi bi-check-circle-fill me-1"></i> Checked In
+            </span>
+            <span v-else class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
+              <i class="bi bi-clock-history me-1"></i> Not Checked In Today
+            </span>
+          </div>
+        </div>
+
+        <!-- Sequential Action Card (Check-in or Current Active Service) -->
+        <div class="mb-3">
+          <!-- Option EXPIRED: Event Completed → QR Code Disabled -->
+          <div v-if="isSelectedEventCompleted" class="p-3 bg-danger-subtle rounded-3 border border-danger-subtle text-center">
+            <i class="bi bi-slash-circle-fill text-danger fs-2 d-block mb-1"></i>
+            <h6 class="fw-bold text-danger fs-7 mb-1">QR Code Disabled (Event Ended)</h6>
+            <p class="fs-8 text-muted mb-0">
+              This QR code badge belongs to <strong>{{ selectedEventName }}</strong> which has already ended. Check-ins and service claims are disabled for completed events.
+            </p>
+          </div>
+
+          <!-- Option A: Not Checked In Right Now (First Check-in OR Re-entry Check-in) -->
+          <div v-else-if="!isAttendeeCheckedIn" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
+            <div v-if="isReentryToday" class="alert alert-warning py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-triangle-fill fs-6 text-amber-600"></i>
+              <span><strong>Re-Entry Alert:</strong> This delegate has already checked in earlier today and is checking in again.</span>
+            </div>
+
+            <h6 class="fw-bold text-slate-900 fs-7 mb-1">
+              {{ isReentryToday ? 'Re-Entry Check-in Required' : 'Today\'s Event Entry Check-in' }}
+            </h6>
+            <p class="fs-8 text-muted mb-3">
+              {{ isReentryToday ? 'Delegate checked out earlier today. Confirm re-entry check-in to unlock services.' : 'Record event entry check-in for today before claiming services.' }}
+            </p>
+
+            <button
+              type="button"
+              class="btn btn-emerald btn-md w-100 rounded-3 py-2 fw-bold shadow-2xs"
+              @click="confirmEventCheckIn"
+            >
+              <i class="bi bi-qr-code-scan me-1.5"></i> {{ isReentryToday ? 'Confirm Re-Entry & Check-in' : 'Confirm Entry & Check-in Today' }}
+            </button>
+          </div>
+
+          <!-- Option B: Currently Checked-in → Show Next Active Service Card (No Check-In button!) -->
+          <div v-else-if="activeCurrentService" class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle">
+            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
+              <span>Notice: This person has checked in again today (Re-entered).</span>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fs-8 text-uppercase fw-bold text-primary tracking-wider">Active Service Window</span>
+              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-700 border fs-8">
+                <i class="bi bi-clock me-1"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
+              </span>
+            </div>
+            <h5 class="fw-extrabold text-slate-900 fs-6 mb-1">{{ activeCurrentService.name }}</h5>
+            <p class="fs-8 text-muted mb-3">{{ activeCurrentService.description || 'Scan to claim service privilege.' }}</p>
+            
+            <div class="d-flex flex-column gap-2">
+              <button
+                type="button"
+                class="btn btn-primary btn-md w-100 rounded-3 py-2 fw-bold shadow-2xs"
+                :disabled="claimingServiceId === activeCurrentService.id"
+                @click="claimService(activeCurrentService.id)"
+              >
+                <span v-if="claimingServiceId === activeCurrentService.id" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-gift-fill me-1.5"></i> Claim & Record Service Access
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-outline-danger btn-sm w-100 rounded-3 py-1.5 fw-semibold fs-8"
+                @click="confirmEventCheckOut"
+              >
+                <i class="bi bi-door-closed me-1"></i> Check-Out Delegate
+              </button>
+            </div>
+          </div>
+
+          <!-- Option C: All active services claimed today -->
+          <div v-else-if="areAllServicesClaimedToday" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
+            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
+              <span>Notice: This person has checked in again today (Re-entered).</span>
+            </div>
+
+            <i class="bi bi-check-circle-fill text-emerald-600 fs-2 d-block mb-1"></i>
+            <h6 class="fw-bold text-slate-900 fs-7 mb-1">All Services Claimed For Today!</h6>
+            <p class="fs-8 text-muted mb-3">All scheduled services for today have been claimed by this attendee.</p>
+            
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm w-100 rounded-3 py-1.5 fw-semibold fs-8"
+              @click="confirmEventCheckOut"
+            >
+              <i class="bi bi-door-closed me-1"></i> Check-Out Delegate
+            </button>
+          </div>
+
+          <!-- Option D: Checked in, but no active service in current time window right now -->
+          <div v-else class="p-3 bg-light rounded-3 border text-center">
+            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
+              <span>Notice: This person has checked in again today (Re-entered).</span>
+            </div>
+
+            <i class="bi bi-clock-history text-amber-500 fs-2 d-block mb-1"></i>
+            <h6 class="fw-bold text-slate-900 fs-7 mb-1">No Active Service Right Now</h6>
+            <p class="fs-8 text-muted mb-3">Delegate is checked in today. No scannable service is active in this current time window.</p>
+            
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm w-100 rounded-3 py-1.5 fw-semibold fs-8"
+              @click="confirmEventCheckOut"
+            >
+              <i class="bi bi-door-closed me-1"></i> Check-Out Delegate
+            </button>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-3 border-top pt-3">
+          <button type="button" class="btn btn-outline-secondary btn-sm rounded-3 px-4 py-2 fw-semibold fs-7" @click="showResultModal = false">
+            Close Scanner
+          </button>
+        </div>
+      </div>
+    </CommonModal>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { Html5Qrcode } from 'html5-qrcode';
+import { isActiveOrScheduledEvent } from '~/utils/eventDate';
+
+const { executeOrQueue } = useOfflineSync();
+const push = usePush();
+const token = useCookie<string | null>('token');
+
+const eventsList = ref<any[]>([]);
+const servicesList = ref<any[]>([]);
+const selectedEventId = ref<number | string>('');
+
+// Only active & scheduled events for scanning selection
+const activeEventsList = computed(() => {
+  return eventsList.value.filter(isActiveOrScheduledEvent);
+});
+
+// Modal visibility states
+const showCameraModal = ref(false);
+const showManualModal = ref(false);
+const showResultModal = ref(false);
+
+const scannedAttendee = ref<any>(null);
+const scannedQrCode = ref<string>('');
+const claimingServiceId = ref<number | string | null>(null);
+
+// Filters & Pagination
+const searchQuery = ref('');
+const selectedScanTypeFilter = ref('');
+const currentPage = ref(1);
+const perPage = ref(10);
+
+const selectedEventName = computed(() => {
+  const ev = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
+  return ev?.name || `Event #${selectedEventId.value}`;
+});
+
+const isSelectedEventCompleted = computed(() => {
+  const ev = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
+  return ev ? !isActiveOrScheduledEvent(ev) : false;
+});
+
+// Daily helper function (EAT timezone YYYY-MM-DD)
+function getTodayDateStr(): string {
+  const d = new Date();
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }); // YYYY-MM-DD format
+}
+
+// Get all logs for current scanned attendee sorted newest first
+const attendeeTodayLogs = computed(() => {
+  const regId = scannedAttendee.value?.id;
+  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  if (!realQr && !regId) return [];
+  const todayStr = getTodayDateStr();
+
+  const filtered = logs.value.filter((l: any) => {
+    const logQr = l.qr_code || l.registration?.qr_code || '';
+    const logRegId = l.registration_id || l.registration?.id;
+    const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
+    if (!matchesAttendee) return false;
+
+    // Filter by today's date in EAT
+    if (l.created_at) {
+      let parseable = String(l.created_at).trim().replace(' ', 'T');
+      if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+        parseable += 'Z';
+      }
+      const logDateStr = new Date(parseable).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      return logDateStr === todayStr;
+    }
+    return true;
+  });
+
+  return filtered.sort((a: any, b: any) => {
+    const parseTime = (val: any) => {
+      if (!val) return 0;
+      let p = String(val).trim().replace(' ', 'T');
+      if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
+      return new Date(p).getTime();
+    };
+    const timeA = a.created_at ? parseTime(a.created_at) : (Number(a.id) || 999999999);
+    const timeB = b.created_at ? parseTime(b.created_at) : (Number(b.id) || 999999999);
+    return timeB - timeA;
+  });
+});
+
+// Attendee is checked in TODAY if they have a check_in scan today AND their latest scan today is NOT a check_out
+const isAttendeeCheckedIn = computed(() => {
+  const logsToday = attendeeTodayLogs.value;
+  if (logsToday.length === 0) return false;
+
+  const latestScan = logsToday[0];
+  if (latestScan?.scan_type === 'check_out') {
+    return false; // Checked out today → requires new check-in!
+  }
+
+  return logsToday.some((l: any) => l.scan_type === 'check_in' || !l.service_id);
+});
+
+// Check if attendee is currently checked out today
+const isAttendeeCheckedOutToday = computed(() => {
+  const logsToday = attendeeTodayLogs.value;
+  return logsToday.length > 0 && logsToday[0]?.scan_type === 'check_out';
+});
+
+// Number of event entry check-ins recorded for this attendee today (excluding service claims)
+const checkInCountToday = computed(() => {
+  return attendeeTodayLogs.value.filter((l: any) => l.scan_type === 'check_in' && !l.service_id && !l.service).length;
+});
+
+// Check if attendee has checked in multiple times or checked out and is re-entering today
+const isReentryToday = computed(() => {
+  return checkInCountToday.value > 1 || (checkInCountToday.value >= 1 && isAttendeeCheckedOutToday.value);
+});
+
+// Filter services:
+const availableScannableServices = computed(() => {
+  if (!scannedQrCode.value && !scannedAttendee.value?.id) return [];
+  const now = new Date();
+  const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+  return servicesList.value.filter((srv: any) => {
+    const requiresScan = srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined;
+    if (!requiresScan) return false;
+
+    const regId = scannedAttendee.value?.id;
+    const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
+    const todayStr = getTodayDateStr();
+    const alreadyClaimed = logs.value.some((l: any) => {
+      const logQr = l.qr_code || l.registration?.qr_code || '';
+      const logRegId = l.registration_id || l.registration?.id;
+      const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
+      const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
+
+      let isToday = true;
+      if (l.created_at) {
+        let p = String(l.created_at).trim().replace(' ', 'T');
+        if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
+        const logDateStr = new Date(p).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+        isToday = logDateStr === todayStr;
+      }
+      return matchesAttendee && matchesService && isToday;
+    });
+    if (alreadyClaimed) return false;
+
+    if (srv.start_time && srv.end_time) {
+      if (currentTimeStr < srv.start_time || currentTimeStr > srv.end_time) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+});
+
+const activeCurrentService = computed(() => {
+  return availableScannableServices.value[0] || null;
+});
+
+const areAllServicesClaimedToday = computed(() => {
+  if (servicesList.value.length === 0) return false;
+  const regId = scannedAttendee.value?.id;
+  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  const todayStr = getTodayDateStr();
+
+  const scannableServices = servicesList.value.filter((srv: any) =>
+    srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined
+  );
+  if (scannableServices.length === 0) return false;
+
+  return scannableServices.every((srv: any) => {
+    return logs.value.some((l: any) => {
+      const logQr = l.qr_code || l.registration?.qr_code || '';
+      const logRegId = l.registration_id || l.registration?.id;
+      const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
+      const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
+      let isToday = true;
+      if (l.created_at) {
+        let p = String(l.created_at).trim().replace(' ', 'T');
+        if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
+        const logDateStr = new Date(p).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+        isToday = logDateStr === todayStr;
+      }
+      return matchesAttendee && matchesService && isToday;
+    });
+  });
+});
+
+async function claimService(serviceId: number | string) {
+  if (!selectedEventId.value) return;
+  const realQrCode = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  if (!realQrCode) return;
+  claimingServiceId.value = serviceId;
+  try {
+    await processScan(realQrCode, 'service', serviceId);
+    showResultModal.value = false;
+  } finally {
+    claimingServiceId.value = null;
+  }
+}
+
+async function confirmEventCheckIn() {
+  if (!selectedEventId.value) return;
+  const realQrCode = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  if (!realQrCode) return;
+  try {
+    await processScan(realQrCode, 'check_in');
+    showResultModal.value = true;
+  } catch {
+    // Handled in processScan
+  }
+}
+
+async function confirmEventCheckOut() {
+  if (!selectedEventId.value) return;
+  const realQrCode = scannedAttendee.value?.qr_code || scannedQrCode.value;
+  if (!realQrCode) return;
+  try {
+    await processScan(realQrCode, 'check_out');
+    showResultModal.value = false;
+  } catch {
+    // Handled in processScan
+  }
+}
+
+// Scanner state
+const scanningActive = ref(false);
+let html5QrcodeScanner: Html5Qrcode | null = null;
+const scanFeedback = ref<{ type: 'success' | 'error'; message: string } | null>(null);
+
+// Scanner throttling
+const lastScannedCode = ref<string>('');
+const isProcessingScan = ref(false);
+
+// Manual entry state
+const manualQrCode = ref('');
+const scanType = ref<'check_in' | 'service'>('check_in');
+const selectedServiceId = ref<number | string>('');
+const submitting = ref(false);
+
+// Logs
+const logs = ref<any[]>([]);
+const loadingLogs = ref(false);
+
+// Table Filtered & Paginated List
+const filteredLogs = computed(() => {
+  let list = logs.value;
+
+  if (selectedScanTypeFilter.value) {
+    if (selectedScanTypeFilter.value === 'service') {
+      list = list.filter((l: any) => l.service_id || l.service || l.scan_type === 'service');
+    } else {
+      list = list.filter((l: any) => !l.service_id && !l.service && l.scan_type === selectedScanTypeFilter.value);
+    }
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    list = list.filter((l: any) => {
+      const name = `${l.registration?.first_name || ''} ${l.registration?.last_name || ''} ${l.attendee_name || ''}`.toLowerCase();
+      const phone = (l.registration?.phone || '').toLowerCase();
+      const qr = (l.qr_code || '').toLowerCase();
+      return name.includes(q) || phone.includes(q) || qr.includes(q);
+    });
+  }
+
+  return list;
+});
+
+const totalPages = computed(() => Math.ceil(filteredLogs.value.length / perPage.value) || 1);
+const startIndex = computed(() => (currentPage.value - 1) * perPage.value + 1);
+const endIndex = computed(() => Math.min(currentPage.value * perPage.value, filteredLogs.value.length));
+
+const paginatedLogs = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredLogs.value.slice(start, start + perPage.value);
+});
+
+watch(selectedEventId, async (newEvId) => {
+  if (newEvId) {
+    await fetchLogs();
+    await fetchServices();
+  }
+});
+
+const route = useRoute();
+
+async function openVerificationForQr(qrCode: string) {
+  let cleanCode = qrCode.trim();
+  if (cleanCode.includes('?code=')) {
+    const urlParts = cleanCode.split('?code=');
+    if (urlParts[1]) {
+      cleanCode = decodeURIComponent(urlParts[1].split('&')[0]);
+    }
+  }
+
+  scannedQrCode.value = cleanCode;
+
+  // 1. Discover delegate & auto-discover event ID
+  const attendeeData = await findAttendeeByQrCode(cleanCode);
+  if (attendeeData?.event_id) {
+    selectedEventId.value = Number(attendeeData.event_id);
+  }
+
+  // 2. Strict sequential resolution: await services & fresh logs BEFORE showing modal
+  await fetchServices();
+  await fetchLogsForce();
+
+  scannedAttendee.value = attendeeData || {
+    first_name: 'Registered',
+    last_name: 'Delegate',
+    phone: '',
+    qr_code: cleanCode,
+  };
+
+  showCameraModal.value = false;
+  showResultModal.value = true;
+}
+
+async function handleScannedUrlCode() {
+  const code = route.query.code;
+  if (!code) return;
+  await openVerificationForQr(String(code));
+}
+
+watch(
+  () => route.query.code,
+  async (newCode) => {
+    if (newCode) {
+      await handleScannedUrlCode();
+    }
+  }
+);
+
+onMounted(async () => {
+  await fetchEvents();
+  await fetchServices();
+  if (route.query.code) {
+    const codeFromUrl = String(route.query.code);
+    const eventIdMatch = codeFromUrl.match(/^REG-(\d+)-/i);
+    if (eventIdMatch && eventIdMatch[1]) {
+      selectedEventId.value = Number(eventIdMatch[1]);
+    }
+    await fetchLogsForce();
+  }
+  await handleScannedUrlCode();
+});
+
+onBeforeUnmount(() => {
+  stopScanner();
+});
+
+async function fetchEvents() {
+  try {
+    const res = await cachedFetch<any>('/api/events');
+    eventsList.value = Array.isArray(res?.data?.events) ? res.data.events : (Array.isArray(res?.data) ? res.data : []);
+    if (activeEventsList.value.length > 0 && !selectedEventId.value) {
+      selectedEventId.value = activeEventsList.value[0].id;
+    } else if (eventsList.value.length > 0 && !selectedEventId.value) {
+      selectedEventId.value = eventsList.value[0].id;
+    }
+  } catch (err) {
+    console.error('Failed to fetch events:', err);
+  }
+}
+
+async function fetchServices() {
+  try {
+    const url = selectedEventId.value ? `/api/services?event_id=${selectedEventId.value}` : '/api/services';
+    const res = await cachedFetch<any>(url);
+    servicesList.value = Array.isArray(res?.data?.services) ? res.data.services : (Array.isArray(res?.data) ? res.data : []);
+  } catch (err) {
+    console.error('Failed to fetch services:', err);
+  }
+}
+
+async function fetchLogs() {
+  if (!selectedEventId.value) return;
+  loadingLogs.value = true;
+  try {
+    let res: any;
+    try {
+      res = await cachedFetch<any>(`/api/scannings?event_id=${selectedEventId.value}`);
+    } catch {
+      res = await cachedFetch<any>(`/api/events/${selectedEventId.value}/scannings`);
+    }
+    logs.value = Array.isArray(res?.data?.scannings) ? res.data.scannings : (Array.isArray(res?.data) ? res.data : []);
+  } catch (err) {
+    logs.value = [];
+  } finally {
+    loadingLogs.value = false;
+  }
+}
+
+async function fetchLogsForce() {
+  if (!selectedEventId.value) return;
+  try {
+    const res = await $fetch<any>(`/api/scannings?event_id=${selectedEventId.value}`, {
+      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+    });
+    logs.value = Array.isArray(res?.data?.scannings) ? res.data.scannings : (Array.isArray(res?.data) ? res.data : []);
+  } catch {
+    // Fallback
+  }
+}
+
+function openCameraModal() {
+  showCameraModal.value = true;
+  startScanner();
+}
+
+async function openVerifyForLog(log: any) {
+  if (log.qr_code) {
+    await openVerificationForQr(log.qr_code);
+  }
+}
+
+async function findAttendeeByQrCode(qrCode: string): Promise<any> {
+  const cleanCode = qrCode.trim();
+  const prefixMatch = cleanCode.match(/^REG-(\d+)-/i);
+  if (prefixMatch && prefixMatch[1]) {
+    selectedEventId.value = Number(prefixMatch[1]);
+  }
+
+  // 1. Try finding in current selected event
+  if (selectedEventId.value) {
+    try {
+      const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+      });
+      const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
+      const found = regList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+      if (found) {
+        if (found.event_id) {
+          selectedEventId.value = Number(found.event_id);
+        }
+        await fetchServices();
+        await fetchLogsForce();
+        return found;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  // 2. Fallback: Search globally across all registrations to auto-discover delegate's event_id
+  try {
+    const globalRes = await $fetch<any>('/api/registrations', {
+      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+    });
+    const globalList = Array.isArray(globalRes?.data?.registrations) ? globalRes.data.registrations : (Array.isArray(globalRes?.data) ? globalRes.data : []);
+    const foundGlobal = globalList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+    if (foundGlobal) {
+      if (foundGlobal.event_id) {
+        selectedEventId.value = Number(foundGlobal.event_id);
+      }
+      await fetchServices();
+      await fetchLogsForce();
+      return foundGlobal;
+    }
+  } catch {
+    // Fallback
+  }
+
+  if (selectedEventId.value) {
+    await fetchServices();
+    await fetchLogsForce();
+  }
+
+  return null;
+}
+
+async function startScanner() {
+  if (!selectedEventId.value) return;
+  scanFeedback.value = null;
+  lastScannedCode.value = '';
+  isProcessingScan.value = false;
+
+  if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    scanFeedback.value = {
+      type: 'error',
+      message: 'Mobile browsers require HTTPS for camera access. Please open the site over HTTPS or localhost.',
+    };
+    return;
+  }
+
+  try {
+    if (!html5QrcodeScanner) {
+      html5QrcodeScanner = new Html5Qrcode('qr-reader');
+    }
+    scanningActive.value = true;
+
+    let cameraConfig: any = { facingMode: 'environment' };
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        const backCamera = devices.find(d => /back|rear|environment/i.test(d.label));
+        cameraConfig = backCamera ? backCamera.id : devices[devices.length - 1].id;
+      }
+    } catch {
+      // Fallback
+    }
+
+    const config = {
+      fps: 10,
+      qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+        const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+        const boxSize = Math.max(160, Math.floor(minDim * 0.75));
+        return { width: boxSize, height: boxSize };
+      },
+    };
+
+    await html5QrcodeScanner.start(
+      cameraConfig,
+      config,
+      async (decodedText) => {
+        if (isProcessingScan.value || decodedText === lastScannedCode.value) return;
+        lastScannedCode.value = decodedText;
+        isProcessingScan.value = true;
+
+        try {
+          await openVerificationForQr(decodedText);
+        } finally {
+          setTimeout(() => {
+            isProcessingScan.value = false;
+            lastScannedCode.value = '';
+          }, 3000);
+        }
+      },
+      () => {}
+    );
+  } catch (err: any) {
+    console.error('Failed to start camera scanner:', err);
+    scanningActive.value = false;
+    const isHttp = typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost';
+    scanFeedback.value = {
+      type: 'error',
+      message: isHttp
+        ? 'Camera access is blocked by mobile browsers over unencrypted HTTP. Access via HTTPS or localhost.'
+        : (err?.message || 'Camera permission denied or camera not available.'),
+    };
+  }
+}
+
+async function stopScanner() {
+  if (html5QrcodeScanner && scanningActive.value) {
+    try {
+      await html5QrcodeScanner.stop();
+      html5QrcodeScanner.clear();
+    } catch (err) {
+      console.error('Error stopping camera:', err);
+    } finally {
+      html5QrcodeScanner = null;
+      scanningActive.value = false;
+    }
+  }
+}
+
+async function processScan(rawScannedText: string, type: 'check_in' | 'service' | 'check_out', serviceId?: number | string) {
+  let qrCode = rawScannedText.trim();
+  if (qrCode.includes('?code=')) {
+    const urlParts = qrCode.split('?code=');
+    if (urlParts[1]) {
+      qrCode = decodeURIComponent(urlParts[1].split('&')[0]);
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(qrCode);
+    if (parsed && typeof parsed === 'object') {
+      qrCode = parsed.qr_code || parsed.code || (parsed.id ? `REG-${parsed.event_id || selectedEventId.value}-${parsed.id}` : rawScannedText);
+    }
+  } catch {
+    const len = qrCode.length;
+    if (len > 4 && len % 2 === 0) {
+      const half1 = qrCode.substring(0, len / 2);
+      const half2 = qrCode.substring(len / 2);
+      if (half1 === half2) {
+        qrCode = half1;
+      }
+    }
+  }
+
+  const matchedReg = await findAttendeeByQrCode(qrCode);
+  if (matchedReg?.event_id) {
+    selectedEventId.value = Number(matchedReg.event_id);
+  } else if (scannedAttendee.value?.event_id) {
+    selectedEventId.value = Number(scannedAttendee.value.event_id);
+  }
+  if (matchedReg?.qr_code) {
+    qrCode = matchedReg.qr_code;
+  }
+
+  if (!selectedEventId.value) return;
+
+  const validBackendScanType = type === 'check_out' ? 'check_out' : 'check_in';
+  const bodyPayload: Record<string, any> = {
+    qr_code: qrCode,
+    scan_type: validBackendScanType,
+    event_id: Number(selectedEventId.value),
+  };
+  if (serviceId) {
+    bodyPayload.service_id = parseInt(String(serviceId), 10);
+  }
+
+  const globalPayload: Record<string, any> = {
+    ...bodyPayload,
+    event_id: Number(selectedEventId.value),
+  };
+
+  try {
+    let res: any;
+    try {
+      res = await $fetch<any>(`/api/events/${selectedEventId.value}/scannings`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+        body: bodyPayload,
+      });
+    } catch (primaryErr: any) {
+      try {
+        res = await $fetch<any>('/api/scannings', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+          body: globalPayload,
+        });
+      } catch (fallbackErr: any) {
+        throw primaryErr || fallbackErr;
+      }
+    }
+
+    const currentEventObj = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
+    const eventName = currentEventObj?.name || `Event #${selectedEventId.value}`;
+
+    let attendeeData = res?.data?.registration || res?.registration || res?.data?.attendee;
+    if (!attendeeData || !attendeeData.first_name) {
+      try {
+        const regRes = await cachedFetch<any>(`/api/registrations?event_id=${selectedEventId.value}`);
+        const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
+        attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
+      } catch {
+        // Fallback
+      }
+    }
+
+    if (!attendeeData) {
+      attendeeData = {
+        first_name: 'Registered',
+        last_name: 'Delegate',
+        phone: '',
+        qr_code: qrCode,
+      };
+    }
+
+    scannedAttendee.value = attendeeData;
+    scannedQrCode.value = qrCode;
+
+    const scanLabel = type === 'check_out' ? 'Check-out' : (type === 'service' ? 'Service access' : 'Check-in');
+    scanFeedback.value = {
+      type: 'success',
+      message: `${scanLabel} recorded for QR code ${qrCode} at ${eventName}`,
+    };
+    if (res?.queued) {
+      push.success({ title: 'Queued', message: `${scanLabel} for ${eventName} queued for sync.` });
+    } else {
+      push.success({ title: 'Success', message: `${scanLabel} for ${eventName} processed successfully!` });
+    }
+
+    logs.value = [
+      {
+        qr_code: qrCode,
+        scan_type: type,
+        service_id: serviceId ? Number(serviceId) : null,
+        event_id: Number(selectedEventId.value),
+        created_at: new Date().toISOString(),
+      },
+      ...logs.value,
+    ];
+
+    await fetchLogsForce();
+  } catch (err: any) {
+    console.error('Scan processing error:', err);
+    const serverErr = err?.data?.errors
+      ? (typeof err.data.errors === 'object' ? Object.values(err.data.errors).flat().join(', ') : JSON.stringify(err.data.errors))
+      : null;
+    const rawMsg = serverErr || err?.data?.message || err?.data?.error || err?.message;
+    const msg = typeof rawMsg === 'string' ? rawMsg : 'Check-in scan failed. Please verify QR code or attendee registration.';
+    scanFeedback.value = { type: 'error', message: msg };
+    push.error({ title: 'Scan Validation Error', message: msg });
+  }
+}
+
+async function handleManualCheckin() {
+  if (!manualQrCode.value.trim()) return;
+  submitting.value = true;
+  try {
+    await processScan(manualQrCode.value.trim(), scanType.value, selectedServiceId.value);
+    manualQrCode.value = '';
+    showManualModal.value = false;
+    showResultModal.value = true;
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return '—';
+  try {
+    let parseable = dateStr.trim().replace(' ', 'T');
+    if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+      parseable += 'Z';
+    }
+    const d = new Date(parseable);
+    if (Number.isNaN(d.getTime())) return dateStr;
+
+    return d.toLocaleString('en-KE', {
+      timeZone: 'Africa/Nairobi',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return dateStr;
+  }
+}
+</script>
+
+<style scoped>
+.page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--slate-900);
+  margin-bottom: 0.15rem;
+}
+
+.page-subheading {
+  font-size: 0.85rem;
+  color: var(--slate-600);
+  margin-bottom: 0;
+}
+
+.header-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--green-50);
+  color: var(--green-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: inset 0 0 0 1px rgba(46, 125, 34, 0.15);
+}
+
+.bg-emerald-50 { background-color: #ecfdf5; }
+.text-emerald-600 { color: #059669; }
+.text-emerald-700 { color: #047857; }
+.bg-emerald-500 { background-color: #10b981; }
+
+.bg-blue-50 { background-color: #eff6ff; }
+.text-blue-600 { color: #2563eb; }
+
+.bg-purple-50 { background-color: #faf5ff; }
+.text-purple-600 { color: #9333ea; }
+.text-purple-700 { color: #7e22ce; }
+.border-purple-200 { border-color: #e9d5ff !important; }
+.border-emerald-200 { border-color: #a7f3d0 !important; }
+
+.bg-rose-50 { background-color: #fff1f2; }
+.text-rose-700 { color: #be123c; }
+.border-rose-200 { border-color: #fecdd3 !important; }
+
+.btn-emerald {
+  background-color: var(--green-500);
+  color: #ffffff;
+  border: none;
+}
+
+.btn-emerald:hover:not(:disabled) {
+  background-color: var(--green-600);
+  color: #ffffff;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table thead tr {
+  background: var(--green-50);
+  border-bottom: 1.5px solid var(--green-100);
+}
+
+.data-table th {
+  padding: 0.85rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--green-700);
+}
+
+.data-table td {
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  color: var(--slate-700);
+  vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+  background: var(--green-50);
+}
+
+.row-index {
+  color: var(--slate-300);
+  font-size: 0.8rem;
+  width: 40px;
+}
+</style>

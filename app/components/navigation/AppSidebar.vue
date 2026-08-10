@@ -149,6 +149,7 @@ const navGroups = [
     items: [
       { name: 'Registrations', to: '/registrations', icon: 'bi-people-fill' },
       { name: 'Payments', to: '/payments', icon: 'bi-credit-card-fill' },
+      { name: 'Scannings', to: '/scannings', icon: 'bi-qr-code-scan' },
       { name: 'Agents', to: '/agents', icon: 'bi-person-badge-fill' },
       {
         name: 'Notifications',
@@ -175,8 +176,9 @@ const navGroups = [
           { name: 'Services', to: '/setup/services', icon: 'bi-lightning-fill' },
           { name: 'Accommodations', to: '/setup/accommodations', icon: 'bi-building' },
           { name: 'Notification Templates', to: '/setup/notification-templates', icon: 'bi-bell-fill' },
+          { name: 'Feature Groups', to: '/setup/feature-groups', icon: 'bi-diagram-3-fill' },
           { name: 'Features', to: '/setup/features', icon: 'bi-toggles' },
-          { name: 'Role Features', to: '/setup/role-features', icon: 'bi-key-fill' },
+          { name: 'Role Permissions', to: '/setup/role-features', icon: 'bi-key-fill' },
         ],
       },
     ],

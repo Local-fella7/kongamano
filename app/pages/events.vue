@@ -129,6 +129,17 @@
                     </span>
                   </div>
 
+                  <!-- Price Row -->
+                  <div class="d-flex align-items-center justify-content-between gap-2 mb-2 text-slate-700 fs-7">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-cash-stack text-success fs-7"></i>
+                      <span class="text-muted fs-8">Fee / Price:</span>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fs-8 fw-bold">
+                      TZS {{ Number(event.price || 0).toLocaleString('en-US') }}
+                    </span>
+                  </div>
+
                   <!-- Location Row -->
                   <div class="d-flex align-items-center justify-content-between gap-2 text-slate-700 fs-7">
                     <div class="d-flex align-items-center gap-2">
@@ -276,9 +287,9 @@
           />
         </div>
 
-        <!-- Row 2: Location / Venue & Event Type Side-by-Side (50% / 50%) -->
+        <!-- Row 2: Location / Venue, Event Type & Price Side-by-Side -->
         <div class="row g-3 mb-3">
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-4">
             <label class="form-label fw-semibold text-slate-700">Location / Venue</label>
             <input
               v-model="form.location"
@@ -287,12 +298,24 @@
               placeholder="e.g. Main Auditorium, City Hall"
             />
           </div>
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-4">
             <label class="form-label fw-semibold text-slate-700">Event Type <span class="text-danger">*</span></label>
             <select v-model.number="form.event_type_id" class="form-select py-2 rounded-3" required>
               <option value="" disabled>Select event type...</option>
               <option v-for="t in eventTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold text-slate-700">Event Price (TZS) <span class="text-danger">*</span></label>
+            <input
+              v-model.number="form.price"
+              type="number"
+              min="0"
+              step="100"
+              class="form-control py-2 rounded-3 fw-bold"
+              placeholder="e.g. 50000"
+              required
+            />
           </div>
         </div>
 
@@ -764,6 +787,7 @@ const form = reactive({
   start_date: '',
   end_date: '',
   description: '',
+  price: 0,
 });
 const formError = ref('');
 
@@ -932,6 +956,7 @@ function openCreateModal() {
   form.start_date = new Date().toISOString().split('T')[0];
   form.end_date = new Date().toISOString().split('T')[0];
   form.description = '';
+  form.price = 0;
   formError.value = '';
   showModal.value = true;
 }
@@ -954,6 +979,7 @@ function openEdit(item: Event) {
   form.start_date = startDateStr ? startDateStr.split(' ')[0].split('T')[0] : '';
   form.end_date = endDateStr ? endDateStr.split(' ')[0].split('T')[0] : '';
   form.description = item.description || '';
+  form.price = Number(item.price || 0);
   formError.value = '';
   showModal.value = true;
 }
@@ -978,16 +1004,14 @@ async function handleSubmit() {
   }
 
   formError.value = '';
-  const startDateFormatted = `${form.start_date} 00:00:00`;
-  const endDateFormatted = `${form.end_date} 23:59:59`;
-
   const payload = {
-    name: form.name,
+    name: form.name.trim(),
     event_type_id: Number(form.event_type_id),
-    location: form.location,
-    date_from: startDateFormatted,
-    date_to: endDateFormatted,
-    description: form.description,
+    location: form.location.trim(),
+    date_from: `${form.start_date} 09:00:00`,
+    date_to: `${form.end_date} 18:00:00`,
+    description: form.description.trim(),
+    price: Number(form.price || 0),
   };
 
   let success = false;

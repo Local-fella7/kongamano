@@ -1,6 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
+  devServer: {
+    host: '0.0.0.0',
+    port: 3000
+  },
   runtimeConfig: {
     apiBase: process.env.NUXT_API_BASE || 'http://localhost/kongamano'
   },
@@ -14,7 +18,11 @@ export default defineNuxtConfig({
   ],
   app: {
     head: {
-      link: []
+      title: 'Kongamano - Management System',
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/mana%20ministries.png' },
+        { rel: 'apple-touch-icon', href: '/mana%20ministries.png' }
+      ]
     }
   },
   googleFonts: {

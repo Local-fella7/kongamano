@@ -467,6 +467,7 @@ const greetingText = computed(() => {
 
 const currentFormattedDate = computed(() => {
   return new Date().toLocaleDateString('en-US', {
+    timeZone: 'Africa/Nairobi',
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -707,7 +708,7 @@ const last7DaysRegistrations = computed(() => {
     d.setDate(now.getDate() - i);
     const dateStr = d.toISOString().split('T')[0];
     const count = dateCounts.get(dateStr) || 0;
-    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const label = d.toLocaleDateString('en-US', { timeZone: 'Africa/Nairobi', month: 'short', day: 'numeric' });
     result.push({ label, count });
   }
   return result;
@@ -953,10 +954,23 @@ function getEventName(eventId: number) {
 function formatDate(dateStr?: string) {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim());
+    if (isDateOnly) {
+      const parts = dateStr.split('-');
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).toLocaleDateString('en-US', {
+        timeZone: 'Africa/Nairobi',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+    return new Date(dateStr.replace(' ', 'T')).toLocaleString('en-US', {
+      timeZone: 'Africa/Nairobi',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   } catch {
     return dateStr;

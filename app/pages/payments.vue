@@ -47,9 +47,10 @@
             <th>#</th>
             <th>Reference No</th>
             <th>Delegate Name</th>
-            <th>Payment Mode</th>
+            <th>Event Price</th>
             <th>Amount Paid</th>
-            <th>Payment Date</th>
+            <th>Remaining Balance</th>
+            <th>Status</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
@@ -65,30 +66,53 @@
               </div>
             </td>
             <td>
-              <span v-if="pm.registration?.first_name || pm.registration?.last_name" class="fw-semibold text-slate-800 fs-7">
+              <span v-if="pm.registration?.first_name || pm.registration?.last_name" class="fw-bold text-slate-900 fs-7 d-block">
                 {{ pm.registration.first_name || '' }} {{ pm.registration.last_name || '' }}
               </span>
-              <span v-else-if="getRegistrationName(pm.registration_id)" class="fw-semibold text-slate-800 fs-7">
+              <span v-else-if="getRegistrationName(pm.registration_id)" class="fw-bold text-slate-900 fs-7 d-block">
                 {{ getRegistrationName(pm.registration_id) }}
               </span>
-              <span v-else class="text-muted fs-7">—</span>
-            </td>
-            <td>
-              <span class="badge payment-mode-pill rounded-pill border px-3 py-1 fs-8 fw-semibold">
-                <i class="bi bi-wallet2 me-1"></i>
+              <span v-else class="text-muted fs-7 d-block">—</span>
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fs-8 fw-bold mt-1 d-inline-flex align-items-center gap-1">
+                <i class="bi bi-wallet2"></i>
                 {{ pm.payment_mode?.name || getPaymentModeName(pm.payment_mode_id) }}
               </span>
             </td>
             <td>
-              <span class="fw-bold text-slate-900 fs-7">
-                TZS {{ Number(pm.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+              <span class="fw-bold text-slate-800 fs-7">
+                TZS {{ getRegistrationFinancials(pm.registration_id).eventPrice.toLocaleString('en-US') }}
               </span>
             </td>
             <td>
-              <span class="text-slate-600 fs-7">{{ pm.created_at ? formatDate(pm.created_at) : '—' }}</span>
+              <span class="fw-extrabold text-success fs-7">
+                TZS {{ Number(pm.amount).toLocaleString('en-US') }}
+              </span>
+            </td>
+            <td>
+              <span class="fw-bold fs-7" :class="getRegistrationFinancials(pm.registration_id).balance === 0 ? 'text-muted' : 'text-danger'">
+                TZS {{ getRegistrationFinancials(pm.registration_id).balance.toLocaleString('en-US') }}
+              </span>
+            </td>
+            <td>
+              <span
+                class="badge rounded-pill border px-3 py-1.5 fs-8 fw-bold d-inline-flex align-items-center gap-1.5 shadow-2xs"
+                :class="getRegistrationFinancials(pm.registration_id).status === 'Fully Paid' ? 'bg-success text-white border-success' : (getRegistrationFinancials(pm.registration_id).status === 'Partial Paid' ? 'bg-warning text-dark border-warning' : 'bg-danger text-white border-danger')"
+              >
+                <i class="bi" :class="getRegistrationFinancials(pm.registration_id).status === 'Fully Paid' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+                {{ getRegistrationFinancials(pm.registration_id).status }}
+              </span>
             </td>
             <td class="text-end">
-              <div class="action-btns">
+              <div class="d-flex align-items-center justify-content-end gap-1.5">
+                <button
+                  class="btn btn-outline-primary btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-1.5 px-2 shadow-2xs"
+                  :disabled="getRegistrationFinancials(pm.registration_id).status !== 'Fully Paid'"
+                  @click="openQrModalForPayment(pm)"
+                  :title="getRegistrationFinancials(pm.registration_id).status === 'Fully Paid' ? 'View QR Code Entry Pass' : 'QR Code locked until full payment is confirmed'"
+                >
+                  <i class="bi bi-qr-code"></i>
+                </button>
+
                 <button class="btn-icon-action btn-view" @click="openViewModal(pm)" title="View Details">
                   <i class="bi bi-eye-fill"></i>
                 </button>
@@ -122,6 +146,24 @@
               {{ r.reg_code || `REG-#${r.id}` }} – {{ r.first_name }} {{ r.last_name || '' }}
             </option>
           </select>
+        </div>
+
+        <!-- Financial Breakdown Banner -->
+        <div v-if="selectedRegFinancials" class="p-3 bg-light rounded-3 border mb-3">
+          <div class="row g-2 text-slate-700 fs-8">
+            <div class="col-4">
+              <span class="text-muted d-block">Event Price</span>
+              <span class="fw-bold">TZS {{ selectedRegFinancials.eventPrice.toLocaleString('en-US') }}</span>
+            </div>
+            <div class="col-4">
+              <span class="text-muted d-block">Total Paid</span>
+              <span class="fw-bold text-emerald-700">TZS {{ selectedRegFinancials.totalPaid.toLocaleString('en-US') }}</span>
+            </div>
+            <div class="col-4">
+              <span class="text-muted d-block">Remaining Balance</span>
+              <span class="fw-bold text-danger">TZS {{ selectedRegFinancials.balance.toLocaleString('en-US') }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- Payment Mode Select -->
@@ -255,6 +297,12 @@
         </div>
       </div>
     </CommonModal>
+
+    <!-- QR Code Modal -->
+    <RegistrationsQrCodeModal
+      v-model="showQrModal"
+      :registration="qrItem"
+    />
   </div>
 </template>
 
@@ -325,6 +373,72 @@ const form = reactive({
   reference_no: '',
 });
 const formError = ref('');
+
+// QrCode Modal state
+const showQrModal = ref(false);
+const qrItem = ref<any>(null);
+
+function getRegistrationFinancials(regId: number | string) {
+  const reg = registrationsList.value.find(r => Number(r.id) === Number(regId));
+  if (!reg) return { eventPrice: 0, totalPaid: 0, balance: 0, status: 'Unpaid', reg: null };
+
+  const ev = eventsList.value.find(e => Number(e.id) === Number(reg.event_id)) || reg.event;
+  const eventPrice = Number(ev?.price || 0);
+
+  // Sum all payments recorded for this registration
+  const regPayments = crud.items.value.filter(p => Number(p.registration_id) === Number(regId));
+  const totalPaid = regPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const balance = Math.max(0, eventPrice - totalPaid);
+
+  let status = 'Unpaid';
+  if (eventPrice > 0 && balance === 0) {
+    status = 'Fully Paid';
+  } else if (totalPaid > 0) {
+    status = 'Partial Paid';
+  } else if (eventPrice === 0) {
+    status = 'Fully Paid';
+  }
+
+  return { eventPrice, totalPaid, balance, status, reg };
+}
+
+const selectedRegFinancials = computed(() => {
+  if (!form.registration_id) return null;
+  return getRegistrationFinancials(form.registration_id);
+});
+
+watch(() => form.registration_id, (newRegId) => {
+  if (newRegId && !editingId.value) {
+    const fin = getRegistrationFinancials(newRegId);
+    if (fin.balance > 0) {
+      form.amount = fin.balance;
+    } else if (fin.eventPrice > 0) {
+      form.amount = fin.eventPrice;
+    }
+  }
+});
+
+function openQrModalForPayment(paymentItem: Payment) {
+  const regId = paymentItem.registration_id;
+  const fin = getRegistrationFinancials(regId);
+  const reg = fin.reg || paymentItem.registration;
+  if (!reg) return;
+
+  if (fin.status !== 'Fully Paid' && reg.status !== 'Confirmed') {
+    push.warning({
+      title: 'QR Code Locked',
+      message: `Remaining balance: TZS ${fin.balance.toLocaleString()}. Full payment required to generate entry pass.`,
+    });
+    return;
+  }
+
+  // Ensure registration object passed to modal carries Confirmed status
+  qrItem.value = {
+    ...reg,
+    status: 'Confirmed',
+  };
+  showQrModal.value = true;
+}
 
 async function fetchDropdownData() {
   try {
@@ -399,7 +513,11 @@ async function handleSubmit() {
   }
   formError.value = '';
 
+  const matchedReg = registrationsList.value.find(r => Number(r.id) === Number(form.registration_id));
+  const eventId = matchedReg?.event_id || 1;
+
   const payload: Record<string, any> = {
+    event_id: Number(eventId),
     registration_id: Number(form.registration_id),
     payment_mode_id: Number(form.payment_mode_id),
     amount: Number(form.amount),
@@ -415,6 +533,22 @@ async function handleSubmit() {
 
   if (success) {
     showModal.value = false;
+
+    // Check if new payment completes the registration balance and auto-confirm registration
+    try {
+      const fin = getRegistrationFinancials(form.registration_id);
+      if (fin.status === 'Fully Paid' && fin.reg && fin.reg.status !== 'Confirmed') {
+        await executeOrQueue({
+          url: `/api/registrations/${form.registration_id}`,
+          method: 'PUT',
+          body: { status: 'Confirmed' },
+          label: `Auto-confirm registration #${form.registration_id}`,
+        });
+        await fetchDropdownData();
+      }
+    } catch {
+      // Non-blocking status sync
+    }
   }
 }
 
@@ -427,8 +561,19 @@ async function handleDelete() {
   }
 }
 
+function loadPayments() {
+  const params: Record<string, any> = {};
+  if (selectedPaymentModeFilter.value) params.payment_mode_id = selectedPaymentModeFilter.value;
+  if (selectedEventFilter.value) params.event_id = selectedEventFilter.value;
+  crud.fetchItems(params);
+}
+
+watch([selectedPaymentModeFilter, selectedEventFilter], () => {
+  loadPayments();
+});
+
 onMounted(() => {
-  crud.fetchItems();
+  loadPayments();
   fetchDropdownData();
 });
 </script>

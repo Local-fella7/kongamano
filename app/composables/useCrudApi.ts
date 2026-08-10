@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 export interface CrudOptions<T> {
   endpoint: string; // e.g. '/api/roles'
   dataKey?: string; // e.g. 'roles' if response is { data: { roles: [...] } }
+  searchFields?: (keyof T)[]; // restrict search matching to these fields instead of all fields
 }
 
 export function useCrudApi<T extends { id: number | string }>(options: CrudOptions<T>) {
@@ -17,6 +18,7 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   const searchQuery = ref('');
   const currentPage = ref(1);
   const perPage = ref(10);
+  const error = ref<string | null>(null);
 
   function authHeaders() {
     return {
@@ -28,6 +30,7 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   // ── Fetch All ──────────────────────────────────────
   async function fetchItems(params?: Record<string, any>) {
     loading.value = true;
+    error.value = null;
     try {
       const res = await cachedFetch<any>(options.endpoint, {
         params,
@@ -46,9 +49,10 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
       items.value = rawList;
     } catch (err: any) {
       console.error(`[CRUD ${options.endpoint}] Fetch error:`, err);
+      error.value = err?.data?.message || 'Failed to load data.';
       // Only show error notification if we are online (so we don't alert spam while offline)
       if (import.meta.client && navigator.onLine) {
-        push.error({ title: 'Error', message: err?.data?.message || 'Failed to load data.' });
+        push.error({ title: 'Error', message: error.value });
       }
     } finally {
       loading.value = false;
@@ -58,6 +62,7 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   // ── Create ─────────────────────────────────────────
   async function createItem(payload: Record<string, any>, successMsg = 'Item created successfully.') {
     saving.value = true;
+    error.value = null;
     try {
       const entity = options.dataKey ? (options.dataKey.endsWith('s') ? options.dataKey.slice(0, -1) : options.dataKey) : 'item';
       const label = `Create ${entity.charAt(0).toUpperCase() + entity.slice(1)}`;
@@ -77,7 +82,8 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
       await fetchItems();
       return true;
     } catch (err: any) {
-      push.error({ title: 'Error', message: err?.data?.message || 'Failed to create item.' });
+      error.value = err?.data?.message || 'Failed to create item.';
+      push.error({ title: 'Error', message: error.value });
       return false;
     } finally {
       saving.value = false;
@@ -87,6 +93,7 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   // ── Update ─────────────────────────────────────────
   async function updateItem(id: number | string, payload: Record<string, any>, successMsg = 'Item updated successfully.') {
     saving.value = true;
+    error.value = null;
     try {
       const entity = options.dataKey ? (options.dataKey.endsWith('s') ? options.dataKey.slice(0, -1) : options.dataKey) : 'item';
       const label = `Update ${entity.charAt(0).toUpperCase() + entity.slice(1)} #${id}`;
@@ -113,7 +120,8 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
       await fetchItems();
       return true;
     } catch (err: any) {
-      push.error({ title: 'Error', message: err?.data?.message || 'Failed to update item.' });
+      error.value = err?.data?.message || 'Failed to update item.';
+      push.error({ title: 'Error', message: error.value });
       return false;
     } finally {
       saving.value = false;
@@ -123,6 +131,7 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
   // ── Delete ─────────────────────────────────────────
   async function deleteItem(id: number | string, successMsg = 'Item deleted successfully.') {
     saving.value = true;
+    error.value = null;
     try {
       const entity = options.dataKey ? (options.dataKey.endsWith('s') ? options.dataKey.slice(0, -1) : options.dataKey) : 'item';
       const label = `Delete ${entity.charAt(0).toUpperCase() + entity.slice(1)} #${id}`;
@@ -145,7 +154,8 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
       await fetchItems();
       return true;
     } catch (err: any) {
-      push.error({ title: 'Error', message: err?.data?.message || 'Failed to delete item.' });
+      error.value = err?.data?.message || 'Failed to delete item.';
+      push.error({ title: 'Error', message: error.value });
       return false;
     } finally {
       saving.value = false;
@@ -157,11 +167,12 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
     let list = [...items.value];
     if (searchQuery.value.trim()) {
       const q = searchQuery.value.toLowerCase().trim();
-      list = list.filter((item: any) =>
-        Object.values(item).some(
-          (val) => val && String(val).toLowerCase().includes(q)
-        )
-      );
+      list = list.filter((item: any) => {
+        const values = options.searchFields
+          ? options.searchFields.map((field) => item[field])
+          : Object.values(item);
+        return values.some((val) => val && String(val).toLowerCase().includes(q));
+      });
     }
     // Sort descending by ID
     list.sort((a, b) => Number(b.id) - Number(a.id));
@@ -181,6 +192,7 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
     items,
     loading,
     saving,
+    error,
     searchQuery,
     currentPage,
     perPage,

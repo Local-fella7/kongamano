@@ -38,7 +38,7 @@ const props = withDefaults(
     title: string;
     icon?: string;
     variant?: 'primary' | 'danger';
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'sm' | 'md' | 'lg' | 'xl';
   }>(),
   {
     variant: 'primary',
@@ -64,6 +64,8 @@ const variantClass = computed(() => {
 const maxWidthClass = computed(() => {
   if (props.size === 'sm') return 'modal-box--sm';
   if (props.size === 'lg') return 'modal-box--lg';
+  if (props.size === 'xl') return 'modal-box--xl';
+  if (props.size === '2xl') return 'modal-box--2xl';
   return 'modal-box--md';
 });
 </script>
@@ -100,6 +102,8 @@ const maxWidthClass = computed(() => {
 .modal-box--sm { max-width: 380px; }
 .modal-box--md { max-width: 460px; }
 .modal-box--lg { max-width: 640px; }
+.modal-box--xl { max-width: 1140px; }
+.modal-box--2xl { max-width: 1320px; }
 
 @keyframes modalIn {
   from { opacity: 0; transform: translateY(-12px) scale(0.98); }
@@ -187,5 +191,27 @@ const maxWidthClass = computed(() => {
 :global([data-theme="dark"]) .modal-body-content .text-slate-700,
 :global([data-theme="dark"]) .modal-body-content .text-slate-900 {
   color: #e6edf3 !important;
+}
+
+/* ── Mobile Responsive Bottom Sheet ── */
+@media (max-width: 576px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-box {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 24px !important;
+    border-top-right-radius: 24px !important;
+    max-height: 90vh;
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
 }
 </style>

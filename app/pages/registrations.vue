@@ -11,10 +11,16 @@
           <p class="page-subheading">Manage attendee event registrations, status updates, and delegate details.</p>
         </div>
       </div>
-      <button class="btn-create" @click="openCreateModal">
-        <i class="bi bi-plus-lg fs-6"></i>
-        <span>New Registration</span>
-      </button>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-outline-primary rounded-3 px-3 py-2 fs-7 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-2xs" @click="showBulkModal = true">
+          <i class="bi bi-file-earmark-spreadsheet-fill fs-6"></i>
+          <span>Bulk Registration</span>
+        </button>
+        <button class="btn-create" @click="openCreateModal">
+          <i class="bi bi-plus-lg fs-6"></i>
+          <span>New Registration</span>
+        </button>
+      </div>
     </div>
 
     <!-- Reusable Data Table -->
@@ -55,10 +61,9 @@
           <tr>
             <th>#</th>
             <th>Delegate Name</th>
-            <th>Contact Details</th>
+            <th>Contact & Location</th>
             <th>Event</th>
-            <th>Payment Mode</th>
-            <th>Amount (TZS)</th>
+            <th>Event Fee</th>
             <th>Status</th>
             <th class="text-end">Actions</th>
           </tr>
@@ -85,6 +90,9 @@
                 <span class="d-block text-muted text-truncate" style="max-width: 180px;" :title="reg.email">
                   <i class="bi bi-envelope-fill me-1 text-slate-400"></i>{{ reg.email || '—' }}
                 </span>
+                <span v-if="reg.region || reg.district" class="d-block text-slate-600 fs-8 mt-0.5">
+                  <i class="bi bi-geo-alt-fill me-1 text-slate-400"></i>{{ [reg.ward, reg.district, reg.region].filter(Boolean).join(', ') }}
+                </span>
               </div>
             </td>
             <td>
@@ -93,14 +101,8 @@
               </span>
             </td>
             <td>
-              <span class="badge payment-mode-pill rounded-pill border px-3 py-1 fs-8 fw-semibold">
-                <i class="bi bi-wallet2 me-1"></i>
-                {{ reg.payment_mode?.name || getPaymentModeName(reg.payment_mode_id) }}
-              </span>
-            </td>
-            <td>
-              <span class="fw-bold text-slate-900 fs-7">
-                {{ formatCurrency(reg.amount) }}
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fs-8 fw-bold">
+                TZS {{ Number(reg.event?.price || getEventPrice(reg.event_id)).toLocaleString('en-US') }}
               </span>
             </td>
             <td>
@@ -113,7 +115,16 @@
               </span>
             </td>
             <td class="text-end">
-              <div class="d-flex align-items-center justify-content-end gap-2">
+              <div class="d-flex align-items-center justify-content-end gap-1.5">
+                <button
+                  class="btn btn-outline-primary btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
+                  :disabled="reg.status !== 'Confirmed'"
+                  @click="openQrModal(reg)"
+                  :title="reg.status === 'Confirmed' ? 'View QR Code Entry Pass' : 'QR Code locked until full payment is confirmed'"
+                >
+                  <i class="bi bi-qr-code small-action-icon"></i>
+                </button>
+
                 <button
                   class="btn btn-outline-secondary btn-sm rounded-3 fw-semibold fs-7 d-flex align-items-center justify-content-center py-2 px-2.5 shadow-2xs"
                   @click="openView(reg)"
@@ -194,7 +205,7 @@
             <label class="form-label required fs-7 fw-semibold">Event</label>
             <select v-model.number="form.event_id" class="form-select form-select-sm rounded-3" required>
               <option value="" disabled>Select Event...</option>
-              <option v-for="ev in eventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
+              <option v-for="ev in activeEventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
             </select>
           </div>
 
@@ -218,25 +229,29 @@
             />
           </div>
 
-          <div class="col-md-6">
-            <label class="form-label fs-7 fw-semibold">Payment Mode</label>
-            <select v-model.number="form.payment_mode_id" class="form-select form-select-sm rounded-3">
-              <option value="">Select Payment Mode...</option>
-              <option v-for="pm in paymentModesList" :key="pm.id" :value="pm.id">{{ pm.name }}</option>
+          <!-- Tanzania Cascading Location Picker -->
+          <div class="col-md-4">
+            <label class="form-label fs-7 fw-semibold">Region</label>
+            <select v-model="form.region" class="form-select form-select-sm rounded-3">
+              <option value="">Select Region...</option>
+              <option v-for="reg in regionsList" :key="reg" :value="reg">{{ reg }}</option>
             </select>
           </div>
 
-          <div class="col-md-6">
-            <label class="form-label required fs-7 fw-semibold">Amount (TZS)</label>
-            <input
-              v-model.number="form.amount"
-              type="number"
-              min="0"
-              step="100"
-              class="form-control form-control-sm rounded-3"
-              placeholder="e.g. 4000"
-              required
-            />
+          <div class="col-md-4">
+            <label class="form-label fs-7 fw-semibold">District</label>
+            <select v-model="form.district" class="form-select form-select-sm rounded-3" :disabled="!form.region">
+              <option value="">Select District...</option>
+              <option v-for="dist in districtsList" :key="dist" :value="dist">{{ dist }}</option>
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fs-7 fw-semibold">Ward</label>
+            <select v-model="form.ward" class="form-select form-select-sm rounded-3" :disabled="!form.district">
+              <option value="">Select Ward...</option>
+              <option v-for="w in wardsList" :key="w" :value="w">{{ w }}</option>
+            </select>
           </div>
 
           <div class="col-md-12">
@@ -305,12 +320,14 @@
             <span class="fw-semibold text-slate-900">{{ viewingItem.gender || 'N/A' }}</span>
           </div>
           <div class="col-6">
-            <span class="text-muted d-block fs-8">Payment Mode</span>
-            <span class="fw-semibold text-slate-900">{{ viewingItem.payment_mode?.name || getPaymentModeName(viewingItem.payment_mode_id) }}</span>
+            <span class="text-muted d-block fs-8">Location</span>
+            <span class="fw-semibold text-slate-900">{{ [viewingItem.ward, viewingItem.district, viewingItem.region].filter(Boolean).join(', ') || 'N/A' }}</span>
           </div>
           <div class="col-6">
-            <span class="text-muted d-block fs-8">Amount Paid</span>
-            <span class="fw-bold text-slate-900">{{ formatCurrency(viewingItem.amount) }}</span>
+            <span class="text-muted d-block fs-8">Event Fee</span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fs-8 fw-bold">
+              TZS {{ Number(viewingItem.event?.price || getEventPrice(viewingItem.event_id)).toLocaleString('en-US') }}
+            </span>
           </div>
         </div>
 
@@ -349,31 +366,59 @@
         </div>
       </div>
     </CommonModal>
+
+    <!-- QR Code Modal -->
+    <RegistrationsQrCodeModal
+      v-model="showQrModal"
+      :registration="qrItem"
+    />
+
+    <!-- Bulk Registration Modal -->
+    <RegistrationsBulkRegistrationModal
+      v-model="showBulkModal"
+      :events-list="eventsList"
+      :default-event-id="selectedEventFilter"
+      @imported="loadRegistrations"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import RegistrationsQrCodeModal from '~/components/registrations/QrCodeModal.vue';
+import RegistrationsBulkRegistrationModal from '~/components/registrations/BulkRegistrationModal.vue';
+import { isActiveOrScheduledEvent } from '~/utils/eventDate';
+
 const authStore = useAuthStore();
 const token = computed(() => authStore.token);
 
 const crud = useCrudApi<Registration>({
   endpoint: '/api/registrations',
   dataKey: 'registrations',
-  searchFields: ['first_name', 'last_name', 'email', 'phone', 'status'],
+  searchFields: ['first_name', 'last_name', 'email', 'phone', 'status', 'region', 'district', 'ward'],
 });
 
 const eventsList = ref<any[]>([]);
+const activeEventsList = computed(() => eventsList.value.filter(isActiveOrScheduledEvent));
 const paymentModesList = ref<any[]>([]);
 const selectedStatusFilter = ref<string>('');
 const selectedEventFilter = ref<number | string>('');
 const selectedPaymentModeFilter = ref<number | string>('');
 
+// Tanzania Location Cascading state
+const regionsList = ref<string[]>([]);
+const districtsList = ref<string[]>([]);
+const wardsList = ref<string[]>([]);
+
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showDeleteModal = ref(false);
+const showQrModal = ref(false);
+const showBulkModal = ref(false);
+
 const viewingItem = ref<Registration | null>(null);
 const editingItem = ref<Registration | null>(null);
 const deletingItem = ref<Registration | null>(null);
+const qrItem = ref<Registration | null>(null);
 
 const form = reactive({
   event_id: '' as number | string,
@@ -382,16 +427,81 @@ const form = reactive({
   gender: '',
   phone: '',
   email: '',
+  region: '',
+  district: '',
+  ward: '',
   payment_mode_id: '' as number | string,
   amount: 0 as number | string,
   status: 'Pending',
 });
 const formError = ref('');
 
+// Fetch items passing server filters
+function loadRegistrations() {
+  const params: Record<string, any> = {};
+  if (selectedStatusFilter.value) params.status = selectedStatusFilter.value;
+  if (selectedEventFilter.value) params.event_id = selectedEventFilter.value;
+  crud.fetchItems(params);
+}
+
+watch([selectedStatusFilter, selectedEventFilter], () => {
+  loadRegistrations();
+});
+
 onMounted(() => {
-  crud.fetchItems();
+  loadRegistrations();
   fetchEventsList();
   fetchPaymentModesList();
+  fetchRegions();
+});
+
+// Location API Calls
+function extractLocationList(res: any, key: string): string[] {
+  const pluralKey = key.endsWith('y') ? `${key.slice(0, -1)}ies` : `${key}s`;
+  const raw = res?.data?.[pluralKey] || res?.data?.[key] || res?.data || res || [];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item: any) => {
+    if (typeof item === 'string') return item;
+    if (typeof item === 'object' && item !== null) {
+      return item.name || item[key] || item.title || Object.values(item)[0] || String(item);
+    }
+    return String(item);
+  }).filter(Boolean);
+}
+
+async function fetchRegions() {
+  try {
+    const res = await cachedFetch<any>('/api/registrations/tanzania-locations');
+    regionsList.value = extractLocationList(res, 'region');
+  } catch (err) {
+    console.error('Failed to fetch regions:', err);
+  }
+}
+
+watch(() => form.region, async (newRegion) => {
+  form.district = '';
+  form.ward = '';
+  districtsList.value = [];
+  wardsList.value = [];
+  if (!newRegion) return;
+  try {
+    const res = await cachedFetch<any>(`/api/registrations/tanzania-locations?region=${encodeURIComponent(newRegion)}`);
+    districtsList.value = extractLocationList(res, 'district');
+  } catch (err) {
+    console.error('Failed to fetch districts:', err);
+  }
+});
+
+watch(() => form.district, async (newDistrict) => {
+  form.ward = '';
+  wardsList.value = [];
+  if (!newDistrict || !form.region) return;
+  try {
+    const res = await cachedFetch<any>(`/api/registrations/tanzania-locations?region=${encodeURIComponent(form.region)}&district=${encodeURIComponent(newDistrict)}`);
+    wardsList.value = extractLocationList(res, 'ward');
+  } catch (err) {
+    console.error('Failed to fetch wards:', err);
+  }
 });
 
 async function fetchEventsList() {
@@ -412,17 +522,9 @@ async function fetchPaymentModesList() {
   }
 }
 
-// Filtered items computed
+// Filtered items computed (local search & payment mode filter fallback)
 const filteredRegistrations = computed(() => {
   let list = crud.filteredItems.value;
-
-  if (selectedStatusFilter.value) {
-    list = list.filter(r => r.status === selectedStatusFilter.value);
-  }
-
-  if (selectedEventFilter.value) {
-    list = list.filter(r => Number(r.event_id) === Number(selectedEventFilter.value));
-  }
 
   if (selectedPaymentModeFilter.value) {
     list = list.filter(r => Number(r.payment_mode_id) === Number(selectedPaymentModeFilter.value));
@@ -475,6 +577,11 @@ function getStatusBadgeClass(status: string) {
   return 'status-badge--completed';
 }
 
+function getEventPrice(eventId: number) {
+  const found = eventsList.value.find(e => e.id === eventId);
+  return found ? (found.price || 0) : 0;
+}
+
 function formatCurrency(val?: number | string) {
   if (val === undefined || val === null || val === '') return 'TZS 0';
   const num = typeof val === 'string' ? parseFloat(val) : val;
@@ -484,10 +591,23 @@ function formatCurrency(val?: number | string) {
 function formatDate(dateStr?: string) {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr.replace(' ', 'T')).toLocaleDateString('en-US', {
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim());
+    if (isDateOnly) {
+      const parts = dateStr.split('-');
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).toLocaleDateString('en-US', {
+        timeZone: 'Africa/Nairobi',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+    return new Date(dateStr.replace(' ', 'T')).toLocaleString('en-US', {
+      timeZone: 'Africa/Nairobi',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   } catch {
     return dateStr;
@@ -502,11 +622,19 @@ function openCreateModal() {
   form.gender = '';
   form.phone = '';
   form.email = '';
+  form.region = '';
+  form.district = '';
+  form.ward = '';
   form.payment_mode_id = paymentModesList.value[0]?.id || '';
   form.amount = 0;
   form.status = 'Pending';
   formError.value = '';
   showModal.value = true;
+}
+
+function openQrModal(item: Registration) {
+  qrItem.value = item;
+  showQrModal.value = true;
 }
 
 function openView(item: Registration) {
@@ -522,6 +650,9 @@ function openEdit(item: Registration) {
   form.gender = item.gender || '';
   form.phone = item.phone || '';
   form.email = item.email || '';
+  form.region = item.region || '';
+  form.district = item.district || '';
+  form.ward = item.ward || '';
   form.payment_mode_id = item.payment_mode_id || '';
   form.amount = item.amount || 0;
   form.status = item.status || 'Pending';
@@ -543,26 +674,31 @@ async function handleSubmit() {
     formError.value = 'Please select an event.';
     return;
   }
-  if (form.amount === '' || form.amount === null || form.amount === undefined || Number(form.amount) < 0) {
-    formError.value = 'Please enter a valid amount.';
-    return;
-  }
   if (!form.status) {
     formError.value = 'Please select a registration status.';
     return;
   }
+  formError.value = '';
 
-  const payload = {
+  const defaultModeId = paymentModesList.value[0]?.id || 1;
+  const targetEvent = eventsList.value.find(e => Number(e.id) === Number(form.event_id));
+  const eventPrice = targetEvent ? Number(targetEvent.price || 0) : 0;
+
+  const payload: Record<string, any> = {
     event_id: Number(form.event_id),
     first_name: form.first_name.trim(),
     last_name: form.last_name.trim(),
-    gender: form.gender,
-    phone: form.phone.trim(),
-    email: form.email.trim(),
-    payment_mode_id: form.payment_mode_id ? Number(form.payment_mode_id) : undefined,
-    amount: Number(form.amount) || 0,
-    status: form.status,
+    gender: form.gender || 'Male',
+    payment_mode_id: Number(form.payment_mode_id || defaultModeId),
+    amount: Number(form.amount || eventPrice),
+    status: form.status || 'Pending',
   };
+
+  if (form.phone && form.phone.trim()) payload.phone = form.phone.trim();
+  if (form.email && form.email.trim()) payload.email = form.email.trim();
+  if (form.region && form.region.trim()) payload.region = form.region.trim();
+  if (form.district && form.district.trim()) payload.district = form.district.trim();
+  if (form.ward && form.ward.trim()) payload.ward = form.ward.trim();
 
   const success = editingItem.value
     ? await crud.updateItem(editingItem.value.id, payload)

@@ -36,8 +36,10 @@ export async function cachedFetch<T = any>(url: string, opts?: any): Promise<T> 
     }
     return res;
   } catch (err) {
-    // Fallback to cache if network call fails
-    if (import.meta.client) {
+    // If online server returned an error, clear cache so stale state is never served
+    if (import.meta.client && navigator.onLine) {
+      await dbStore.delete(cacheKey);
+    } else if (import.meta.client) {
       const cached = await dbStore.get(cacheKey);
       if (cached) {
         return cached;
