@@ -205,7 +205,7 @@
             <label class="form-label required fs-7 fw-semibold">Event</label>
             <select v-model.number="form.event_id" class="form-select form-select-sm rounded-3" required>
               <option value="" disabled>Select Event...</option>
-              <option v-for="ev in eventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
+              <option v-for="ev in activeEventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
             </select>
           </div>
 
@@ -386,6 +386,7 @@
 <script setup lang="ts">
 import RegistrationsQrCodeModal from '~/components/registrations/QrCodeModal.vue';
 import RegistrationsBulkRegistrationModal from '~/components/registrations/BulkRegistrationModal.vue';
+import { isActiveOrScheduledEvent } from '~/utils/eventDate';
 
 const authStore = useAuthStore();
 const token = computed(() => authStore.token);
@@ -397,6 +398,7 @@ const crud = useCrudApi<Registration>({
 });
 
 const eventsList = ref<any[]>([]);
+const activeEventsList = computed(() => eventsList.value.filter(isActiveOrScheduledEvent));
 const paymentModesList = ref<any[]>([]);
 const selectedStatusFilter = ref<string>('');
 const selectedEventFilter = ref<number | string>('');

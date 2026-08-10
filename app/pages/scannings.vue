@@ -53,7 +53,7 @@
           style="max-width: 220px;"
         >
           <option value="" disabled>Select Event to Scan...</option>
-          <option v-for="ev in eventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
+          <option v-for="ev in activeEventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
         </select>
 
         <!-- Scan Type Filter Dropdown -->
@@ -266,8 +266,17 @@
 
         <!-- Sequential Action Card (Check-in or Current Active Service) -->
         <div class="mb-3">
+          <!-- Option EXPIRED: Event Completed → QR Code Disabled -->
+          <div v-if="isSelectedEventCompleted" class="p-3 bg-danger-subtle rounded-3 border border-danger-subtle text-center">
+            <i class="bi bi-slash-circle-fill text-danger fs-2 d-block mb-1"></i>
+            <h6 class="fw-bold text-danger fs-7 mb-1">QR Code Disabled (Event Ended)</h6>
+            <p class="fs-8 text-muted mb-0">
+              This QR code badge belongs to <strong>{{ selectedEventName }}</strong> which has already ended. Check-ins and service claims are disabled for completed events.
+            </p>
+          </div>
+
           <!-- Option A: Not Checked In Right Now (First Check-in OR Re-entry Check-in) -->
-          <div v-if="!isAttendeeCheckedIn" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
+          <div v-else-if="!isAttendeeCheckedIn" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
             <div v-if="isReentryToday" class="alert alert-warning py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
               <i class="bi bi-exclamation-triangle-fill fs-6 text-amber-600"></i>
               <span><strong>Re-Entry Alert:</strong> This delegate has already checked in earlier today and is checking in again.</span>
@@ -379,6 +388,7 @@
 
 <script setup lang="ts">
 import { Html5Qrcode } from 'html5-qrcode';
+import { isActiveOrScheduledEvent } from '~/utils/eventDate';
 
 const { executeOrQueue } = useOfflineSync();
 const push = usePush();
@@ -387,6 +397,11 @@ const token = useCookie<string | null>('token');
 const eventsList = ref<any[]>([]);
 const servicesList = ref<any[]>([]);
 const selectedEventId = ref<number | string>('');
+
+// Only active & scheduled events for scanning selection
+const activeEventsList = computed(() => {
+  return eventsList.value.filter(isActiveOrScheduledEvent);
+});
 
 // Modal visibility states
 const showCameraModal = ref(false);
@@ -406,6 +421,11 @@ const perPage = ref(10);
 const selectedEventName = computed(() => {
   const ev = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
   return ev?.name || `Event #${selectedEventId.value}`;
+});
+
+const isSelectedEventCompleted = computed(() => {
+  const ev = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
+  return ev ? !isActiveOrScheduledEvent(ev) : false;
 });
 
 // Daily helper function (EAT timezone YYYY-MM-DD)
@@ -722,7 +742,9 @@ async function fetchEvents() {
   try {
     const res = await cachedFetch<any>('/api/events');
     eventsList.value = Array.isArray(res?.data?.events) ? res.data.events : (Array.isArray(res?.data) ? res.data : []);
-    if (eventsList.value.length > 0 && !selectedEventId.value) {
+    if (activeEventsList.value.length > 0 && !selectedEventId.value) {
+      selectedEventId.value = activeEventsList.value[0].id;
+    } else if (eventsList.value.length > 0 && !selectedEventId.value) {
       selectedEventId.value = eventsList.value[0].id;
     }
   } catch (err) {
