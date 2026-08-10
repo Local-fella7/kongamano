@@ -460,9 +460,9 @@ const isAttendeeCheckedOutToday = computed(() => {
   return logsToday.length > 0 && logsToday[0]?.scan_type === 'check_out';
 });
 
-// Number of check-ins recorded for this attendee today
+// Number of event entry check-ins recorded for this attendee today (excluding service claims)
 const checkInCountToday = computed(() => {
-  return attendeeTodayLogs.value.filter((l: any) => l.scan_type === 'check_in').length;
+  return attendeeTodayLogs.value.filter((l: any) => l.scan_type === 'check_in' && !l.service_id && !l.service).length;
 });
 
 // Check if attendee has checked in multiple times or checked out and is re-entering today
@@ -486,16 +486,19 @@ const availableScannableServices = computed(() => {
 
     // 2. Check if already claimed TODAY for this attendee
     const regId = scannedAttendee.value?.id;
+    const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
     const todayStr = getTodayDateStr();
     const alreadyClaimed = logs.value.some((l: any) => {
       const logQr = l.qr_code || l.registration?.qr_code || '';
       const logRegId = l.registration_id || l.registration?.id;
-      const matchesAttendee = logQr === scannedQrCode.value || (regId && Number(logRegId) === Number(regId));
+      const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
       const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
 
       let isToday = true;
       if (l.created_at) {
-        const logDateStr = new Date(l.created_at.replace(' ', 'T')).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+        let p = String(l.created_at).trim().replace(' ', 'T');
+        if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
+        const logDateStr = new Date(p).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
         isToday = logDateStr === todayStr;
       }
       return matchesAttendee && matchesService && isToday;
@@ -521,6 +524,7 @@ const activeCurrentService = computed(() => {
 const areAllServicesClaimedToday = computed(() => {
   if (servicesList.value.length === 0) return false;
   const regId = scannedAttendee.value?.id;
+  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
   const todayStr = getTodayDateStr();
 
   const scannableServices = servicesList.value.filter((srv: any) =>
@@ -532,11 +536,13 @@ const areAllServicesClaimedToday = computed(() => {
     return logs.value.some((l: any) => {
       const logQr = l.qr_code || l.registration?.qr_code || '';
       const logRegId = l.registration_id || l.registration?.id;
-      const matchesAttendee = logQr === scannedQrCode.value || (regId && Number(logRegId) === Number(regId));
+      const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
       const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
       let isToday = true;
       if (l.created_at) {
-        const logDateStr = new Date(l.created_at.replace(' ', 'T')).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+        let p = String(l.created_at).trim().replace(' ', 'T');
+        if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
+        const logDateStr = new Date(p).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
         isToday = logDateStr === todayStr;
       }
       return matchesAttendee && matchesService && isToday;
@@ -569,7 +575,7 @@ async function claimService(serviceId: number | string) {
   claimingServiceId.value = serviceId;
   try {
     await processScan(realQrCode, 'service', serviceId);
-    showResultModal.value = true;
+    showResultModal.value = false;
   } finally {
     claimingServiceId.value = null;
   }
