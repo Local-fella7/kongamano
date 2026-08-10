@@ -569,7 +569,7 @@ async function claimService(serviceId: number | string) {
   claimingServiceId.value = serviceId;
   try {
     await processScan(realQrCode, 'service', serviceId);
-    showResultModal.value = false;
+    showResultModal.value = true;
   } finally {
     claimingServiceId.value = null;
   }
@@ -581,7 +581,7 @@ async function confirmEventCheckIn() {
   if (!realQrCode) return;
   try {
     await processScan(realQrCode, 'check_in');
-    showResultModal.value = false;
+    showResultModal.value = true;
   } catch {
     // Handled in processScan
   }
@@ -593,7 +593,7 @@ async function confirmEventCheckOut() {
   if (!realQrCode) return;
   try {
     await processScan(realQrCode, 'check_out');
-    showResultModal.value = false;
+    showResultModal.value = true;
   } catch {
     // Handled in processScan
   }
