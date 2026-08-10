@@ -784,13 +784,47 @@ async function startScanner() {
   lastScannedCode.value = '';
   isProcessingScan.value = false;
 
+  // Check Secure Context (Mobile browsers require HTTPS or localhost for camera access)
+  if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    scanFeedback.value = {
+      type: 'error',
+      message: 'Mobile browsers require HTTPS for camera access. Please open the site over HTTPS or localhost.',
+    };
+    return;
+  }
+
   try {
-    html5QrcodeScanner = new Html5Qrcode('qr-reader');
+    if (!html5QrcodeScanner) {
+      html5QrcodeScanner = new Html5Qrcode('qr-reader');
+    }
     scanningActive.value = true;
 
+    // Discover available camera devices for robust selection on mobile phones
+    let cameraConfig: any = { facingMode: 'environment' };
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        const backCamera = devices.find(d => 
+          /back|rear|environment/i.test(d.label)
+        );
+        cameraConfig = backCamera ? backCamera.id : devices[devices.length - 1].id;
+      }
+    } catch {
+      // Fall back to facingMode constraint if getCameras fails
+    }
+
+    const config = {
+      fps: 10,
+      qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+        const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+        const boxSize = Math.max(160, Math.floor(minDim * 0.75));
+        return { width: boxSize, height: boxSize };
+      },
+    };
+
     await html5QrcodeScanner.start(
-      { facingMode: 'environment' },
-      { fps: 5, qrbox: { width: 220, height: 220 } },
+      cameraConfig,
+      config,
       async (decodedText) => {
         // Prevent rapid duplicate scans while processing or scanning the same code repeatedly
         if (isProcessingScan.value || decodedText === lastScannedCode.value) {
@@ -838,9 +872,12 @@ async function startScanner() {
   } catch (err: any) {
     console.error('Failed to start camera scanner:', err);
     scanningActive.value = false;
+    const isHttp = typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost';
     scanFeedback.value = {
       type: 'error',
-      message: 'Camera permission denied or camera not available.',
+      message: isHttp
+        ? 'Camera access is blocked by mobile browsers over unencrypted HTTP. Access via HTTPS or localhost.'
+        : (err?.message || 'Camera permission denied or camera not available.'),
     };
   }
 }
