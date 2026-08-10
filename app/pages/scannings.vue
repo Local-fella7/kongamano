@@ -653,51 +653,42 @@ watch(selectedEventId, async (newEvId) => {
 
 const route = useRoute();
 
+async function openVerificationForQr(qrCode: string) {
+  let cleanCode = qrCode.trim();
+  if (cleanCode.includes('?code=')) {
+    const urlParts = cleanCode.split('?code=');
+    if (urlParts[1]) {
+      cleanCode = decodeURIComponent(urlParts[1].split('&')[0]);
+    }
+  }
+
+  scannedQrCode.value = cleanCode;
+
+  // 1. Discover delegate & auto-discover event ID
+  const attendeeData = await findAttendeeByQrCode(cleanCode);
+  if (attendeeData?.event_id) {
+    selectedEventId.value = Number(attendeeData.event_id);
+  }
+
+  // 2. Strict sequential resolution: await services & fresh logs BEFORE showing modal
+  await fetchServices();
+  await fetchLogsForce();
+
+  scannedAttendee.value = attendeeData || {
+    first_name: 'Registered',
+    last_name: 'Delegate',
+    phone: '',
+    qr_code: cleanCode,
+  };
+
+  showCameraModal.value = false;
+  showResultModal.value = true;
+}
+
 async function handleScannedUrlCode() {
   const code = route.query.code;
   if (!code) return;
-
-  let qrCode = String(code).trim();
-  const eventIdMatch = qrCode.match(/^REG-(\d+)-/i);
-  if (eventIdMatch && eventIdMatch[1]) {
-    selectedEventId.value = Number(eventIdMatch[1]);
-    await fetchServices();
-  }
-
-  scannedQrCode.value = qrCode;
-
-  let attendeeData: any = null;
-  try {
-    const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
-      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-    });
-    const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-    attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
-  } catch {
-    // Fallback
-  }
-
-  if (attendeeData && !attendeeData.qr_code) {
-    try {
-      const qrRes = await $fetch<any>(`/api/events/${selectedEventId.value}/registrations/${attendeeData.id}/qr-code`, {
-        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-      });
-      const generatedCode = qrRes?.data?.qr_code || qrRes?.qr_code || qrRes?.data?.registration?.qr_code || qrRes?.registration?.qr_code;
-      if (generatedCode) {
-        qrCode = generatedCode;
-        attendeeData.qr_code = generatedCode;
-        scannedQrCode.value = generatedCode;
-      }
-    } catch {
-      // Fallback
-    }
-  } else if (attendeeData?.qr_code) {
-    qrCode = attendeeData.qr_code;
-    scannedQrCode.value = attendeeData.qr_code;
-  }
-
-  scannedAttendee.value = attendeeData || { first_name: 'Registered', last_name: 'Delegate', phone: '', qr_code: qrCode };
-  showResultModal.value = true;
+  await openVerificationForQr(String(code));
 }
 
 watch(
@@ -785,19 +776,64 @@ function openCameraModal() {
 }
 
 async function openVerifyForLog(log: any) {
-  scannedQrCode.value = log.qr_code;
-  let attendeeData = log.registration;
-  if (!attendeeData) {
+  if (log.qr_code) {
+    await openVerificationForQr(log.qr_code);
+  }
+}
+
+async function findAttendeeByQrCode(qrCode: string): Promise<any> {
+  const cleanCode = qrCode.trim();
+  const prefixMatch = cleanCode.match(/^REG-(\d+)-/i);
+  if (prefixMatch && prefixMatch[1]) {
+    selectedEventId.value = Number(prefixMatch[1]);
+  }
+
+  // 1. Try finding in current selected event
+  if (selectedEventId.value) {
     try {
-      const regRes = await cachedFetch<any>(`/api/registrations?event_id=${selectedEventId.value}`);
+      const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+      });
       const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-      attendeeData = regList.find((r: any) => r.qr_code === log.qr_code || String(r.id) === String(log.registration_id));
+      const found = regList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+      if (found) {
+        if (found.event_id) {
+          selectedEventId.value = Number(found.event_id);
+        }
+        await fetchServices();
+        await fetchLogsForce();
+        return found;
+      }
     } catch {
       // Fallback
     }
   }
-  scannedAttendee.value = attendeeData || { first_name: log.attendee_name || 'Registered', last_name: 'Delegate', phone: '', qr_code: log.qr_code };
-  showResultModal.value = true;
+
+  // 2. Fallback: Search globally across all registrations to auto-discover delegate's event_id
+  try {
+    const globalRes = await $fetch<any>('/api/registrations', {
+      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+    });
+    const globalList = Array.isArray(globalRes?.data?.registrations) ? globalRes.data.registrations : (Array.isArray(globalRes?.data) ? globalRes.data : []);
+    const foundGlobal = globalList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+    if (foundGlobal) {
+      if (foundGlobal.event_id) {
+        selectedEventId.value = Number(foundGlobal.event_id);
+      }
+      await fetchServices();
+      await fetchLogsForce();
+      return foundGlobal;
+    }
+  } catch {
+    // Fallback
+  }
+
+  if (selectedEventId.value) {
+    await fetchServices();
+    await fetchLogsForce();
+  }
+
+  return null;
 }
 
 async function startScanner() {
@@ -849,30 +885,7 @@ async function startScanner() {
         isProcessingScan.value = true;
 
         try {
-          let qrCode = decodedText.trim();
-          if (qrCode.includes('?code=')) {
-            const urlParts = qrCode.split('?code=');
-            if (urlParts[1]) {
-              qrCode = decodeURIComponent(urlParts[1].split('&')[0]);
-            }
-          }
-
-          scannedQrCode.value = qrCode;
-
-          let attendeeData: any = null;
-          try {
-            const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
-              headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-            });
-            const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-            attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
-          } catch {
-            // Fallback
-          }
-
-          scannedAttendee.value = attendeeData || { first_name: 'Registered', last_name: 'Delegate', phone: '', qr_code: qrCode };
-          showCameraModal.value = false;
-          showResultModal.value = true;
+          await openVerificationForQr(decodedText);
         } finally {
           setTimeout(() => {
             isProcessingScan.value = false;
@@ -934,30 +947,14 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service' 
     }
   }
 
-  const prefixMatch = qrCode.match(/^REG-(\d+)-/i);
-  if (prefixMatch && prefixMatch[1]) {
-    selectedEventId.value = Number(prefixMatch[1]);
+  const matchedReg = await findAttendeeByQrCode(qrCode);
+  if (matchedReg?.event_id) {
+    selectedEventId.value = Number(matchedReg.event_id);
+  } else if (scannedAttendee.value?.event_id) {
+    selectedEventId.value = Number(scannedAttendee.value.event_id);
   }
-
-  let matchedReg: any = null;
-  try {
-    const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
-      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-    });
-    const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-    matchedReg = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
-    if (matchedReg?.event_id) {
-      selectedEventId.value = Number(matchedReg.event_id);
-    } else if (scannedAttendee.value?.event_id) {
-      selectedEventId.value = Number(scannedAttendee.value.event_id);
-    }
-    if (matchedReg?.qr_code) {
-      qrCode = matchedReg.qr_code;
-    }
-  } catch {
-    if (scannedAttendee.value?.event_id) {
-      selectedEventId.value = Number(scannedAttendee.value.event_id);
-    }
+  if (matchedReg?.qr_code) {
+    qrCode = matchedReg.qr_code;
   }
 
   if (!selectedEventId.value) return;
