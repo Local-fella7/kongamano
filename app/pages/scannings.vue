@@ -307,8 +307,8 @@
 
             <div class="d-flex align-items-center justify-content-between mb-2">
               <span class="fs-8 text-uppercase fw-bold text-primary tracking-wider">Active Service Window</span>
-              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-700 border fs-8">
-                <i class="bi bi-clock me-1"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
+              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-900 border border-slate-300 fs-8 fw-bold shadow-2xs">
+                <i class="bi bi-clock-fill me-1 text-primary"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
               </span>
             </div>
             <h5 class="fw-extrabold text-slate-900 fs-6 mb-1">{{ activeCurrentService.name }}</h5>
@@ -1113,6 +1113,10 @@ function formatDate(dateStr?: string | null): string {
     return dateStr;
   }
 }
+
+onUnmounted(() => {
+  stopScanner();
+});
 </script>
 
 <style scoped>
