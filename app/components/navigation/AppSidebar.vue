@@ -156,6 +156,14 @@ const navGroups = [
       { name: 'Scannings', to: '/scannings', icon: 'bi-qr-code-scan' },
       { name: 'Agents', to: '/agents', icon: 'bi-person-badge-fill' },
       {
+        name: 'Notifications',
+        icon: 'bi-bell-fill',
+        children: [
+          { name: 'Notifications Catalog', to: '/notifications', icon: 'bi-bell-fill' },
+          { name: 'Notification Registrations', to: '/notification-registrations', icon: 'bi-envelope-check-fill' },
+        ],
+      },
+      {
         name: 'Reports & Analytics',
         icon: 'bi-file-earmark-bar-graph-fill',
         children: [
@@ -163,14 +171,6 @@ const navGroups = [
           { name: 'Delegates & Registrations', to: '/reports/delegates', icon: 'bi-people-fill' },
           { name: 'Financial Ledgers', to: '/reports/financial', icon: 'bi-cash-coin' },
           { name: 'Attendance & Scannings', to: '/reports/attendance', icon: 'bi-qr-code-scan' },
-        ],
-      },
-      {
-        name: 'Notifications',
-        icon: 'bi-bell-fill',
-        children: [
-          { name: 'Notifications Catalog', to: '/notifications', icon: 'bi-bell-fill' },
-          { name: 'Notification Registrations', to: '/notification-registrations', icon: 'bi-envelope-check-fill' },
         ],
       },
     ],
