@@ -12,6 +12,10 @@
         </div>
       </div>
       <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-emerald rounded-3 px-3 py-2 fs-7 fw-bold d-inline-flex align-items-center gap-1.5 shadow-2xs" @click="showBulkQrDownloadModal = true">
+          <i class="bi bi-file-earmark-zip-fill fs-6"></i>
+          <span>Download Bulk QRs</span>
+        </button>
         <button class="btn btn-outline-primary rounded-3 px-3 py-2 fs-7 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-2xs" @click="showBulkModal = true">
           <i class="bi bi-file-earmark-spreadsheet-fill fs-6"></i>
           <span>Bulk Registration</span>
@@ -379,6 +383,14 @@
       :events-list="eventsList"
       :default-event-id="selectedEventFilter"
       @imported="loadRegistrations"
+      @open-bulk-qr-download="handleOpenBulkQrDownload"
+    />
+
+    <!-- Bulk QR Code ZIP Exporter Modal -->
+    <RegistrationsBulkQrDownloadModal
+      v-model="showBulkQrDownloadModal"
+      :events-list="eventsList"
+      :default-event-id="selectedEventFilter"
     />
   </div>
 </template>
@@ -386,6 +398,7 @@
 <script setup lang="ts">
 import RegistrationsQrCodeModal from '~/components/registrations/QrCodeModal.vue';
 import RegistrationsBulkRegistrationModal from '~/components/registrations/BulkRegistrationModal.vue';
+import RegistrationsBulkQrDownloadModal from '~/components/registrations/BulkQrDownloadModal.vue';
 import { isActiveOrScheduledEvent } from '~/utils/eventDate';
 
 const authStore = useAuthStore();
@@ -409,11 +422,19 @@ const regionsList = ref<string[]>([]);
 const districtsList = ref<string[]>([]);
 const wardsList = ref<string[]>([]);
 
-const showModal = ref(false);
-const showViewModal = ref(false);
+const showCreateModal = ref(false);
+const showEditModal = ref(false);
 const showDeleteModal = ref(false);
 const showQrModal = ref(false);
 const showBulkModal = ref(false);
+const showBulkQrDownloadModal = ref(false);
+
+function handleOpenBulkQrDownload(eventId?: number | string) {
+  if (eventId) {
+    selectedEventFilter.value = Number(eventId);
+  }
+  showBulkQrDownloadModal.value = true;
+}
 
 const viewingItem = ref<Registration | null>(null);
 const editingItem = ref<Registration | null>(null);

@@ -753,12 +753,32 @@ async function fetchEvents() {
 }
 
 async function fetchServices() {
+  if (!selectedEventId.value) {
+    servicesList.value = [];
+    return;
+  }
   try {
-    const url = selectedEventId.value ? `/api/services?event_id=${selectedEventId.value}` : '/api/services';
+    const url = `/api/event-services?event_id=${selectedEventId.value}`;
     const res = await cachedFetch<any>(url);
-    servicesList.value = Array.isArray(res?.data?.services) ? res.data.services : (Array.isArray(res?.data) ? res.data : []);
+    const rawList = Array.isArray(res?.data?.event_services)
+      ? res.data.event_services
+      : (Array.isArray(res?.data) ? res.data : []);
+
+    servicesList.value = rawList
+      .map((es: any) => {
+        if (es.service) return es.service;
+        return {
+          id: es.service_id || es.id,
+          name: es.name || `Service #${es.service_id || es.id}`,
+          start_time: es.start_time,
+          end_time: es.end_time,
+          requires_scan: es.requires_scan,
+        };
+      })
+      .filter((s: any) => s && s.id);
   } catch (err) {
-    console.error('Failed to fetch services:', err);
+    console.error('Failed to fetch event services:', err);
+    servicesList.value = [];
   }
 }
 

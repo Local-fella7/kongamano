@@ -40,19 +40,36 @@ export function useCrudApi<T extends { id: number | string }>(options: CrudOptio
       let rawList: T[] = [];
       if (options.dataKey && Array.isArray(res?.data?.[options.dataKey])) {
         rawList = res.data[options.dataKey];
+      } else if (options.dataKey && Array.isArray(res?.[options.dataKey])) {
+        rawList = res[options.dataKey];
       } else if (Array.isArray(res?.data)) {
         rawList = res.data;
       } else if (Array.isArray(res)) {
         rawList = res;
+      } else if (res?.data && typeof res.data === 'object') {
+        // Fallback: search for any array property inside res.data
+        const arrayProp = Object.values(res.data).find((val) => Array.isArray(val));
+        if (arrayProp) rawList = arrayProp as T[];
       }
 
       items.value = rawList;
     } catch (err: any) {
-      console.error(`[CRUD ${options.endpoint}] Fetch error:`, err);
-      error.value = err?.data?.message || 'Failed to load data.';
-      // Only show error notification if we are online (so we don't alert spam while offline)
-      if (import.meta.client && navigator.onLine) {
-        push.error({ title: 'Error', message: error.value });
+      const status = err?.status || err?.statusCode || err?.response?.status;
+      if (status === 404) {
+        // Backend endpoint not implemented or empty — default to empty array silently
+        items.value = [];
+        error.value = null;
+      } else if (status === 401) {
+        error.value = 'Session expired. Please log in again.';
+        if (import.meta.client) {
+          navigateTo('/login');
+        }
+      } else {
+        console.error(`[CRUD ${options.endpoint}] Fetch error:`, err);
+        error.value = err?.data?.message || err?.message || 'Failed to load data.';
+        if (import.meta.client && navigator.onLine) {
+          push.error({ title: 'Notice', message: `Could not load ${options.dataKey || 'setup items'}: ${error.value}` });
+        }
       }
     } finally {
       loading.value = false;

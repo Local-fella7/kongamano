@@ -87,8 +87,6 @@ async function generateQrCode() {
     const auth = useAuthStore();
     const token = auth.token;
 
-    // Always call the backend QR endpoint so it generates/returns the real DB qr_code
-    // This ensures new registrations (where qr_code is NULL in DB) get it populated
     let rawCode: string = props.registration.qr_code || '';
     try {
       const endpoint = eventId
@@ -97,27 +95,24 @@ async function generateQrCode() {
       const res = await $fetch<any>(endpoint, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       });
-      // Backend may return qr_code in various shapes
       const backendCode = res?.data?.qr_code || res?.qr_code || res?.data?.registration?.qr_code || res?.registration?.qr_code;
       if (backendCode) rawCode = backendCode;
     } catch {
-      // Backend endpoint unavailable — use local fallback below
+      // Fallback
     }
 
-    // Final fallback: construct REG-{event_id}-{id} which the backend also accepts
     if (!rawCode) rawCode = `REG-${eventId}-${regId}`;
-
     const origin = import.meta.client ? window.location.origin : '';
-    const fullQrUrl = `${origin}/scannings?code=${encodeURIComponent(rawCode)}`;
 
-    qrDataUrl.value = await QRCode.toDataURL(fullQrUrl, {
-      width: 250,
-      margin: 2,
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff',
-      },
+    const { generateLabeledQrCanvasBlob } = await import('~/utils/qrCanvas');
+    const { blob } = await generateLabeledQrCanvasBlob({
+      registration: { ...props.registration, qr_code: rawCode },
+      index: Math.max(0, (Number(props.registration.id) || 1) - 1),
+      totalCount: 1,
+      originUrl: origin,
     });
+
+    qrDataUrl.value = URL.createObjectURL(blob);
   } catch (err: any) {
     console.error('Failed to generate QR code:', err);
     error.value = 'Failed to generate QR code.';
