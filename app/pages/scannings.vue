@@ -577,10 +577,38 @@ const isReentryToday = computed(() => {
 });
 
 // Filter services:
+function parseTimeToMinutes(timeStr?: string | null): number | null {
+  if (!timeStr) return null;
+  const match = String(timeStr).trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function getEATCurrentMinutes(): number {
+  try {
+    const d = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Nairobi',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(d);
+    const hour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
+    const min = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
+    return (hour % 24) * 60 + min;
+  } catch {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
+}
+
 const availableScannableServices = computed(() => {
   if (!scannedQrCode.value && !scannedAttendee.value?.id) return [];
-  const now = new Date();
-  const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  const currentMinutes = getEATCurrentMinutes();
 
   return servicesList.value.filter((srv: any) => {
     const requiresScan = srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined;
@@ -593,7 +621,7 @@ const availableScannableServices = computed(() => {
       const logQr = l.qr_code || l.registration?.qr_code || '';
       const logRegId = l.registration_id || l.registration?.id;
       const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
-      const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
+      const matchesService = Number(l.service_id) === Number(srv.id) || Number(l.service?.id) === Number(srv.id);
 
       let isToday = true;
       if (l.created_at) {
@@ -606,10 +634,24 @@ const availableScannableServices = computed(() => {
     });
     if (alreadyClaimed) return false;
 
-    if (srv.start_time && srv.end_time) {
-      if (currentTimeStr < srv.start_time || currentTimeStr > srv.end_time) {
+    // Strict time comparison: service is ONLY active within its designated window
+    const startMins = parseTimeToMinutes(srv.start_time);
+    const endMins = parseTimeToMinutes(srv.end_time);
+
+    if (startMins !== null && endMins !== null) {
+      if (currentMinutes < startMins || currentMinutes > endMins) {
         return false;
       }
+    } else if (startMins !== null) {
+      if (currentMinutes < startMins) {
+        return false;
+      }
+    } else if (endMins !== null) {
+      if (currentMinutes > endMins) {
+        return false;
+      }
+    } else {
+      return false;
     }
 
     return true;
@@ -858,7 +900,7 @@ async function openVerificationForQr(qrCode: string) {
 async function handleScannedUrlCode() {
   const code = route.query.code;
   if (!code) return;
-  await openVerificationForQr(String(code));
+  return navigateTo({ path: '/scan', query: { code: String(code) } }, { replace: true });
 }
 
 watch(
@@ -871,20 +913,14 @@ watch(
 );
 
 onMounted(async () => {
+  if (route.query.code) {
+    return navigateTo({ path: '/scan', query: { code: String(route.query.code) } }, { replace: true });
+  }
   await fetchEvents();
   if (selectedEventId.value) {
     await preloadRegistrations(selectedEventId.value);
   }
   await fetchServices();
-  if (route.query.code) {
-    const codeFromUrl = String(route.query.code);
-    const eventIdMatch = codeFromUrl.match(/^REG-(\d+)-/i);
-    if (eventIdMatch && eventIdMatch[1]) {
-      selectedEventId.value = Number(eventIdMatch[1]);
-      await preloadRegistrations(selectedEventId.value);
-    }
-  }
-  await handleScannedUrlCode();
 });
 
 onBeforeUnmount(() => {
@@ -919,13 +955,19 @@ async function fetchServices() {
 
     servicesList.value = rawList
       .map((es: any) => {
-        if (es.service) return es.service;
+        const srvStart = es.start_time || es.service?.start_time || null;
+        const srvEnd = es.end_time || es.service?.end_time || null;
+        const srvScan = es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true);
+        const srvName = es.name || es.service?.name || `Service #${es.service_id || es.id}`;
+        const srvDesc = es.description || es.service?.description || '';
+
         return {
-          id: es.service_id || es.id,
-          name: es.name || `Service #${es.service_id || es.id}`,
-          start_time: es.start_time,
-          end_time: es.end_time,
-          requires_scan: es.requires_scan,
+          id: es.service_id || es.service?.id || es.id,
+          name: srvName,
+          start_time: srvStart,
+          end_time: srvEnd,
+          requires_scan: srvScan,
+          description: srvDesc,
         };
       })
       .filter((s: any) => s && s.id);

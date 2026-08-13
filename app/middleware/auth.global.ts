@@ -5,18 +5,38 @@ export default defineNuxtRouteMiddleware((to) => {
 
   // 1. Not authenticated → send to login
   if (!token.value && to.path !== '/login' && to.path !== '/forgot-password') {
-    return navigateTo({ path: '/login', query: { redirect: to.fullPath } });
+    // If incoming is old badge /scannings?code=..., map redirect to /scan?code=...
+    let targetPath = to.fullPath;
+    if (to.path === '/scannings' && to.query.code) {
+      targetPath = `/scan?code=${encodeURIComponent(String(to.query.code))}`;
+    }
+    return navigateTo({ path: '/login', query: { redirect: targetPath } });
   }
 
-  // 2. Authenticated + trying to visit login/forgot-password → redirect away
-  //    Non-admins always go to /scannings; admins go to their intended target or /
+  // 2. Badge Scan Interceptor: Any scan hitting /scannings?code=... immediately fast-forwards to /scan?code=...
+  if (to.path === '/scannings' && to.query.code) {
+    return navigateTo({ path: '/scan', query: { code: String(to.query.code) } });
+  }
+
+  // 3. Authenticated + trying to visit login/forgot-password → redirect away
+  //    Preserve redirect query if available, otherwise non-admins go to /scan and admins to /
   if (token.value && (to.path === '/login' || to.path === '/forgot-password')) {
-    return navigateTo(isAdmin ? ((to.query.redirect as string) || '/') : '/scannings');
+    const redirectUrl = to.query.redirect as string;
+    if (redirectUrl) {
+      if (redirectUrl.startsWith('/scannings?code=')) {
+        const code = redirectUrl.split('/scannings?code=')[1];
+        return navigateTo(`/scan?code=${code}`);
+      }
+      if (isAdmin || redirectUrl.startsWith('/scan') || redirectUrl.startsWith('/scannings')) {
+        return navigateTo(redirectUrl);
+      }
+    }
+    return navigateTo(isAdmin ? '/' : '/scan');
   }
 
-  // 3. Authenticated + non-admin trying to visit any page except /scannings → block instantly
-  //    No API call needed — role_id cookie is read synchronously
-  if (token.value && !isAdmin && to.path !== '/scannings') {
-    return navigateTo('/scannings');
+  // 4. Authenticated + non-admin trying to visit any page except /scan or /scannings → block instantly
+  //    Default non-admins to /scan
+  if (token.value && !isAdmin && to.path !== '/scannings' && to.path !== '/scan') {
+    return navigateTo('/scan');
   }
 });

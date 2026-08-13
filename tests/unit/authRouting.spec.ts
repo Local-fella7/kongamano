@@ -63,24 +63,42 @@ describe('Auth Routing & Middleware Tests', () => {
   })
 
   describe('Route Middleware Guard Logic', () => {
-    function runMiddleware(toPath: string, tokenVal: string | null, roleIdVal: number | null, queryRedirect?: string) {
+    function runMiddleware(toPath: string, tokenVal: string | null, roleIdVal: number | null, queryRedirect?: string, queryCode?: string) {
       const token = { value: tokenVal }
       const roleId = { value: roleIdVal }
       const isAdmin = roleId.value === 1
 
       // 1. Not authenticated → send to login
       if (!token.value && toPath !== '/login' && toPath !== '/forgot-password') {
-        return { path: '/login', query: { redirect: toPath } }
+        let targetPath = toPath
+        if (toPath === '/scannings' && queryCode) {
+          targetPath = `/scan?code=${encodeURIComponent(queryCode)}`
+        }
+        return { path: '/login', query: { redirect: targetPath } }
       }
 
-      // 2. Authenticated + trying to visit login/forgot-password → redirect away
+      // 2. Badge Scan Interceptor: Any scan hitting /scannings with code immediately fast-forwards to /scan
+      if (toPath === '/scannings' && queryCode) {
+        return `/scan?code=${queryCode}`
+      }
+
+      // 3. Authenticated + trying to visit login/forgot-password → redirect away
       if (token.value && (toPath === '/login' || toPath === '/forgot-password')) {
-        return isAdmin ? (queryRedirect || '/') : '/scannings'
+        if (queryRedirect) {
+          if (queryRedirect.startsWith('/scannings?code=')) {
+            const code = queryRedirect.split('/scannings?code=')[1]
+            return `/scan?code=${code}`
+          }
+          if (isAdmin || queryRedirect.startsWith('/scan') || queryRedirect.startsWith('/scannings')) {
+            return queryRedirect
+          }
+        }
+        return isAdmin ? '/' : '/scan'
       }
 
-      // 3. Authenticated + non-admin trying to visit any page except /scannings → block instantly
-      if (token.value && !isAdmin && toPath !== '/scannings') {
-        return '/scannings'
+      // 4. Authenticated + non-admin trying to visit any page except /scannings or /scan → block instantly
+      if (token.value && !isAdmin && toPath !== '/scannings' && toPath !== '/scan') {
+        return '/scan'
       }
 
       return null // allowed
@@ -91,9 +109,25 @@ describe('Auth Routing & Middleware Tests', () => {
       expect(result).toEqual({ path: '/login', query: { redirect: '/events' } })
     })
 
-    it('redirects logged-in non-admin away from /login to /scannings', () => {
+    it('redirects unauthenticated badge scan on /scannings?code= directly to /login with /scan redirect', () => {
+      const result = runMiddleware('/scannings', null, null, undefined, 'REG-1-00001')
+      expect(result).toEqual({ path: '/login', query: { redirect: '/scan?code=REG-1-00001' } })
+    })
+
+    it('fast-forwards authenticated scan on /scannings?code= directly to /scan?code=', () => {
+      const result = runMiddleware('/scannings', 'valid_token', 2, undefined, 'REG-1-00001')
+      expect(result).toBe('/scan?code=REG-1-00001')
+    })
+
+    it('redirects logged-in non-admin away from /login to /scan or /scan redirect target', () => {
       const result = runMiddleware('/login', 'valid_token', 2)
-      expect(result).toBe('/scannings')
+      expect(result).toBe('/scan')
+
+      const resultScanRedirect = runMiddleware('/login', 'valid_token', 2, '/scan?code=REG-1-00001')
+      expect(resultScanRedirect).toBe('/scan?code=REG-1-00001')
+
+      const resultOldBadgeRedirect = runMiddleware('/login', 'valid_token', 2, '/scannings?code=REG-1-00001')
+      expect(resultOldBadgeRedirect).toBe('/scan?code=REG-1-00001')
     })
 
     it('redirects logged-in admin away from /login to / or query target', () => {
@@ -104,18 +138,23 @@ describe('Auth Routing & Middleware Tests', () => {
       expect(resultRedirect).toBe('/users')
     })
 
-    it('blocks non-admin from /events and redirects to /scannings', () => {
+    it('blocks non-admin from /events and redirects to /scan', () => {
       const result = runMiddleware('/events', 'valid_token', 2)
-      expect(result).toBe('/scannings')
+      expect(result).toBe('/scan')
     })
 
-    it('blocks non-admin from /users and redirects to /scannings', () => {
+    it('blocks non-admin from /users and redirects to /scan', () => {
       const result = runMiddleware('/users', 'valid_token', 2)
-      expect(result).toBe('/scannings')
+      expect(result).toBe('/scan')
     })
 
     it('allows non-admin to visit /scannings', () => {
       const result = runMiddleware('/scannings', 'valid_token', 2)
+      expect(result).toBeNull()
+    })
+
+    it('allows non-admin to visit /scan', () => {
+      const result = runMiddleware('/scan', 'valid_token', 2)
       expect(result).toBeNull()
     })
 

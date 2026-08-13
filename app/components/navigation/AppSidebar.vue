@@ -153,6 +153,7 @@ const navGroups = [
     items: [
       { name: 'Registrations', to: '/registrations', icon: 'bi-people-fill' },
       { name: 'Payments', to: '/payments', icon: 'bi-credit-card-fill' },
+      { name: 'Instant Scanner', to: '/scan', icon: 'bi-camera-fill' },
       { name: 'Scannings', to: '/scannings', icon: 'bi-qr-code-scan' },
       { name: 'Agents', to: '/agents', icon: 'bi-person-badge-fill' },
       {
