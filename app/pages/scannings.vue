@@ -264,14 +264,13 @@
 
         <!-- Delegate Information -->
         <div class="d-flex align-items-center flex-wrap gap-2 gap-sm-3 p-3 bg-light rounded-3 border mb-3">
-          <div class="avatar-circle-lg bg-emerald-500 text-white fw-bold fs-5 shadow-2xs d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; border-radius: 50%;">
-            {{ getAttendeeInitials(scannedAttendee) }}
-          </div>
-          <div class="flex-grow-1">
-            <h6 class="fw-bold text-slate-900 mb-0 fs-6">{{ formatAttendeeDisplayName(scannedAttendee) }}</h6>
-            <div class="d-flex align-items-center flex-wrap gap-1 gap-sm-2 fs-8 text-muted mt-0.5">
-              <span><i class="bi bi-phone me-1"></i>{{ scannedAttendee?.phone || scannedAttendee?.registration?.phone || 'No phone' }}</span>
-              <span class="d-none d-sm-inline">•</span>
+          <div class="flex-grow-1 overflow-hidden">
+            <h6 class="fw-bold text-slate-900 mb-0 fs-6 text-truncate">{{ formatAttendeeDisplayName(scannedAttendee) }}</h6>
+            <div class="d-flex align-items-center flex-wrap gap-1.5 fs-8 text-muted mt-0.5">
+              <span v-if="getAttendeePhoneNumber(scannedAttendee)">
+                <i class="bi bi-phone me-1"></i>{{ getAttendeePhoneNumber(scannedAttendee) }}
+              </span>
+              <span v-if="getAttendeePhoneNumber(scannedAttendee)" class="d-none d-sm-inline">•</span>
               <code class="d-inline-block">{{ scannedAttendee?.qr_code || scannedQrCode }}</code>
             </div>
           </div>
@@ -346,7 +345,7 @@
                 @click="claimService(activeCurrentService.id)"
               >
                 <span v-if="claimingServiceId === activeCurrentService.id" class="spinner-border spinner-border-sm me-2"></span>
-                <i v-else class="bi bi-gift-fill me-1.5"></i> Claim & Record Service Access
+                <i v-else class="bi bi-check-circle-fill me-1.5"></i> Yes!
               </button>
 
               <button
@@ -462,15 +461,14 @@ function formatAttendeeDisplayName(logOrAttendee: any): string {
   return 'Delegate';
 }
 
-function getAttendeeInitials(attendee: any): string {
-  if (!attendee) return 'D';
-  const name = formatAttendeeDisplayName(attendee);
-  if (!name || name === 'Delegate') return 'D';
-  const parts = name.replace(/^Phone:\s*/i, '').split(' ').filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+function getAttendeePhoneNumber(attendee: any): string {
+  if (!attendee) return '';
+  const reg = attendee.registration || attendee;
+  const phone = String(reg.phone || attendee.phone || '').trim();
+  if (!phone || phone.toLowerCase() === 'no phone' || phone.toLowerCase() === 'null' || phone === '—' || phone === '-') {
+    return '';
   }
-  return name.slice(0, 2).toUpperCase();
+  return phone;
 }
 
 // Only active & scheduled events for scanning selection

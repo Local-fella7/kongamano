@@ -28,14 +28,13 @@
       <!-- 3. Scanned Delegate Summary & Claim Action Cards -->
       <div v-if="scannedAttendee" class="delegate-claim-card bg-light p-3 rounded-3 border mb-3">
         <div class="d-flex align-items-center gap-3 mb-3">
-          <div class="avatar-circle-lg bg-emerald-500 text-white fw-bold fs-5 shadow-2xs d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; border-radius: 50%;">
-            {{ getAttendeeInitials(scannedAttendee) }}
-          </div>
           <div class="flex-grow-1 overflow-hidden">
             <h6 class="fw-bold text-slate-900 mb-0 fs-6 text-truncate">{{ formatAttendeeDisplayName(scannedAttendee) }}</h6>
             <div class="d-flex align-items-center flex-wrap gap-1.5 fs-8 text-muted mt-0.5">
-              <span><i class="bi bi-phone me-1"></i>{{ scannedAttendee?.phone || scannedAttendee?.registration?.phone || 'No phone' }}</span>
-              <span>•</span>
+              <span v-if="getAttendeePhoneNumber(scannedAttendee)">
+                <i class="bi bi-phone me-1"></i>{{ getAttendeePhoneNumber(scannedAttendee) }}
+              </span>
+              <span v-if="getAttendeePhoneNumber(scannedAttendee)">•</span>
               <code>{{ scannedAttendee?.qr_code || scannedQrCode }}</code>
             </div>
           </div>
@@ -56,8 +55,8 @@
             class="btn btn-emerald btn-lg w-100 rounded-3 py-2.5 fw-extrabold fs-6 shadow-sm d-flex align-items-center justify-content-center gap-2"
             @click="confirmInstantClaim('service', activeCurrentService.id)"
           >
-            <i class="bi bi-gift-fill fs-5"></i>
-            <span>Claim {{ activeCurrentService.name }} Now</span>
+            <i class="bi bi-check-circle-fill fs-5"></i>
+            <span>Yes!</span>
           </button>
         </div>
 
@@ -243,13 +242,14 @@ function formatAttendeeDisplayName(attendee: any): string {
   return 'Delegate';
 }
 
-function getAttendeeInitials(attendee: any): string {
-  if (!attendee) return 'D';
-  const name = formatAttendeeDisplayName(attendee);
-  if (!name || name === 'Delegate') return 'D';
-  const parts = name.replace(/^Phone:\s*/i, '').split(' ').filter(Boolean);
-  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  return name.slice(0, 2).toUpperCase();
+function getAttendeePhoneNumber(attendee: any): string {
+  if (!attendee) return '';
+  const reg = attendee.registration || attendee;
+  const phone = String(reg.phone || attendee.phone || '').trim();
+  if (!phone || phone.toLowerCase() === 'no phone' || phone.toLowerCase() === 'null' || phone === '—' || phone === '-') {
+    return '';
+  }
+  return phone;
 }
 
 function parseTimeToMinutes(timeStr: string): number | null {

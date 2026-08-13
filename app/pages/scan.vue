@@ -73,14 +73,13 @@
           <div class="p-3 p-sm-4">
             <!-- Delegate Information -->
             <div class="d-flex align-items-center flex-wrap gap-2 gap-sm-3 p-3 bg-light rounded-3 border mb-3">
-              <div class="avatar-circle-lg bg-emerald-500 text-white fw-bold fs-5 shadow-2xs d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; border-radius: 50%;">
-                {{ attendeeInitials }}
-              </div>
               <div class="flex-grow-1 overflow-hidden">
                 <h6 class="fw-bold text-slate-900 mb-0 fs-6 text-truncate">{{ attendeeFullName }}</h6>
-                <div class="d-flex align-items-center flex-wrap gap-1 gap-sm-2 fs-8 text-muted mt-0.5">
-                  <span><i class="bi bi-phone me-1"></i>{{ scannedAttendee?.phone || scannedAttendee?.registration?.phone || 'No phone' }}</span>
-                  <span class="d-none d-sm-inline">•</span>
+                <div class="d-flex align-items-center flex-wrap gap-1.5 fs-8 text-muted mt-0.5">
+                  <span v-if="attendeePhoneNumber">
+                    <i class="bi bi-phone me-1"></i>{{ attendeePhoneNumber }}
+                  </span>
+                  <span v-if="attendeePhoneNumber" class="d-none d-sm-inline">•</span>
                   <code class="d-inline-block">{{ scannedAttendee?.qr_code || scannedQrCode }}</code>
                 </div>
               </div>
@@ -158,7 +157,7 @@
                     @click="handleClaimService(activeCurrentService.id)"
                   >
                     <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-1.5"></span>
-                    <i v-else class="bi bi-gift-fill me-1.5"></i> Claim & Record Service Access
+                    <i v-else class="bi bi-check-circle-fill me-1.5"></i> Yes!
                   </button>
 
                   <button
@@ -337,7 +336,6 @@ function getTodayDateStr(): string {
   }
 }
 
-// Attendee Display Formatters
 const attendeeFullName = computed(() => {
   if (!scannedAttendee.value) return 'Delegate';
   const first = scannedAttendee.value.first_name || '';
@@ -345,11 +343,14 @@ const attendeeFullName = computed(() => {
   return `${first} ${last}`.trim() || 'Delegate';
 });
 
-const attendeeInitials = computed(() => {
-  if (!scannedAttendee.value) return 'D';
-  const first = (scannedAttendee.value.first_name || '').charAt(0).toUpperCase();
-  const last = (scannedAttendee.value.last_name || '').charAt(0).toUpperCase();
-  return `${first}${last}` || 'D';
+const attendeePhoneNumber = computed(() => {
+  if (!scannedAttendee.value) return '';
+  const phone = scannedAttendee.value.phone || scannedAttendee.value.registration?.phone || '';
+  const trimmed = String(phone).trim();
+  if (!trimmed || trimmed.toLowerCase() === 'no phone' || trimmed === '—' || trimmed === '-') {
+    return '';
+  }
+  return trimmed;
 });
 
 // Attendee's Logs for Today (matches scannings.vue logic)
