@@ -768,13 +768,23 @@ async function executeScanAction(type: 'check_in' | 'service' | 'check_out', ser
       console.warn('Background sync notice:', err);
     });
 
-    // Close the card immediately and re-arm the scanner so the entry check-in screen never flashes
-    scannedAttendee.value = null;
-    scannedQrCode.value = '';
-    if (route.query.code) {
-      navigateTo({ path: '/scan' }, { replace: true });
+    if (type === 'check_out' || type === 'service') {
+      // Completed final action (service claimed or checked out) -> close card and re-arm camera
+      scannedAttendee.value = null;
+      scannedQrCode.value = '';
+      if (route.query.code) {
+        navigateTo({ path: '/scan' }, { replace: true });
+      }
+      await startCamera();
+    } else {
+      // type === 'check_in': Keep the modal open!
+      // The attendee status is now Checked In, and the card will smoothly display the
+      // Active Service Window to claim immediately, or show that no active service is scheduled right now.
+      push.info({
+        title: 'Entry Check-in Confirmed',
+        message: 'Attendee is checked in. You can now claim active services below.',
+      });
     }
-    await startCamera();
   } finally {
     isSubmitting.value = false;
   }
