@@ -699,6 +699,8 @@ async function claimService(serviceId: number | string) {
   try {
     await processScan(realQrCode, 'service', serviceId);
     showResultModal.value = false;
+    scannedAttendee.value = null;
+    scannedQrCode.value = '';
   } finally {
     claimingServiceId.value = null;
   }
@@ -723,6 +725,12 @@ async function confirmEventCheckOut() {
   try {
     await processScan(realQrCode, 'check_out');
     showResultModal.value = false;
+    scannedAttendee.value = null;
+    scannedQrCode.value = '';
+    push.info({
+      title: 'Ready for Next Scan',
+      message: 'Delegate checked out. Ready to scan next QR code.',
+    });
   } catch {
     // Handled in processScan
   }

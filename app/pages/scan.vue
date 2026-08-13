@@ -58,9 +58,16 @@
         <!-- ATTENDEE SCAN VERIFICATION CARD (Matches Attendee Scan Verification Modal exactly) -->
         <div v-else-if="scannedAttendee" class="bg-white rounded-3 border shadow-2xs overflow-hidden mb-3">
           <!-- Target Event Banner -->
-          <div class="p-3 bg-emerald-50 rounded-top border-bottom border-emerald-200 text-center">
+          <div class="p-3 bg-emerald-50 rounded-top border-bottom border-emerald-200 position-relative text-center">
             <span class="fs-8 text-uppercase text-emerald-700 fw-bold d-block tracking-wider">Target Event</span>
             <h5 class="fw-extrabold text-slate-900 mb-0 fs-6 mt-0.5">{{ selectedEventName }}</h5>
+            <button
+              type="button"
+              class="btn-close position-absolute top-50 end-0 translate-middle-y me-3"
+              aria-label="Close and scan next badge"
+              title="Close & Scan Next Badge"
+              @click="resetAndOpenScanner"
+            ></button>
           </div>
 
           <div class="p-3 p-sm-4">
@@ -760,6 +767,14 @@ async function executeScanAction(type: 'check_in' | 'service' | 'check_out', ser
     }).catch((err) => {
       console.warn('Background sync notice:', err);
     });
+
+    // Close the card immediately and re-arm the scanner so the entry check-in screen never flashes
+    scannedAttendee.value = null;
+    scannedQrCode.value = '';
+    if (route.query.code) {
+      navigateTo({ path: '/scan' }, { replace: true });
+    }
+    await startCamera();
   } finally {
     isSubmitting.value = false;
   }
