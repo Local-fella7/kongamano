@@ -110,9 +110,9 @@
             <td class="row-index">{{ startIndex + idx }}</td>
             <td>
               <span class="fw-bold text-slate-900 fs-7 d-block">
-                {{ log.registration ? `${log.registration.first_name} ${log.registration.last_name}` : (log.attendee_name || 'Delegate') }}
+                {{ formatAttendeeDisplayName(log) }}
               </span>
-              <span class="fs-8 text-muted">{{ log.registration?.phone || '—' }}</span>
+              <span class="fs-8 text-muted">{{ log.registration?.phone || log.phone || '—' }}</span>
             </td>
             <td>
               <code class="px-2 py-1 bg-slate-100 rounded text-slate-800 fs-8">{{ log.qr_code }}</code>
@@ -265,14 +265,14 @@
         <!-- Delegate Information -->
         <div class="d-flex align-items-center flex-wrap gap-2 gap-sm-3 p-3 bg-light rounded-3 border mb-3">
           <div class="avatar-circle-lg bg-emerald-500 text-white fw-bold fs-5 shadow-2xs d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; border-radius: 50%;">
-            {{ scannedAttendee.first_name?.[0] || 'D' }}{{ scannedAttendee.last_name?.[0] || '' }}
+            {{ getAttendeeInitials(scannedAttendee) }}
           </div>
           <div class="flex-grow-1">
-            <h6 class="fw-bold text-slate-900 mb-0 fs-6">{{ scannedAttendee.first_name }} {{ scannedAttendee.last_name }}</h6>
+            <h6 class="fw-bold text-slate-900 mb-0 fs-6">{{ formatAttendeeDisplayName(scannedAttendee) }}</h6>
             <div class="d-flex align-items-center flex-wrap gap-1 gap-sm-2 fs-8 text-muted mt-0.5">
-              <span><i class="bi bi-phone me-1"></i>{{ scannedAttendee.phone || 'No phone' }}</span>
+              <span><i class="bi bi-phone me-1"></i>{{ scannedAttendee?.phone || scannedAttendee?.registration?.phone || 'No phone' }}</span>
               <span class="d-none d-sm-inline">•</span>
-              <code class="d-inline-block">{{ scannedAttendee.qr_code || scannedQrCode }}</code>
+              <code class="d-inline-block">{{ scannedAttendee?.qr_code || scannedQrCode }}</code>
             </div>
           </div>
           <div class="w-100 w-sm-auto mt-1 mt-sm-0">
@@ -427,6 +427,51 @@ const cachedRegistrationsMap = ref<Map<string, any>>(new Map());
 const isPreloadingRegistrations = ref(false);
 const fastScanMode = ref(false);
 let lastPreloadedEventId: number | string | null = null;
+
+function formatAttendeeDisplayName(logOrAttendee: any): string {
+  if (!logOrAttendee) return 'Delegate';
+  const reg = logOrAttendee.registration || logOrAttendee;
+  
+  const rawFn = String(reg.first_name || '').trim();
+  const rawLn = String(reg.last_name || '').trim();
+
+  const fn = (rawFn.toLowerCase() === 'null' || rawFn.toLowerCase() === 'undefined') ? '' : rawFn;
+  const ln = (rawLn.toLowerCase() === 'null' || rawLn.toLowerCase() === 'undefined') ? '' : rawLn;
+
+  const fullName = `${fn} ${ln}`.trim();
+  if (fullName) return fullName;
+
+  // Fallback 1: Phone number
+  const phone = String(reg.phone || logOrAttendee.phone || '').trim();
+  if (phone && phone.toLowerCase() !== 'null' && phone.toLowerCase() !== 'undefined') {
+    return `Phone: ${phone}`;
+  }
+
+  // Fallback 2: Attendee name field
+  const attendeeName = String(logOrAttendee.attendee_name || '').trim();
+  if (attendeeName && attendeeName.toLowerCase() !== 'null' && attendeeName.toLowerCase() !== 'undefined') {
+    return attendeeName;
+  }
+
+  // Fallback 3: QR Code badge
+  const qr = String(logOrAttendee.qr_code || reg.qr_code || '').trim();
+  if (qr && qr.toLowerCase() !== 'null' && qr.toLowerCase() !== 'undefined') {
+    return `Delegate (${qr})`;
+  }
+
+  return 'Delegate';
+}
+
+function getAttendeeInitials(attendee: any): string {
+  if (!attendee) return 'D';
+  const name = formatAttendeeDisplayName(attendee);
+  if (!name || name === 'Delegate') return 'D';
+  const parts = name.replace(/^Phone:\s*/i, '').split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
 
 // Only active & scheduled events for scanning selection
 const activeEventsList = computed(() => {
@@ -675,10 +720,10 @@ const filteredLogs = computed(() => {
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim();
     list = list.filter((l: any) => {
-      const name = `${l.registration?.first_name || ''} ${l.registration?.last_name || ''} ${l.attendee_name || ''}`.toLowerCase();
-      const phone = (l.registration?.phone || '').toLowerCase();
-      const qr = (l.qr_code || '').toLowerCase();
-      return name.includes(q) || phone.includes(q) || qr.includes(q);
+      const displayName = formatAttendeeDisplayName(l).toLowerCase();
+      const phone = String(l.registration?.phone || l.phone || '').toLowerCase();
+      const qr = String(l.qr_code || '').toLowerCase();
+      return displayName.includes(q) || phone.includes(q) || qr.includes(q);
     });
   }
 
