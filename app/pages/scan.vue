@@ -123,25 +123,27 @@
 
                 <button
                   type="button"
-                  class="btn btn-emerald btn-md w-100 rounded-3 py-2 fw-bold shadow-2xs"
+                  class="btn btn-emerald btn-lg w-100 rounded-3 py-2.5 fw-bold fs-7 shadow-2xs d-flex align-items-center justify-content-center gap-2"
                   :disabled="isSubmitting"
                   @click="handleConfirmCheckIn"
                 >
                   <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-1.5"></span>
-                  <i v-else class="bi bi-qr-code-scan me-1.5"></i>
-                  {{ isReentryToday ? 'Confirm Re-Entry & Check-in' : 'Confirm Entry & Check-in Today' }}
+                  <i v-else class="bi bi-qr-code-scan fs-6"></i>
+                  <span>{{ isReentryToday ? 'Confirm Re-Entry & Check-in' : 'Confirm Entry & Check-in Today' }}</span>
                 </button>
               </div>
 
-              <!-- Option B: Currently Checked-in → Show Next Active Service Card (No Check-In button) -->
-              <div v-else-if="activeCurrentService" class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle">
-                <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-                  <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-                  <span>Notice: This person has checked in again today (Re-entered).</span>
+              <!-- Option B: Currently Checked-in → Active Service Window Available -->
+              <div v-else-if="activeCurrentService" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center mb-2">
+                <div v-if="checkInCountToday > 1" class="alert alert-info py-1 px-2.5 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
+                  <i class="bi bi-info-circle-fill text-blue-600"></i>
+                  <span>Re-entered delegate</span>
                 </div>
 
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                  <span class="fs-8 text-uppercase fw-bold text-primary tracking-wider">Active Service Window</span>
+                  <span class="fs-8 text-uppercase text-emerald-700 fw-bold tracking-wider">
+                    <i class="bi bi-gift-fill me-1"></i> Active Service Window
+                  </span>
                   <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-900 border border-slate-300 fs-8 fw-bold shadow-2xs">
                     <i class="bi bi-clock-fill me-1 text-primary"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
                   </span>
@@ -173,14 +175,9 @@
 
               <!-- Option C: All active services claimed today -->
               <div v-else-if="areAllServicesClaimedToday" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
-                <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-                  <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-                  <span>Notice: This person has checked in again today (Re-entered).</span>
-                </div>
-
-                <i class="bi bi-check-circle-fill text-emerald-600 fs-2 d-block mb-1"></i>
+                <i class="bi bi-check-circle-fill text-emerald-600 fs-3 d-block mb-1"></i>
                 <h6 class="fw-bold text-slate-900 fs-7 mb-1">All Services Claimed For Today!</h6>
-                <p class="fs-8 text-muted mb-3">All scheduled services for today have been claimed by this attendee.</p>
+                <p class="fs-8 text-muted mb-2">All scheduled services for today have been claimed by this delegate.</p>
 
                 <button
                   type="button"
@@ -192,16 +189,11 @@
                 </button>
               </div>
 
-              <!-- Option D: Checked in, but no active service in current time window right now -->
+              <!-- Option D: Checked in, but no active service in current time window -->
               <div v-else class="p-3 bg-light rounded-3 border text-center">
-                <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-                  <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-                  <span>Notice: This person has checked in again today (Re-entered).</span>
-                </div>
-
-                <i class="bi bi-clock-history text-amber-500 fs-2 d-block mb-1"></i>
+                <i class="bi bi-clock-history text-amber-500 fs-3 d-block mb-1"></i>
                 <h6 class="fw-bold text-slate-900 fs-7 mb-1">No Active Service Right Now</h6>
-                <p class="fs-8 text-muted mb-3">Delegate is checked in today. No scannable service is active in this current time window.</p>
+                <p class="fs-8 text-muted mb-2">Delegate is checked in today. No scannable service is active in this current time window.</p>
 
                 <button
                   type="button"
@@ -215,67 +207,59 @@
             </div>
 
             <!-- Ready for Next Scan Button -->
-            <div class="pt-2">
+            <div class="pt-2 border-top">
               <button
                 type="button"
-                class="btn btn-outline-secondary w-100 rounded-3 py-2 fw-bold fs-7 shadow-2xs d-flex align-items-center justify-content-center gap-2"
+                class="btn btn-secondary btn-sm w-100 rounded-3 py-1.5 fw-bold fs-8"
                 @click="resetAndOpenScanner"
               >
-                <i class="bi bi-camera-fill"></i>
-                <span>Scan Next Badge</span>
+                <i class="bi bi-camera me-1"></i> Ready for Next Scan
               </button>
             </div>
           </div>
         </div>
 
-        <!-- CAMERA SCANNER & CODE INPUT DRAWER -->
-        <div class="bg-white rounded-3 border shadow-2xs p-3 p-sm-4 mb-3">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-qr-code-scan text-emerald-600 fs-5"></i>
-              <h4 class="fw-bold text-slate-900 fs-6 mb-0">Camera & Code Scanner</h4>
-            </div>
+        <!-- CAMERA SCANNER CARD -->
+        <div class="bg-white rounded-3 border shadow-2xs p-3 mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="fs-7 fw-bold text-slate-800">
+              <i class="bi bi-camera me-1.5 text-primary"></i> Camera Scanner
+            </span>
             <button
               type="button"
-              class="btn btn-sm rounded-pill px-3 py-1 fs-8 fw-bold"
-              :class="isCameraActive ? 'btn-danger' : 'btn-emerald'"
+              class="btn btn-sm py-0.5 px-2 rounded-pill fs-8 fw-semibold"
+              :class="isCameraActive ? 'btn-outline-danger' : 'btn-outline-primary'"
               @click="toggleCamera"
             >
-              <i :class="['bi me-1', isCameraActive ? 'bi-camera-video-off-fill' : 'bi-camera-fill']"></i>
               {{ isCameraActive ? 'Stop Camera' : 'Start Camera' }}
             </button>
           </div>
 
-          <!-- Camera Viewfinder -->
-          <div v-show="isCameraActive" class="camera-wrapper mb-3 rounded-3 overflow-hidden border bg-dark">
-            <div id="fast-qr-reader" style="width: 100%; min-height: 250px;"></div>
-            <div class="text-center py-1.5 bg-slate-900 text-white fs-8">
-              <i class="bi bi-bounding-box me-1"></i> Point camera at delegate badge QR code
+          <div class="camera-wrapper rounded-3 overflow-hidden border bg-dark position-relative">
+            <div id="fast-qr-reader" class="w-100" style="min-height: 240px;"></div>
+            <div v-if="!isCameraActive" class="position-absolute top-50 start-50 translate-middle text-center text-white">
+              <i class="bi bi-camera-video-off fs-2 opacity-50 d-block mb-1"></i>
+              <span class="fs-8 opacity-75">Camera Paused</span>
             </div>
           </div>
 
-          <!-- Manual Code Form -->
-          <form @submit.prevent="submitManualCode" class="d-flex gap-2">
-            <div class="input-group">
-              <span class="input-group-text bg-light border-slate-200">
-                <i class="bi bi-keyboard"></i>
-              </span>
+          <div class="mt-3 pt-3 border-top">
+            <form @submit.prevent="submitManualCode" class="d-flex gap-2">
               <input
                 v-model="manualCodeInput"
                 type="text"
-                class="form-control rounded-end-3 fs-7"
-                placeholder="Type badge code (e.g. REG-1-00001)..."
-                autocomplete="off"
+                class="form-control form-control-sm fs-8 rounded-3"
+                placeholder="Or enter Badge QR Code / ID..."
               />
-            </div>
-            <button
-              type="submit"
-              class="btn btn-emerald rounded-3 px-3.5 fw-bold fs-7 shadow-2xs flex-shrink-0"
-              :disabled="!manualCodeInput.trim() || isResolving"
-            >
-              Verify
-            </button>
-          </form>
+              <button
+                type="submit"
+                class="btn btn-emerald btn-sm rounded-3 px-3 fw-bold fs-8 flex-shrink-0"
+                :disabled="!manualCodeInput.trim() || isResolving"
+              >
+                Scan
+              </button>
+            </form>
+          </div>
         </div>
 
       </div>
@@ -398,7 +382,7 @@ const isAttendeeCheckedIn = computed(() => {
 
   const latestScan = logsToday[0];
   if (latestScan?.scan_type === 'check_out') {
-    return false; // Checked out today → requires new check-in
+    return false;
   }
 
   return logsToday.some((l: any) => l.scan_type === 'check_in' || !l.service_id);
@@ -521,7 +505,7 @@ const areAllServicesClaimedToday = computed(() => {
       const logQr = l.qr_code || l.registration?.qr_code || '';
       const logRegId = l.registration_id || l.registration?.id;
       const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
-      const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
+      const matchesService = Number(l.service_id) === Number(srv.id) || Number(l.service?.id) === Number(srv.id);
       let isToday = true;
       if (l.created_at) {
         let p = String(l.created_at).trim().replace(' ', 'T');
@@ -564,6 +548,7 @@ async function resolveBadgeCode(rawCode: string) {
   if (!rawCode || !rawCode.trim()) return;
   let cleanCode = rawCode.trim();
 
+  // Strip URL prefix if QR contains full URL (e.g. https://domain.com/scan?code=REG-1-0001)
   if (cleanCode.includes('?code=')) {
     const parts = cleanCode.split('?code=');
     if (parts[1]) {
@@ -576,7 +561,7 @@ async function resolveBadgeCode(rawCode: string) {
   scannedQrCode.value = cleanCode;
 
   try {
-    // 1. Extract Event ID hint from REG-1-00001 pattern
+    // 1. Try to extract event_id from badge code format (e.g. REG-1-00001)
     let extractedEventId: number | null = null;
     const match = cleanCode.match(/^REG-(\d+)-/i);
     if (match && match[1]) {
@@ -584,7 +569,7 @@ async function resolveBadgeCode(rawCode: string) {
       selectedEventId.value = extractedEventId;
     }
 
-    // 2. Query IndexedDB Cache first (< 5ms)
+    // 2. Query IndexedDB Cache first (Zero Network Delay)
     let foundAttendee: any = null;
     if (extractedEventId) {
       const cached = await dbStore.getCachedRegistrations(extractedEventId);
@@ -597,7 +582,7 @@ async function resolveBadgeCode(rawCode: string) {
       }
     }
 
-    // 3. Fallback: Query active events if eventId not resolved
+    // 3. If Event ID not resolved yet, fetch default active event
     if (!foundAttendee && !selectedEventId.value) {
       try {
         const eventsRes = await cachedFetch<any>('/api/events');
@@ -609,7 +594,7 @@ async function resolveBadgeCode(rawCode: string) {
       } catch {}
     }
 
-    // 4. Fallback Network Query if not found in IndexedDB
+    // 4. Fallback Network Lookup if not found in IndexedDB Cache
     if (!foundAttendee && selectedEventId.value) {
       try {
         const res = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
@@ -664,7 +649,6 @@ async function resolveBadgeCode(rawCode: string) {
           ? logsRes.data.scannings
           : (Array.isArray(logsRes?.data) ? logsRes.data : []);
         if (rawLogs.length > 0) {
-          // Merge unique logs
           const existingIds = new Set(allScanLogs.value.map(l => l.id));
           const freshLogs = rawLogs.filter((l: any) => !existingIds.has(l.id));
           allScanLogs.value = [...allScanLogs.value, ...freshLogs];
@@ -672,7 +656,7 @@ async function resolveBadgeCode(rawCode: string) {
       } catch {}
     }
 
-    // 7. Set Scanned Attendee Object
+    // Set Final Scanned Attendee State
     scannedAttendee.value = foundAttendee || {
       first_name: 'Registered',
       last_name: 'Delegate',
@@ -849,6 +833,9 @@ async function stopCamera() {
 function resetAndOpenScanner() {
   scannedAttendee.value = null;
   scannedQrCode.value = '';
+  if (route.query.code) {
+    navigateTo({ path: '/scan' }, { replace: true });
+  }
   startCamera();
 }
 
@@ -880,21 +867,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.scan-header {
-  border-color: #e2e8f0;
+.scan-page-container {
+  min-height: 100vh;
 }
 
 .brand-logo {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  padding: 2px;
 }
 
 .brand-title {
-  color: #1e293b;
+  color: #43766C;
 }
 
 .btn-emerald {
@@ -904,8 +888,8 @@ onBeforeUnmount(() => {
 }
 
 .btn-emerald:hover {
-  background-color: #365f57;
-  border-color: #365f57;
+  background-color: #355e56;
+  border-color: #355e56;
   color: #ffffff;
 }
 
@@ -917,15 +901,8 @@ onBeforeUnmount(() => {
   border-color: #bbf7d0 !important;
 }
 
-.text-emerald-700 {
-  color: #15803d !important;
-}
-
-.bg-emerald-500 {
-  background-color: #43766C !important;
-}
-
 .camera-wrapper {
-  background: #0f172a;
+  background-color: #000;
+  min-height: 240px;
 }
 </style>
