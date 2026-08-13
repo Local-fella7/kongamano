@@ -310,15 +310,56 @@ h1, h2, h3, h4, h5, h6, .page-heading, .card-title {
   border-color: var(--color-border) !important;
 }
 
-/* ── Pagination & tabs ── */
+/* Pagination & tabs */
+.pagination-footer {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(160px, 1fr);
+  align-items: center;
+  width: 100%;
+}
+
+.pagination-footer__meta {
+  justify-self: start;
+  min-width: 0;
+}
+
+.pagination-footer__pages {
+  justify-self: center;
+  min-width: max-content;
+}
+
+.pagination-footer__per-page {
+  justify-self: end;
+  min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+  .pagination-footer {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .pagination-footer__meta,
+  .pagination-footer__pages,
+  .pagination-footer__per-page {
+    justify-self: center;
+  }
+}
+
 [data-theme="dark"] .page-item .page-link {
-  background-color: var(--color-surface-2) !important;
-  border-color: var(--color-border) !important;
-  color: var(--color-text) !important;
+  background-color: var(--green-600) !important;
+  border-color: var(--green-600) !important;
+  color: #fff !important;
 }
 [data-theme="dark"] .page-item.active .page-link {
-  background-color: var(--palette-teal) !important;
-  border-color: var(--palette-teal) !important;
+  background-color: var(--green-500) !important;
+  border-color: var(--green-500) !important;
+}
+[data-theme="dark"] .page-item.disabled .page-link,
+[data-theme="dark"] .page-link:disabled {
+  background-color: rgba(46, 125, 34, 0.18) !important;
+  border-color: rgba(46, 125, 34, 0.18) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
 }
 [data-theme="dark"] .nav-tabs .nav-link {
   color: var(--color-text-muted) !important;
