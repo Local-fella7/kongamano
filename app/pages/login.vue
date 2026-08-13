@@ -304,9 +304,9 @@ async function handleLogin() {
         const dest = (redirectTarget && (redirectTarget.startsWith('/scan') || redirectTarget.startsWith('/scannings')))
           ? redirectTarget
           : '/scan';
-        await navigateTo(dest, { external: true });
+        await navigateTo(dest);
       } else {
-        await navigateTo(redirectTarget || '/', { external: true });
+        await navigateTo(redirectTarget || '/');
       }
     } else {
       errorMessage.value = response?.message || 'Invalid username or PIN.';

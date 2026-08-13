@@ -299,7 +299,27 @@ const scanFeedback = ref<{ type: 'success' | 'error'; message: string } | null>(
 
 const servicesList = ref<any[]>([]);
 const allScanLogs = ref<any[]>([]);
+const cachedAttendeeMap = ref(new Map<string, any>());
 let html5QrCodeScanner: Html5Qrcode | null = null;
+
+function indexRegistrations(regList: any[]) {
+  const map = cachedAttendeeMap.value;
+  for (const r of regList) {
+    if (!r) continue;
+    if (r.qr_code) {
+      map.set(String(r.qr_code).trim(), r);
+    }
+    if (r.id) {
+      map.set(String(r.id), r);
+      if (r.event_id) {
+        map.set(`REG-${r.event_id}-${r.id}`, r);
+      }
+      if (selectedEventId.value) {
+        map.set(`REG-${selectedEventId.value}-${r.id}`, r);
+      }
+    }
+  }
+}
 
 // Initial Code from Query Parameter
 const initialCode = computed(() => {
@@ -543,7 +563,7 @@ function triggerSuccessFeedback() {
   }
 }
 
-// Ultra-Fast QR Resolution using IndexedDB First
+// Ultra-Fast QR Resolution using In-Memory Map (<1ms) & IndexedDB
 async function resolveBadgeCode(rawCode: string) {
   if (!rawCode || !rawCode.trim()) return;
   let cleanCode = rawCode.trim();
@@ -556,95 +576,124 @@ async function resolveBadgeCode(rawCode: string) {
     }
   }
 
-  isResolving.value = true;
   scanFeedback.value = null;
   scannedQrCode.value = cleanCode;
 
-  try {
-    // 1. Try to extract event_id from badge code format (e.g. REG-1-00001)
-    let extractedEventId: number | null = null;
-    const match = cleanCode.match(/^REG-(\d+)-/i);
-    if (match && match[1]) {
-      extractedEventId = parseInt(match[1], 10);
-      selectedEventId.value = extractedEventId;
-    }
+  // 1. Try to extract event_id from badge code format (e.g. REG-1-00001)
+  let extractedEventId: number | null = selectedEventId.value;
+  const match = cleanCode.match(/^REG-(\d+)-/i);
+  if (match && match[1]) {
+    extractedEventId = parseInt(match[1], 10);
+    selectedEventId.value = extractedEventId;
+  }
 
-    // 2. Query IndexedDB Cache first (Zero Network Delay)
-    let foundAttendee: any = null;
+  // 2. ULTRA FAST PATH: In-Memory Map Lookup (0.001ms Instant)
+  let foundAttendee = cachedAttendeeMap.value.get(cleanCode);
+  if (!foundAttendee && cleanCode.startsWith('REG-')) {
+    const parts = cleanCode.split('-');
+    const regId = parts[parts.length - 1];
+    foundAttendee = cachedAttendeeMap.value.get(regId);
+  }
+
+  if (foundAttendee) {
+    scannedAttendee.value = foundAttendee;
+    if (foundAttendee.event?.name) {
+      selectedEventName.value = foundAttendee.event.name;
+    }
+    isResolving.value = false;
+    triggerSuccessFeedback();
+
     if (extractedEventId) {
+      refreshEventMetadataInBackground(extractedEventId);
+    }
+    return;
+  }
+
+  // 3. FAST PATH 2: IndexedDB Cache Query (<5ms)
+  isResolving.value = true;
+  if (extractedEventId) {
+    try {
       const cached = await dbStore.getCachedRegistrations(extractedEventId);
       if (Array.isArray(cached) && cached.length > 0) {
-        foundAttendee = cached.find((r: any) => {
-          const regId = String(r.id);
-          const fullCode = r.qr_code || `REG-${r.event_id || extractedEventId}-${regId}`;
-          return r.qr_code === cleanCode || fullCode === cleanCode || regId === cleanCode;
-        });
+        indexRegistrations(cached);
+        foundAttendee = cachedAttendeeMap.value.get(cleanCode);
+        if (!foundAttendee) {
+          foundAttendee = cached.find((r: any) => {
+            const regId = String(r.id);
+            const fullCode = r.qr_code || `REG-${r.event_id || extractedEventId}-${regId}`;
+            return r.qr_code === cleanCode || fullCode === cleanCode || regId === cleanCode;
+          });
+        }
       }
-    }
+    } catch {}
+  }
 
-    // 3. If Event ID not resolved yet, fetch default active event
-    if (!foundAttendee && !selectedEventId.value) {
+  if (foundAttendee) {
+    scannedAttendee.value = foundAttendee;
+    if (foundAttendee.event?.name) {
+      selectedEventName.value = foundAttendee.event.name;
+    }
+    isResolving.value = false;
+    triggerSuccessFeedback();
+
+    if (extractedEventId) {
+      refreshEventMetadataInBackground(extractedEventId);
+    }
+    return;
+  }
+
+  // 4. NETWORK FALLBACK (Only for uncached new badges)
+  try {
+    if (!selectedEventId.value) {
       try {
         const eventsRes = await cachedFetch<any>('/api/events');
         const evList = Array.isArray(eventsRes?.data?.events) ? eventsRes.data.events : (Array.isArray(eventsRes?.data) ? eventsRes.data : []);
         if (evList.length > 0) {
           selectedEventName.value = evList[0].name || selectedEventName.value;
           selectedEventId.value = evList[0].id;
+          extractedEventId = evList[0].id;
         }
       } catch {}
     }
 
-    // 4. Fallback Network Lookup if not found in IndexedDB Cache
-    if (!foundAttendee && selectedEventId.value) {
-      try {
-        const res = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+    if (selectedEventId.value) {
+      const [regRes, srvRes, logsRes] = await Promise.all([
+        $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
           headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
-        });
-        const list = Array.isArray(res?.data?.registrations) ? res.data.registrations : (Array.isArray(res?.data) ? res.data : []);
+        }).catch(() => null),
+        cachedFetch<any>(`/api/event-services?event_id=${selectedEventId.value}`).catch(() => null),
+        cachedFetch<any>(`/api/scannings?event_id=${selectedEventId.value}`).catch(() => null),
+      ]);
+
+      if (regRes) {
+        const list = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
         if (list.length > 0) {
-          await dbStore.cacheRegistrations(selectedEventId.value, list);
-          foundAttendee = list.find((r: any) => {
+          indexRegistrations(list);
+          dbStore.cacheRegistrations(selectedEventId.value, list).catch(() => {});
+          foundAttendee = cachedAttendeeMap.value.get(cleanCode) || list.find((r: any) => {
             const regId = String(r.id);
             const fullCode = r.qr_code || `REG-${r.event_id || selectedEventId.value}-${regId}`;
             return r.qr_code === cleanCode || fullCode === cleanCode || regId === cleanCode;
           });
         }
-      } catch (err) {
-        console.warn('Network lookup fallback warning:', err);
       }
-    }
 
-    // 5. Fetch Services for the Event (cached)
-    if (selectedEventId.value) {
-      try {
-        const srvRes = await cachedFetch<any>(`/api/event-services?event_id=${selectedEventId.value}`);
+      if (srvRes) {
         const rawServices = Array.isArray(srvRes?.data?.event_services)
           ? srvRes.data.event_services
           : (Array.isArray(srvRes?.data) ? srvRes.data : []);
 
-        servicesList.value = rawServices.map((es: any) => {
-          const srvStart = es.start_time || es.service?.start_time || null;
-          const srvEnd = es.end_time || es.service?.end_time || null;
-          const srvScan = es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true);
-          const srvName = es.name || es.service?.name || `Service #${es.service_id || es.id}`;
-          const srvDesc = es.description || es.service?.description || '';
+        servicesList.value = rawServices.map((es: any) => ({
+          id: es.service_id || es.service?.id || es.id,
+          name: es.name || es.service?.name || `Service #${es.service_id || es.id}`,
+          start_time: es.start_time || es.service?.start_time || null,
+          end_time: es.end_time || es.service?.end_time || null,
+          requires_scan: es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true),
+          description: es.description || es.service?.description || '',
+        }));
+      }
 
-          return {
-            id: es.service_id || es.service?.id || es.id,
-            name: srvName,
-            start_time: srvStart,
-            end_time: srvEnd,
-            requires_scan: srvScan,
-            description: srvDesc,
-          };
-        });
-      } catch {}
-    }
-
-    // 6. Fetch Existing Scannings / Attendance Status Today (Targeted API query)
-    if (selectedEventId.value) {
-      try {
-        const logsRes = await cachedFetch<any>(`/api/scannings?event_id=${selectedEventId.value}`);
+      if (logsRes) {
         const rawLogs = Array.isArray(logsRes?.data?.scannings)
           ? logsRes.data.scannings
           : (Array.isArray(logsRes?.data) ? logsRes.data : []);
@@ -653,10 +702,9 @@ async function resolveBadgeCode(rawCode: string) {
           const freshLogs = rawLogs.filter((l: any) => !existingIds.has(l.id));
           allScanLogs.value = [...allScanLogs.value, ...freshLogs];
         }
-      } catch {}
+      }
     }
 
-    // Set Final Scanned Attendee State
     scannedAttendee.value = foundAttendee || {
       first_name: 'Registered',
       last_name: 'Delegate',
@@ -678,6 +726,115 @@ async function resolveBadgeCode(rawCode: string) {
     };
   } finally {
     isResolving.value = false;
+  }
+}
+
+async function refreshEventMetadataInBackground(eventId: number) {
+  try {
+    const [srvRes, logsRes] = await Promise.all([
+      cachedFetch<any>(`/api/event-services?event_id=${eventId}`).catch(() => null),
+      cachedFetch<any>(`/api/scannings?event_id=${eventId}`).catch(() => null),
+    ]);
+
+    if (srvRes) {
+      const rawServices = Array.isArray(srvRes?.data?.event_services)
+        ? srvRes.data.event_services
+        : (Array.isArray(srvRes?.data) ? srvRes.data : []);
+
+      servicesList.value = rawServices.map((es: any) => ({
+        id: es.service_id || es.service?.id || es.id,
+        name: es.name || es.service?.name || `Service #${es.service_id || es.id}`,
+        start_time: es.start_time || es.service?.start_time || null,
+        end_time: es.end_time || es.service?.end_time || null,
+        requires_scan: es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true),
+        description: es.description || es.service?.description || '',
+      }));
+    }
+
+    if (logsRes) {
+      const rawLogs = Array.isArray(logsRes?.data?.scannings)
+        ? logsRes.data.scannings
+        : (Array.isArray(logsRes?.data) ? logsRes.data : []);
+      if (rawLogs.length > 0) {
+        const existingIds = new Set(allScanLogs.value.map(l => l.id));
+        const freshLogs = rawLogs.filter((l: any) => !existingIds.has(l.id));
+        allScanLogs.value = [...allScanLogs.value, ...freshLogs];
+        dbStore.cacheScanLogs(eventId, allScanLogs.value).catch(() => {});
+      }
+    }
+  } catch {}
+}
+
+async function preloadStationData() {
+  try {
+    // 1. Immediately warm in-memory map from ALL existing IndexedDB caches (<1ms)
+    try {
+      const [allCachedRegs, allCachedLogs] = await Promise.all([
+        dbStore.getAllCachedRegistrations(),
+        dbStore.getAllCachedScanLogs(),
+      ]);
+      if (allCachedRegs && allCachedRegs.length > 0) {
+        indexRegistrations(allCachedRegs);
+      }
+      if (allCachedLogs && allCachedLogs.length > 0) {
+        allScanLogs.value = allCachedLogs;
+      }
+    } catch {}
+
+    const eventsRes = await cachedFetch<any>('/api/events');
+    const evList = Array.isArray(eventsRes?.data?.events) ? eventsRes.data.events : (Array.isArray(eventsRes?.data) ? eventsRes.data : []);
+    if (evList.length > 0) {
+      selectedEventName.value = evList[0].name || selectedEventName.value;
+      selectedEventId.value = evList[0].id;
+      const eventId = evList[0].id;
+
+      // 2. Fetch metadata in parallel
+      const [srvRes, logsRes] = await Promise.all([
+        cachedFetch<any>(`/api/event-services?event_id=${eventId}`).catch(() => null),
+        cachedFetch<any>(`/api/scannings?event_id=${eventId}`).catch(() => null),
+      ]);
+
+      if (srvRes) {
+        const rawServices = Array.isArray(srvRes?.data?.event_services)
+          ? srvRes.data.event_services
+          : (Array.isArray(srvRes?.data) ? srvRes.data : []);
+        servicesList.value = rawServices.map((es: any) => ({
+          id: es.service_id || es.service?.id || es.id,
+          name: es.name || es.service?.name || `Service #${es.service_id || es.id}`,
+          start_time: es.start_time || es.service?.start_time || null,
+          end_time: es.end_time || es.service?.end_time || null,
+          requires_scan: es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true),
+          description: es.description || es.service?.description || '',
+        }));
+      }
+
+      if (logsRes) {
+        const rawLogs = Array.isArray(logsRes?.data?.scannings)
+          ? logsRes.data.scannings
+          : (Array.isArray(logsRes?.data) ? logsRes.data : []);
+        if (rawLogs.length > 0) {
+          const existingIds = new Set(allScanLogs.value.map(l => l.id));
+          const freshLogs = rawLogs.filter((l: any) => !existingIds.has(l.id));
+          allScanLogs.value = [...allScanLogs.value, ...freshLogs];
+          dbStore.cacheScanLogs(eventId, allScanLogs.value).catch(() => {});
+        }
+      }
+
+      // 3. Background sync fresh registrations into IndexedDB & in-memory map
+      const cached = await dbStore.getCachedRegistrations(eventId);
+      if (!cached || cached.length === 0) {
+        const regRes = await $fetch<any>(`/api/registrations?event_id=${eventId}`, {
+          headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
+        }).catch(() => null);
+        const list = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
+        if (list.length > 0) {
+          indexRegistrations(list);
+          await dbStore.cacheRegistrations(eventId, list);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Preload notice:', err);
   }
 }
 
@@ -718,6 +875,9 @@ async function executeScanAction(type: 'check_in' | 'service' | 'check_out', ser
   };
 
   allScanLogs.value = [localScanEntry, ...allScanLogs.value];
+  if (selectedEventId.value) {
+    dbStore.cacheScanLogs(selectedEventId.value, allScanLogs.value).catch(() => {});
+  }
 
   // 2. User Feedback Alert & Sound
   triggerSuccessFeedback();
@@ -754,17 +914,14 @@ async function executeScanAction(type: 'check_in' | 'service' | 'check_out', ser
     });
 
     if (type === 'check_out' || type === 'service') {
-      // Completed final action (service claimed or checked out) -> close card and re-arm camera
+      // Completed final action (service claimed or checked out) -> close card and resume camera
       scannedAttendee.value = null;
       scannedQrCode.value = '';
       if (route.query.code) {
         navigateTo({ path: '/scan' }, { replace: true });
       }
-      await startCamera();
+      resumeCamera();
     } else {
-      // type === 'check_in': Keep the modal open!
-      // The attendee status is now Checked In, and the card will smoothly display the
-      // Active Service Window to claim immediately, or show that no active service is scheduled right now.
       push.info({
         title: 'Entry Check-in Confirmed',
         message: 'Attendee is checked in. You can now claim active services below.',
@@ -790,6 +947,20 @@ async function toggleCamera() {
   }
 }
 
+async function resumeCamera() {
+  try {
+    if (html5QrCodeScanner) {
+      try {
+        html5QrCodeScanner.resume();
+        return;
+      } catch {}
+    }
+    await startCamera();
+  } catch {
+    await startCamera();
+  }
+}
+
 async function startCamera() {
   try {
     isCameraActive.value = true;
@@ -799,13 +970,19 @@ async function startCamera() {
     await html5QrCodeScanner.start(
       { facingMode: 'environment' },
       {
-        fps: 15,
+        fps: 20,
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
       },
-      async (decodedText) => {
-        await stopCamera();
-        await resolveBadgeCode(decodedText);
+      (decodedText) => {
+        // Instant non-blocking pause - DO NOT await slow camera hardware stop!
+        try {
+          if (html5QrCodeScanner) {
+            html5QrCodeScanner.pause(true);
+          }
+        } catch {}
+        // Instant <1ms lookup
+        resolveBadgeCode(decodedText);
       },
       () => {}
     );
@@ -836,7 +1013,7 @@ function resetAndOpenScanner() {
   if (route.query.code) {
     navigateTo({ path: '/scan' }, { replace: true });
   }
-  startCamera();
+  resumeCamera();
 }
 
 onMounted(async () => {
@@ -845,11 +1022,29 @@ onMounted(async () => {
     return;
   }
 
+  // 1. Immediately warm in-memory map AND scan logs from IndexedDB (<5ms)
+  try {
+    const [allCachedRegs, allCachedLogs] = await Promise.all([
+      dbStore.getAllCachedRegistrations(),
+      dbStore.getAllCachedScanLogs(),
+    ]);
+    if (allCachedRegs && allCachedRegs.length > 0) {
+      indexRegistrations(allCachedRegs);
+    }
+    if (allCachedLogs && allCachedLogs.length > 0) {
+      allScanLogs.value = allCachedLogs;
+    }
+  } catch {}
+
+  // 2. If a QR code is passed via URL, resolve instantly from memory (<1ms)
   if (initialCode.value) {
     await resolveBadgeCode(initialCode.value);
   } else {
     startCamera();
   }
+
+  // 3. Preload/sync fresh metadata in background without blocking UI
+  preloadStationData();
 });
 
 watch(
