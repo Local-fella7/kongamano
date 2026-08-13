@@ -292,12 +292,17 @@ async function handleLogin() {
       });
 
       const route = useRoute();
-      const redirectTarget = (route.query.redirect as string) || '/';
-      // Use external:true to force a full browser navigation so the newly-set
-      // token cookie is included in the request. Without this, Nuxt SSR renders
-      // the next page server-side before the cookie reaches the server, causing
-      // auth.global.ts to see no token and redirect back to /login.
-      await navigateTo(redirectTarget, { external: true });
+      // Non-admin users (scanners) go directly to /scannings — no dashboard detour.
+      // The role_id cookie is already set by setUser() above, so the middleware will
+      // also enforce this on all subsequent page navigations without any API calls.
+      // Use external:true to force a full browser navigation so all newly-set cookies
+      // (token + role_id) are included in the request headers from the server side.
+      if (!authStore.isAdmin) {
+        await navigateTo('/scannings', { external: true });
+      } else {
+        const redirectTarget = (route.query.redirect as string) || '/';
+        await navigateTo(redirectTarget, { external: true });
+      }
     } else {
       errorMessage.value = response?.message || 'Invalid username or PIN.';
       push.error({ title: 'Login Failed', message: errorMessage.value });
