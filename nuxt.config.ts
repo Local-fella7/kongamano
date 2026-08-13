@@ -6,7 +6,10 @@ export default defineNuxtConfig({
     port: 3000
   },
   runtimeConfig: {
-    apiBase: process.env.NUXT_API_BASE || 'http://localhost/kongamano'
+    // Override at runtime with NUXT_API_BASE env var.
+    // For `nuxt preview`, set the env var BEFORE running: $env:NUXT_API_BASE="https://..."; pnpm preview
+    // For `nuxt build`, set it BEFORE building so it is baked into the output.
+    apiBase: process.env.NUXT_API_BASE || 'http://localhost/kongamano',
   },
   modules: ['@pinia/nuxt', 'notivue/nuxt', '@nuxtjs/google-fonts'],
   css: [

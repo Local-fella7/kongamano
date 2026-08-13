@@ -293,7 +293,11 @@ async function handleLogin() {
 
       const route = useRoute();
       const redirectTarget = (route.query.redirect as string) || '/';
-      navigateTo(redirectTarget);
+      // Use external:true to force a full browser navigation so the newly-set
+      // token cookie is included in the request. Without this, Nuxt SSR renders
+      // the next page server-side before the cookie reaches the server, causing
+      // auth.global.ts to see no token and redirect back to /login.
+      await navigateTo(redirectTarget, { external: true });
     } else {
       errorMessage.value = response?.message || 'Invalid username or PIN.';
       push.error({ title: 'Login Failed', message: errorMessage.value });
