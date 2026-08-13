@@ -66,5 +66,13 @@ export const dbStore = {
     } catch (e) {
       console.error('IndexedDB delete error:', e);
     }
+  },
+
+  async cacheRegistrations(eventId: number | string, registrations: any[]): Promise<void> {
+    await this.set(`registrations_cache_${eventId}`, registrations);
+  },
+
+  async getCachedRegistrations(eventId: number | string): Promise<any[] | null> {
+    return await this.get(`registrations_cache_${eventId}`);
   }
 };

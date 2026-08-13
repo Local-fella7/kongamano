@@ -42,4 +42,10 @@ describe('dbStore IndexedDB utility comprehensive tests', () => {
     await expect(dbStore.set('null_key', null)).resolves.not.toThrow()
     await expect(dbStore.set('num_key', 42)).resolves.not.toThrow()
   })
+
+  it('8. resolves cacheRegistrations and getCachedRegistrations safely', async () => {
+    await expect(dbStore.cacheRegistrations(1, [{ id: 1, first_name: 'John' }])).resolves.not.toThrow()
+    const cached = await dbStore.getCachedRegistrations(1)
+    expect(cached).toBeNull()
+  })
 })

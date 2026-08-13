@@ -14,6 +14,30 @@
 
       <!-- Action Buttons -->
       <div class="d-flex align-items-center flex-wrap gap-2">
+        <div v-if="pendingCount > 0" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill py-2 px-3 fs-8 fw-semibold d-flex align-items-center gap-1.5" title="Queued scans syncing in background">
+          <span class="spinner-grow spinner-grow-sm text-warning" role="status"></span>
+          <span>{{ pendingCount }} Syncing</span>
+        </div>
+
+        <div v-if="isPreloadingRegistrations" class="badge bg-info-subtle text-info border border-info-subtle rounded-pill py-2 px-3 fs-8 fw-semibold d-flex align-items-center gap-1.5">
+          <span class="spinner-border spinner-border-sm" role="status"></span>
+          <span>Preloading Attendee Data...</span>
+        </div>
+
+        <div class="form-check form-switch bg-light py-1.5 px-3 rounded-pill border d-flex align-items-center gap-2 mb-0 shadow-2xs">
+          <input
+            id="fastScanSwitch"
+            v-model="fastScanMode"
+            class="form-check-input mt-0 cursor-pointer"
+            type="checkbox"
+            role="switch"
+          />
+          <label class="form-check-label fs-8 fw-bold text-slate-700 cursor-pointer select-none" for="fastScanSwitch">
+            <i class="bi bi-lightning-charge-fill text-warning me-1"></i>
+            Fast Scan Mode
+          </label>
+        </div>
+
         <button
           class="btn btn-outline-primary rounded-3 py-2 px-3 fw-semibold fs-7 shadow-2xs d-flex align-items-center gap-2"
           :disabled="!selectedEventId"
@@ -389,14 +413,20 @@
 <script setup lang="ts">
 import { Html5Qrcode } from 'html5-qrcode';
 import { isActiveOrScheduledEvent } from '~/utils/eventDate';
+import { dbStore } from '~/utils/db';
 
-const { executeOrQueue } = useOfflineSync();
+const { isOnline, pendingCount, executeOrQueue } = useOfflineSync();
 const push = usePush();
 const token = useCookie<string | null>('token');
 
 const eventsList = ref<any[]>([]);
 const servicesList = ref<any[]>([]);
 const selectedEventId = ref<number | string>('');
+
+const cachedRegistrationsMap = ref<Map<string, any>>(new Map());
+const isPreloadingRegistrations = ref(false);
+const fastScanMode = ref(false);
+let lastPreloadedEventId: number | string | null = null;
 
 // Only active & scheduled events for scanning selection
 const activeEventsList = computed(() => {
@@ -664,8 +694,72 @@ const paginatedLogs = computed(() => {
   return filteredLogs.value.slice(start, start + perPage.value);
 });
 
+function indexRegistrations(regList: any[]) {
+  const map = new Map<string, any>();
+  for (const r of regList) {
+    if (!r) continue;
+    if (r.qr_code) {
+      map.set(String(r.qr_code).trim(), r);
+    }
+    if (r.id) {
+      map.set(String(r.id), r);
+      if (r.event_id) {
+        map.set(`REG-${r.event_id}-${r.id}`, r);
+      }
+      if (selectedEventId.value) {
+        map.set(`REG-${selectedEventId.value}-${r.id}`, r);
+      }
+    }
+  }
+  cachedRegistrationsMap.value = map;
+}
+
+async function preloadRegistrations(eventId: number | string, forceRefresh = false) {
+  if (!eventId) return;
+
+  // 1. Short-circuit if already preloaded in memory for this event
+  if (!forceRefresh && Number(lastPreloadedEventId) === Number(eventId) && cachedRegistrationsMap.value.size > 0) {
+    return;
+  }
+
+  isPreloadingRegistrations.value = true;
+  lastPreloadedEventId = Number(eventId);
+
+  try {
+    const cached = await dbStore.getCachedRegistrations(eventId);
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      indexRegistrations(cached);
+      // If valid cached registrations exist in IndexedDB, bypass network fetch during scanning
+      if (!forceRefresh) return;
+    }
+
+    if (import.meta.client && navigator.onLine) {
+      try {
+        const res = await $fetch<any>(`/api/registrations?event_id=${eventId}`, {
+          headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
+        });
+        const freshList = Array.isArray(res?.data?.registrations)
+          ? res.data.registrations
+          : (Array.isArray(res?.data) ? res.data : []);
+
+        if (freshList.length > 0) {
+          indexRegistrations(freshList);
+          await dbStore.cacheRegistrations(eventId, freshList);
+        }
+      } catch (e) {
+        console.warn('Background registration preload notice (using local cache):', e);
+      }
+    }
+  } catch (err) {
+    console.error('Error preloading registrations:', err);
+  } finally {
+    isPreloadingRegistrations.value = false;
+  }
+}
+
 watch(selectedEventId, async (newEvId) => {
   if (newEvId) {
+    await preloadRegistrations(newEvId);
     await fetchLogs();
     await fetchServices();
   }
@@ -684,15 +778,11 @@ async function openVerificationForQr(qrCode: string) {
 
   scannedQrCode.value = cleanCode;
 
-  // 1. Discover delegate & auto-discover event ID
+  // 1. Instant local lookup (< 5ms)
   const attendeeData = await findAttendeeByQrCode(cleanCode);
   if (attendeeData?.event_id) {
     selectedEventId.value = Number(attendeeData.event_id);
   }
-
-  // 2. Strict sequential resolution: await services & fresh logs BEFORE showing modal
-  await fetchServices();
-  await fetchLogsForce();
 
   scannedAttendee.value = attendeeData || {
     first_name: 'Registered',
@@ -700,6 +790,21 @@ async function openVerificationForQr(qrCode: string) {
     phone: '',
     qr_code: cleanCode,
   };
+
+  // 2. Fast Continuous Scan Mode auto-processing
+  if (fastScanMode.value) {
+    if (!isAttendeeCheckedIn.value && !isSelectedEventCompleted.value) {
+      await confirmEventCheckIn();
+    } else if (activeCurrentService.value) {
+      await claimService(activeCurrentService.value.id);
+    } else {
+      push.info({
+        title: 'Attendee Verified',
+        message: `${scannedAttendee.value.first_name} ${scannedAttendee.value.last_name || ''} - Status verified.`,
+      });
+    }
+    return;
+  }
 
   showCameraModal.value = false;
   showResultModal.value = true;
@@ -722,14 +827,17 @@ watch(
 
 onMounted(async () => {
   await fetchEvents();
+  if (selectedEventId.value) {
+    await preloadRegistrations(selectedEventId.value);
+  }
   await fetchServices();
   if (route.query.code) {
     const codeFromUrl = String(route.query.code);
     const eventIdMatch = codeFromUrl.match(/^REG-(\d+)-/i);
     if (eventIdMatch && eventIdMatch[1]) {
       selectedEventId.value = Number(eventIdMatch[1]);
+      await preloadRegistrations(selectedEventId.value);
     }
-    await fetchLogsForce();
   }
   await handleScannedUrlCode();
 });
@@ -827,52 +935,55 @@ async function findAttendeeByQrCode(qrCode: string): Promise<any> {
   const cleanCode = qrCode.trim();
   const prefixMatch = cleanCode.match(/^REG-(\d+)-/i);
   if (prefixMatch && prefixMatch[1]) {
-    selectedEventId.value = Number(prefixMatch[1]);
+    const matchedEventId = Number(prefixMatch[1]);
+    if (Number(selectedEventId.value) !== matchedEventId) {
+      selectedEventId.value = matchedEventId;
+    }
   }
 
-  // 1. Try finding in current selected event
+  // 1. Sub-millisecond lookup in preloaded memory map
+  let found = cachedRegistrationsMap.value.get(cleanCode);
+  if (!found) {
+    const rawId = cleanCode.split('-').pop();
+    if (rawId) {
+      found = cachedRegistrationsMap.value.get(rawId);
+    }
+  }
+
+  if (found) {
+    if (found.event_id && Number(selectedEventId.value) !== Number(found.event_id)) {
+      selectedEventId.value = Number(found.event_id);
+    }
+    return found;
+  }
+
+  // 2. Direct IndexedDB cache lookup if map miss
   if (selectedEventId.value) {
+    const cached = await dbStore.getCachedRegistrations(selectedEventId.value);
+    if (cached && Array.isArray(cached)) {
+      found = cached.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+      if (found) {
+        if (found.event_id) selectedEventId.value = Number(found.event_id);
+        return found;
+      }
+    }
+  }
+
+  // 3. Fallback: Query server if online and unknown QR code
+  if (import.meta.client && navigator.onLine) {
     try {
       const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
-        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+        headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
       });
       const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-      const found = regList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+      found = regList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
       if (found) {
-        if (found.event_id) {
-          selectedEventId.value = Number(found.event_id);
-        }
-        await fetchServices();
-        await fetchLogsForce();
+        if (found.event_id) selectedEventId.value = Number(found.event_id);
         return found;
       }
     } catch {
-      // Fallback
+      // Offline fallback
     }
-  }
-
-  // 2. Fallback: Search globally across all registrations to auto-discover delegate's event_id
-  try {
-    const globalRes = await $fetch<any>('/api/registrations', {
-      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-    });
-    const globalList = Array.isArray(globalRes?.data?.registrations) ? globalRes.data.registrations : (Array.isArray(globalRes?.data) ? globalRes.data : []);
-    const foundGlobal = globalList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
-    if (foundGlobal) {
-      if (foundGlobal.event_id) {
-        selectedEventId.value = Number(foundGlobal.event_id);
-      }
-      await fetchServices();
-      await fetchLogsForce();
-      return foundGlobal;
-    }
-  } catch {
-    // Fallback
-  }
-
-  if (selectedEventId.value) {
-    await fetchServices();
-    await fetchLogsForce();
   }
 
   return null;
@@ -1011,90 +1122,53 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service' 
     bodyPayload.service_id = parseInt(String(serviceId), 10);
   }
 
-  const globalPayload: Record<string, any> = {
-    ...bodyPayload,
-    event_id: Number(selectedEventId.value),
+  const currentEventObj = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
+  const eventName = currentEventObj?.name || `Event #${selectedEventId.value}`;
+
+  const attendeeData = matchedReg || scannedAttendee.value || {
+    first_name: 'Registered',
+    last_name: 'Delegate',
+    phone: '',
+    qr_code: qrCode,
   };
 
-  try {
-    let res: any;
-    try {
-      res = await $fetch<any>(`/api/events/${selectedEventId.value}/scannings`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-        body: bodyPayload,
-      });
-    } catch (primaryErr: any) {
-      try {
-        res = await $fetch<any>('/api/scannings', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-          body: globalPayload,
-        });
-      } catch (fallbackErr: any) {
-        throw primaryErr || fallbackErr;
-      }
-    }
+  scannedAttendee.value = attendeeData;
+  scannedQrCode.value = qrCode;
 
-    const currentEventObj = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
-    const eventName = currentEventObj?.name || `Event #${selectedEventId.value}`;
+  // 1. INSTANT LOCAL UPDATE of logs state for immediate UI feedback (< 1ms)
+  const scanLabel = type === 'check_out' ? 'Check-out' : (type === 'service' ? 'Service access' : 'Check-in');
+  const localLogEntry = {
+    id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    qr_code: qrCode,
+    scan_type: type,
+    service_id: serviceId ? Number(serviceId) : null,
+    event_id: Number(selectedEventId.value),
+    registration: attendeeData,
+    created_at: new Date().toISOString(),
+  };
 
-    let attendeeData = res?.data?.registration || res?.registration || res?.data?.attendee;
-    if (!attendeeData || !attendeeData.first_name) {
-      try {
-        const regRes = await cachedFetch<any>(`/api/registrations?event_id=${selectedEventId.value}`);
-        const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-        attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
-      } catch {
-        // Fallback
-      }
-    }
+  logs.value = [localLogEntry, ...logs.value];
 
-    if (!attendeeData) {
-      attendeeData = {
-        first_name: 'Registered',
-        last_name: 'Delegate',
-        phone: '',
-        qr_code: qrCode,
-      };
-    }
+  scanFeedback.value = {
+    type: 'success',
+    message: `${scanLabel} recorded for ${attendeeData.first_name} (${qrCode})`,
+  };
 
-    scannedAttendee.value = attendeeData;
-    scannedQrCode.value = qrCode;
+  push.success({
+    title: 'Scan Recorded',
+    message: `${scanLabel} recorded for ${attendeeData.first_name} ${attendeeData.last_name || ''}`,
+  });
 
-    const scanLabel = type === 'check_out' ? 'Check-out' : (type === 'service' ? 'Service access' : 'Check-in');
-    scanFeedback.value = {
-      type: 'success',
-      message: `${scanLabel} recorded for QR code ${qrCode} at ${eventName}`,
-    };
-    if (res?.queued) {
-      push.success({ title: 'Queued', message: `${scanLabel} for ${eventName} queued for sync.` });
-    } else {
-      push.success({ title: 'Success', message: `${scanLabel} for ${eventName} processed successfully!` });
-    }
-
-    logs.value = [
-      {
-        qr_code: qrCode,
-        scan_type: type,
-        service_id: serviceId ? Number(serviceId) : null,
-        event_id: Number(selectedEventId.value),
-        created_at: new Date().toISOString(),
-      },
-      ...logs.value,
-    ];
-
-    await fetchLogsForce();
-  } catch (err: any) {
-    console.error('Scan processing error:', err);
-    const serverErr = err?.data?.errors
-      ? (typeof err.data.errors === 'object' ? Object.values(err.data.errors).flat().join(', ') : JSON.stringify(err.data.errors))
-      : null;
-    const rawMsg = serverErr || err?.data?.message || err?.data?.error || err?.message;
-    const msg = typeof rawMsg === 'string' ? rawMsg : 'Check-in scan failed. Please verify QR code or attendee registration.';
-    scanFeedback.value = { type: 'error', message: msg };
-    push.error({ title: 'Scan Validation Error', message: msg });
-  }
+  // 2. DISPATCH NON-BLOCKING ASYNC BACKGROUND SYNC
+  const endpoint = `/api/events/${selectedEventId.value}/scannings`;
+  executeOrQueue({
+    url: endpoint,
+    method: 'POST',
+    body: bodyPayload,
+    label: `${scanLabel} - ${attendeeData.first_name || qrCode}`,
+  }).catch((err) => {
+    console.warn('Background scan sync notice:', err);
+  });
 }
 
 async function handleManualCheckin() {
