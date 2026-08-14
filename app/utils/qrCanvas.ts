@@ -18,6 +18,7 @@ export async function generateLabeledQrCanvasBlob(options: QrCanvasOptions): Pro
 
   const eventId = registration.event_id || 1;
   const regId = registration.id || index + 1;
+  const rawCode = String(registration.qr_code || `REG-${eventId}-${regId}`).trim();
   const fullQrUrl = `${originUrl}/scan?code=${encodeURIComponent(rawCode)}`;
 
   const extractStr = (val: any): string => {
