@@ -286,6 +286,11 @@ async function handleLogin() {
         await authStore.fetchCurrentUser();
       }
 
+      // Flush pending cookie writes. useCookie writes to document.cookie via an
+      // async Vue watcher, so without this tick the global auth middleware can run
+      // before token/role_id are persisted and bounce us straight back to /login.
+      await nextTick();
+
       push.success({
         title: 'Authentication Successful',
         message: `Welcome back, ${authStore.user?.first_name || username.value}!`,
@@ -294,8 +299,8 @@ async function handleLogin() {
       const route = useRoute();
       // Non-admin users (scanners) go directly to /scan or /scannings — no dashboard detour.
       // If a redirect URL is present (e.g. /scan?code=...), navigate directly to it.
-      // Use external:true to force a full browser navigation so all newly-set cookies
-      // (token + role_id) are included in the request headers from the server side.
+      // (Cookies were flushed above with await nextTick(), so the auth middleware
+      // will see the new token/role_id on this client-side navigation.)
       let redirectTarget = (route.query.redirect as string) || '';
       if (redirectTarget.startsWith('/scannings?code=')) {
         redirectTarget = redirectTarget.replace('/scannings?code=', '/scan?code=');
