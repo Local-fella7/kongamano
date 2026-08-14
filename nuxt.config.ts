@@ -6,10 +6,18 @@ export default defineNuxtConfig({
     port: 3000
   },
   runtimeConfig: {
-    // Override at runtime with NUXT_API_BASE env var.
+    // Server-side proxy target used by server/api/[...].ts in dev/preview.
     // For `nuxt preview`, set the env var BEFORE running: $env:NUXT_API_BASE="https://..."; pnpm preview
     // For `nuxt build`, set it BEFORE building so it is baked into the output.
     apiBase: process.env.NUXT_API_BASE || 'http://localhost/kongamano',
+    public: {
+      // Browser-side API base. In dev/preview the browser calls /api/... and the
+      // Nitro proxy (server/api/[...].ts) forwards to `apiBase`. In the static
+      // cPanel build there is no Node server, so the browser must call the
+      // CodeIgniter backend directly on the same origin: /backend/api.
+      // Set NUXT_PUBLIC_API_BASE=/backend/api in the production build.
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api',
+    },
   },
   modules: ['@pinia/nuxt', 'notivue/nuxt', '@nuxtjs/google-fonts'],
   css: [

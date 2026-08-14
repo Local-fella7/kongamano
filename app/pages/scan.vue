@@ -876,7 +876,7 @@ async function preloadStationData() {
       }
 
       // 3. Background sync fresh registrations into IndexedDB & in-memory map
-      const regRes = await $fetch<any>(`/api/registrations?event_id=${eventId}`, {
+      const regRes = await $fetch<any>(apiPath(`/api/registrations?event_id=${eventId}`), {
         headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
       }).catch(() => null);
       const list = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);

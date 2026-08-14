@@ -92,7 +92,7 @@ async function generateQrCode() {
       const endpoint = eventId
         ? `/api/events/${eventId}/registrations/${regId}/qr-code`
         : `/api/registrations/${regId}/qr-code`;
-      const res = await $fetch<any>(endpoint, {
+      const res = await $fetch<any>(apiPath(endpoint), {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       });
       const backendCode = res?.data?.qr_code || res?.qr_code || res?.data?.registration?.qr_code || res?.registration?.qr_code;

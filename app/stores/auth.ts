@@ -26,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchCurrentUser() {
     if (!token.value) return;
     try {
-      const res = await $fetch<any>('/api/auth/me', {
+      const res = await $fetch<any>(apiPath('/api/auth/me'), {
         headers: { Authorization: `Bearer ${token.value}` },
       });
       if (res?.data?.user) {

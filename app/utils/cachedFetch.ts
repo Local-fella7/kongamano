@@ -1,7 +1,9 @@
 import { dbStore } from './db';
+import { apiPath } from './api';
 
 export async function cachedFetch<T = any>(url: string, opts?: any): Promise<T> {
-  const cacheKey = `kongamano_get_cache_${url}`;
+  const resolvedUrl = apiPath(url);
+  const cacheKey = `kongamano_get_cache_${resolvedUrl}`;
 
   // Serve cached version immediately if client-side and offline
   if (import.meta.client && !navigator.onLine) {
@@ -21,7 +23,7 @@ export async function cachedFetch<T = any>(url: string, opts?: any): Promise<T> 
   }
 
   try {
-    const res = await $fetch<T>(url, {
+    const res = await $fetch<T>(resolvedUrl, {
       ...opts,
       headers: {
         ...(tokenVal ? { Authorization: `Bearer ${tokenVal}` } : {}),

@@ -107,7 +107,7 @@ async function fetchProfile() {
   loading.value = true;
   errorMessage.value = '';
   try {
-    const res = await $fetch<any>('/api/auth/me', {
+    const res = await $fetch<any>(apiPath('/api/auth/me'), {
       headers: {
         Authorization: `Bearer ${token.value}`,
         Accept: 'application/json',

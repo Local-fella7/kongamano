@@ -3,7 +3,7 @@ import type { UseFetchOptions } from 'nuxt/app';
 export const useApi = <T = any>(url: string, opts: UseFetchOptions<T> = {}) => {
   const token = useCookie('token');
 
-  return useFetch(url, {
+  return useFetch(apiPath(url), {
     ...opts,
     headers: {
       ...opts.headers,

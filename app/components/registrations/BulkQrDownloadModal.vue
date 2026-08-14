@@ -253,7 +253,7 @@ async function fetchEventRegistrationsCount() {
   errorMessage.value = null;
 
   try {
-    const res = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+    const res = await $fetch<any>(apiPath(`/api/registrations?event_id=${selectedEventId.value}`), {
       headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
     });
     let list = Array.isArray(res?.data?.registrations) ? res.data.registrations : (Array.isArray(res?.data) ? res.data : []);

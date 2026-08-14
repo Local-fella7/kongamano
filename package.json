@@ -44,6 +44,8 @@
     "@vitest/coverage-v8": "^4.1.10",
     "@vue/test-utils": "^2.4.11",
     "happy-dom": "^20.11.1",
-    "vitest": "^4.1.10"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10",
+    "vue-tsc": "^3.3.9"
   }
 }

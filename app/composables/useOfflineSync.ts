@@ -1,5 +1,6 @@
 import { ref, onMounted } from 'vue';
 import { dbStore } from '~/utils/db';
+import { apiPath } from '~/utils/api';
 
 export interface QueuedAction {
   id: string;
@@ -85,7 +86,7 @@ export function useOfflineSync() {
         // check if the server has a newer modification to prevent silent data loss.
         if ((item.method === 'PUT' || item.method === 'DELETE') && item.body && item.body.updated_at) {
           try {
-            const serverItem = await $fetch<any>(item.url, {
+            const serverItem = await $fetch<any>(apiPath(item.url), {
               headers: {
                 ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
                 Accept: 'application/json',
@@ -110,7 +111,7 @@ export function useOfflineSync() {
           }
         }
 
-        await $fetch(item.url, {
+        await $fetch(apiPath(item.url), {
           method: item.method,
           body: item.body,
           headers: {
@@ -176,7 +177,7 @@ export function useOfflineSync() {
 
     if (currentlyOnline) {
       try {
-        const response = await $fetch<any>(options.url, {
+        const response = await $fetch<any>(apiPath(options.url), {
           method,
           body: options.body,
           headers: {
@@ -206,7 +207,7 @@ export function useOfflineSync() {
   async function queueItem(url: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body: any, label: string) {
     const newItem: QueuedAction = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      url,
+      url: apiPath(url),
       method,
       body,
       label,

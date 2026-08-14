@@ -41,7 +41,12 @@ jobs:
       - name: Build static site
         run: pnpm run build:cpanel-static
         env:
+          # Server-side proxy target (used by server/api/[...].ts in dev/preview only).
           NUXT_API_BASE: ${{ secrets.NUXT_API_BASE }}
+          # Browser-side API base for the static build. There is no Node server in
+          # production, so the SPA must call the CodeIgniter backend directly on the
+          # same origin. mwakasege.co.tz/backend is the backend root.
+          NUXT_PUBLIC_API_BASE: /backend/api
 
       - name: Upload to FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6

@@ -75,7 +75,7 @@ export function usePasswordReset(initial?: { username?: string; mobile?: string 
 
     loading.value = true;
     try {
-      const response = await $fetch<ApiResponse<ForgotPasswordData>>('/api/auth/forgot-password', {
+      const response = await $fetch<ApiResponse<ForgotPasswordData>>(apiPath('/api/auth/forgot-password'), {
         method: 'POST',
         body: {
           username: username.value.trim(),
@@ -133,7 +133,7 @@ export function usePasswordReset(initial?: { username?: string; mobile?: string 
         pin_confirmation: pinConfirmation.value.trim(),
       };
 
-      const response = await $fetch<ApiResponse>('/api/auth/reset-password', {
+      const response = await $fetch<ApiResponse>(apiPath('/api/auth/reset-password'), {
         method: 'POST',
         body: payload,
       });

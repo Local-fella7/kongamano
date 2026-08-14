@@ -311,7 +311,7 @@ async function preloadRegistrations(eventId: number | string) {
       return;
     }
     if (import.meta.client && navigator.onLine) {
-      const res = await $fetch<any>(`/api/registrations?event_id=${eventId}`, {
+      const res = await $fetch<any>(apiPath(`/api/registrations?event_id=${eventId}`), {
         headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
       });
       const freshList = Array.isArray(res?.data?.registrations) ? res.data.registrations : (Array.isArray(res?.data) ? res.data : []);

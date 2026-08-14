@@ -913,7 +913,7 @@ async function preloadRegistrations(eventId: number | string, forceRefresh = fal
 
     if (import.meta.client && navigator.onLine) {
       try {
-        const res = await $fetch<any>(`/api/registrations?event_id=${eventId}`, {
+        const res = await $fetch<any>(apiPath(`/api/registrations?event_id=${eventId}`), {
           headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
         });
         const freshList = Array.isArray(res?.data?.registrations)
@@ -1106,7 +1106,7 @@ async function fetchLogs() {
 async function fetchLogsForce() {
   if (!selectedEventId.value) return;
   try {
-    const res = await $fetch<any>(`/api/scannings?event_id=${selectedEventId.value}`, {
+    const res = await $fetch<any>(apiPath(`/api/scannings?event_id=${selectedEventId.value}`), {
       headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
     });
     logs.value = Array.isArray(res?.data?.scannings) ? res.data.scannings : (Array.isArray(res?.data) ? res.data : []);
@@ -1175,7 +1175,7 @@ async function findAttendeeByQrCode(qrCode: string): Promise<any> {
   // 3. Fallback: Query server if online and unknown QR code
   if (import.meta.client && navigator.onLine) {
     try {
-      const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+      const regRes = await $fetch<any>(apiPath(`/api/registrations?event_id=${selectedEventId.value}`), {
         headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
       });
       const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);

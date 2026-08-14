@@ -270,7 +270,7 @@ async function handleLogin() {
 
   loading.value = true;
   try {
-    const response = await $fetch<ApiResponse<{ token: string; user?: User }>>('/api/auth/login', {
+    const response = await $fetch<ApiResponse<{ token: string; user?: User }>>(apiPath('/api/auth/login'), {
       method: 'POST',
       body: {
         username: username.value,
