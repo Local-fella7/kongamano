@@ -334,8 +334,7 @@ const initialCode = computed(() => {
   return typeof code === 'string' ? code.trim() : '';
 });
 
-// SSR & Instant Setup Pre-parsing:
-// Pre-populates the verification modal in the initial HTML response when URL has ?code=
+// SSR & Setup: If code in URL, show spinner immediately while onMounted resolves it cleanly
 if (initialCode.value) {
   let cleanCode = initialCode.value;
   if (cleanCode.includes('?code=')) {
@@ -343,32 +342,7 @@ if (initialCode.value) {
     if (parts[1]) cleanCode = decodeURIComponent(parts[1].split('&')[0]);
   }
   scannedQrCode.value = cleanCode;
-
-  let extractedEvId: number | null = null;
-  const match = cleanCode.match(/^REG-(\d+)-/i);
-  if (match && match[1]) {
-    extractedEvId = parseInt(match[1], 10);
-    selectedEventId.value = extractedEvId;
-  }
-
-  let optimisticRegId: number | null = null;
-  if (cleanCode.startsWith('REG-')) {
-    const parts = cleanCode.split('-');
-    const lastPart = parts[parts.length - 1];
-    const parsedId = parseInt(lastPart, 10);
-    if (!isNaN(parsedId)) optimisticRegId = parsedId;
-  } else if (/^\d+$/.test(cleanCode)) {
-    optimisticRegId = parseInt(cleanCode, 10);
-  }
-
-  scannedAttendee.value = {
-    id: optimisticRegId || cleanCode,
-    first_name: 'Delegate',
-    last_name: optimisticRegId ? `#${optimisticRegId}` : '',
-    phone: '',
-    qr_code: cleanCode,
-    event_id: extractedEvId || 1,
-  };
+  isResolving.value = true;
 }
 
 // Helper for today's Date string in EAT timezone (Africa/Nairobi)
@@ -865,6 +839,29 @@ async function resolveBadgeCode(rawCode: string) {
     qr_code: cleanCode,
     event_id: extractedEventId || selectedEventId.value || 1,
   };
+
+  const activeEvId = extractedEventId || selectedEventId.value;
+
+  // Synchronously fetch logs if we have none for this badge code yet
+  const logsInMemory = allScanLogs.value.filter((l: any) => isLogForScannedAttendee(l));
+  if (logsInMemory.length === 0 && activeEvId) {
+    try {
+      const logsRes = await $fetch<any>(`/api/scannings?event_id=${activeEvId}`, {
+        headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
+      }).catch(() => null);
+      const rawLogs = Array.isArray(logsRes?.data?.scannings)
+        ? logsRes.data.scannings
+        : (Array.isArray(logsRes?.data) ? logsRes.data : []);
+      if (rawLogs.length > 0) {
+        const existingIds = new Set(allScanLogs.value.map((l: any) => String(l.id)));
+        const newLogs = rawLogs.filter((l: any) => !existingIds.has(String(l.id)));
+        if (newLogs.length > 0) {
+          allScanLogs.value = [...newLogs, ...allScanLogs.value];
+        }
+        dbStore.cacheScanLogs(activeEvId, allScanLogs.value).catch(() => {});
+      }
+    } catch {}
+  }
 
   isResolving.value = false;
   triggerSuccessFeedback();
