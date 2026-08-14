@@ -21,6 +21,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setToken(tokenValue: string | null) {
     token.value = tokenValue;
+    if (import.meta.client) {
+      if (tokenValue) {
+        try {
+          localStorage.setItem('token', tokenValue);
+          localStorage.setItem('kongamano_token', tokenValue);
+        } catch {}
+      } else {
+        try {
+          localStorage.removeItem('token');
+          localStorage.removeItem('kongamano_token');
+        } catch {}
+      }
+    }
   }
 
   async function fetchCurrentUser() {
@@ -43,6 +56,12 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null;
     roleId.value = null;
     user.value = null;
+    if (import.meta.client) {
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('kongamano_token');
+      } catch {}
+    }
     navigateTo('/login');
   }
 
