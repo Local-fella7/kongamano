@@ -1007,9 +1007,19 @@ onMounted(async () => {
   if (route.query.code) {
     return navigateTo({ path: '/scan', query: { code: String(route.query.code) } }, { replace: true });
   }
+  
+  // Warm cached logs immediately from IndexedDB so the table renders without waiting
+  try {
+    const cachedLogs = await dbStore.getAllCachedScanLogs();
+    if (cachedLogs && cachedLogs.length > 0 && logs.value.length === 0) {
+      logs.value = cachedLogs;
+    }
+  } catch {}
+
   await fetchEvents();
   if (selectedEventId.value) {
     await preloadRegistrations(selectedEventId.value);
+    await fetchLogs();
   }
   await fetchServices();
 });
