@@ -281,8 +281,8 @@
             <span v-else-if="isAttendeeCheckedIn" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
               <i class="bi bi-check-circle-fill me-1"></i> Checked In
             </span>
-            <span v-else class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
-              <i class="bi bi-clock-history me-1"></i> Not Checked In Today
+            <span v-else class="badge rounded-pill px-3 py-1 fs-8 fw-bold border shadow-2xs" style="background-color: #F8FAE5; color: #76453B; border-color: #B19470 !important;">
+              <i class="bi bi-clock-history me-1" style="color: #76453B;"></i> Not Checked In Today
             </span>
           </div>
         </div>
@@ -317,7 +317,7 @@
               class="btn btn-emerald btn-md w-100 rounded-3 py-2 fw-bold shadow-2xs"
               @click="confirmEventCheckIn"
             >
-              <i class="bi bi-qr-code-scan me-1.5"></i> {{ isReentryToday ? 'Confirm Re-Entry & Check-in' : 'Confirm Entry & Check-in Today' }}
+              <i class="bi bi-qr-code-scan me-1.5"></i> Check In
             </button>
           </div>
 
