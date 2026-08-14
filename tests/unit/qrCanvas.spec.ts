@@ -43,7 +43,7 @@ function buildQrUrl(registration: Record<string, any>, index: number, originUrl:
   const eventId = registration.event_id || 1
   const regId = registration.id || index + 1
   const rawCode = registration.qr_code || `REG-${eventId}-${regId}`
-  return `${originUrl}/scannings?code=${encodeURIComponent(rawCode)}`
+  return `${originUrl}/scan?code=${encodeURIComponent(rawCode)}`
 }
 
 function buildSubText(
@@ -160,13 +160,13 @@ describe('qrCanvas — buildQrUrl', () => {
   it('19. uses registration.qr_code when available', () => {
     const reg = { qr_code: 'QR-ABC-123', id: 1, event_id: 2 }
     const url = buildQrUrl(reg, 0, 'https://kongamano.com')
-    expect(url).toBe('https://kongamano.com/scannings?code=QR-ABC-123')
+    expect(url).toBe('https://kongamano.com/scan?code=QR-ABC-123')
   })
 
   it('20. falls back to REG-{eventId}-{regId} pattern when qr_code absent', () => {
     const reg = { id: 5, event_id: 3 }
     const url = buildQrUrl(reg, 0, 'https://app.example.com')
-    expect(url).toBe('https://app.example.com/scannings?code=REG-3-5')
+    expect(url).toBe('https://app.example.com/scan?code=REG-3-5')
   })
 
   it('21. URL-encodes special characters in QR code', () => {

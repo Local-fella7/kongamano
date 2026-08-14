@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
+    fileParallelism: false,
     include: ['tests/unit/**/*.{test,spec}.ts'],
     coverage: {
       provider: 'v8',

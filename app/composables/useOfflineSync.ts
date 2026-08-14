@@ -267,11 +267,14 @@ export function useOfflineSync() {
     await init();
   });
 
+  const pendingCount = computed(() => queue.value.length);
+
   return {
     isOnline,
     queue,
     isSyncing,
     lastSyncTime,
+    pendingCount,
     executeOrQueue,
     processQueue,
   };

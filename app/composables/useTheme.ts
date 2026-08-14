@@ -3,30 +3,21 @@ const THEME_KEY = 'kongamano_theme';
 export function useTheme() {
   const isDark = ref(false);
 
-  function applyTheme(dark: boolean) {
+  function applyTheme() {
     if (!import.meta.client) return;
     const html = document.documentElement;
-    if (dark) {
-      html.setAttribute('data-bs-theme', 'dark');
-      html.setAttribute('data-theme', 'dark');
-    } else {
-      html.removeAttribute('data-bs-theme');
-      html.removeAttribute('data-theme');
-    }
-    isDark.value = dark;
-    localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+    html.removeAttribute('data-bs-theme');
+    html.removeAttribute('data-theme');
+    isDark.value = false;
+    localStorage.setItem(THEME_KEY, 'light');
   }
 
   function toggleTheme() {
-    applyTheme(!isDark.value);
+    applyTheme();
   }
 
   function initTheme() {
-    if (!import.meta.client) return;
-    const saved = localStorage.getItem(THEME_KEY);
-    // Also honour OS preference if no saved choice
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    applyTheme(saved ? saved === 'dark' : prefersDark);
+    applyTheme();
   }
 
   return { isDark, toggleTheme, initTheme };

@@ -14,6 +14,30 @@
 
       <!-- Action Buttons -->
       <div class="d-flex align-items-center flex-wrap gap-2">
+        <div v-if="pendingCount > 0" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill py-2 px-3 fs-8 fw-semibold d-flex align-items-center gap-1.5" title="Queued scans syncing in background">
+          <span class="spinner-grow spinner-grow-sm text-warning" role="status"></span>
+          <span>{{ pendingCount }} Syncing</span>
+        </div>
+
+        <div v-if="isPreloadingRegistrations" class="badge bg-info-subtle text-info border border-info-subtle rounded-pill py-2 px-3 fs-8 fw-semibold d-flex align-items-center gap-1.5">
+          <span class="spinner-border spinner-border-sm" role="status"></span>
+          <span>Preloading Attendee Data...</span>
+        </div>
+
+        <div class="form-check form-switch bg-light py-1.5 px-3 rounded-pill border d-flex align-items-center gap-2 mb-0 shadow-2xs">
+          <input
+            id="fastScanSwitch"
+            v-model="fastScanMode"
+            class="form-check-input mt-0 cursor-pointer"
+            type="checkbox"
+            role="switch"
+          />
+          <label class="form-check-label fs-8 fw-bold text-slate-700 cursor-pointer select-none" for="fastScanSwitch">
+            <i class="bi bi-lightning-charge-fill text-warning me-1"></i>
+            Fast Scan Mode
+          </label>
+        </div>
+
         <button
           class="btn btn-outline-primary rounded-3 py-2 px-3 fw-semibold fs-7 shadow-2xs d-flex align-items-center gap-2"
           :disabled="!selectedEventId"
@@ -86,9 +110,9 @@
             <td class="row-index">{{ startIndex + idx }}</td>
             <td>
               <span class="fw-bold text-slate-900 fs-7 d-block">
-                {{ log.registration ? `${log.registration.first_name} ${log.registration.last_name}` : (log.attendee_name || 'Delegate') }}
+                {{ formatAttendeeDisplayName(log) }}
               </span>
-              <span class="fs-8 text-muted">{{ log.registration?.phone || '—' }}</span>
+              <span class="fs-8 text-muted">{{ log.registration?.phone || log.phone || '—' }}</span>
             </td>
             <td>
               <code class="px-2 py-1 bg-slate-100 rounded text-slate-800 fs-8">{{ log.qr_code }}</code>
@@ -240,15 +264,14 @@
 
         <!-- Delegate Information -->
         <div class="d-flex align-items-center flex-wrap gap-2 gap-sm-3 p-3 bg-light rounded-3 border mb-3">
-          <div class="avatar-circle-lg bg-emerald-500 text-white fw-bold fs-5 shadow-2xs d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; border-radius: 50%;">
-            {{ scannedAttendee.first_name?.[0] || 'D' }}{{ scannedAttendee.last_name?.[0] || '' }}
-          </div>
-          <div class="flex-grow-1">
-            <h6 class="fw-bold text-slate-900 mb-0 fs-6">{{ scannedAttendee.first_name }} {{ scannedAttendee.last_name }}</h6>
-            <div class="d-flex align-items-center flex-wrap gap-1 gap-sm-2 fs-8 text-muted mt-0.5">
-              <span><i class="bi bi-phone me-1"></i>{{ scannedAttendee.phone || 'No phone' }}</span>
-              <span class="d-none d-sm-inline">•</span>
-              <code class="d-inline-block">{{ scannedAttendee.qr_code || scannedQrCode }}</code>
+          <div class="flex-grow-1 overflow-hidden">
+            <h6 class="fw-bold text-slate-900 mb-0 fs-6 text-truncate">{{ formatAttendeeDisplayName(scannedAttendee) }}</h6>
+            <div class="d-flex align-items-center flex-wrap gap-1.5 fs-8 text-muted mt-0.5">
+              <span v-if="getAttendeePhoneNumber(scannedAttendee)">
+                <i class="bi bi-phone me-1"></i>{{ getAttendeePhoneNumber(scannedAttendee) }}
+              </span>
+              <span v-if="getAttendeePhoneNumber(scannedAttendee)" class="d-none d-sm-inline">•</span>
+              <code class="d-inline-block">{{ scannedAttendee?.qr_code || scannedQrCode }}</code>
             </div>
           </div>
           <div class="w-100 w-sm-auto mt-1 mt-sm-0">
@@ -258,8 +281,8 @@
             <span v-else-if="isAttendeeCheckedIn" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
               <i class="bi bi-check-circle-fill me-1"></i> Checked In
             </span>
-            <span v-else class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fs-8 fw-bold">
-              <i class="bi bi-clock-history me-1"></i> Not Checked In Today
+            <span v-else class="badge rounded-pill px-3 py-1 fs-8 fw-bold border shadow-2xs" style="background-color: #F8FAE5; color: #76453B; border-color: #B19470 !important;">
+              <i class="bi bi-clock-history me-1" style="color: #76453B;"></i> Not Checked In Today
             </span>
           </div>
         </div>
@@ -294,21 +317,16 @@
               class="btn btn-emerald btn-md w-100 rounded-3 py-2 fw-bold shadow-2xs"
               @click="confirmEventCheckIn"
             >
-              <i class="bi bi-qr-code-scan me-1.5"></i> {{ isReentryToday ? 'Confirm Re-Entry & Check-in' : 'Confirm Entry & Check-in Today' }}
+              <i class="bi bi-qr-code-scan me-1.5"></i> Check In
             </button>
           </div>
 
           <!-- Option B: Currently Checked-in → Show Next Active Service Card (No Check-In button!) -->
           <div v-else-if="activeCurrentService" class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle">
-            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-              <span>Notice: This person has checked in again today (Re-entered).</span>
-            </div>
-
             <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="fs-8 text-uppercase fw-bold text-primary tracking-wider">Active Service Window</span>
-              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-900 border border-slate-300 fs-8 fw-bold shadow-2xs">
-                <i class="bi bi-clock-fill me-1 text-primary"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
+              <span class="fs-8 text-lowercase fw-bold text-primary tracking-wider">active service window</span>
+              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-dark border border-slate-400 fs-8 fw-bold shadow-2xs" style="color: #000000 !important;">
+                <i class="bi bi-clock-fill me-1 text-dark" style="color: #000000 !important;"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
               </span>
             </div>
             <h5 class="fw-extrabold text-slate-900 fs-6 mb-1">{{ activeCurrentService.name }}</h5>
@@ -322,7 +340,7 @@
                 @click="claimService(activeCurrentService.id)"
               >
                 <span v-if="claimingServiceId === activeCurrentService.id" class="spinner-border spinner-border-sm me-2"></span>
-                <i v-else class="bi bi-gift-fill me-1.5"></i> Claim & Record Service Access
+                <i v-else class="bi bi-check-circle-fill me-1.5"></i> Yes!
               </button>
 
               <button
@@ -337,11 +355,6 @@
 
           <!-- Option C: All active services claimed today -->
           <div v-else-if="areAllServicesClaimedToday" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
-            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-              <span>Notice: This person has checked in again today (Re-entered).</span>
-            </div>
-
             <i class="bi bi-check-circle-fill text-emerald-600 fs-2 d-block mb-1"></i>
             <h6 class="fw-bold text-slate-900 fs-7 mb-1">All Services Claimed For Today!</h6>
             <p class="fs-8 text-muted mb-3">All scheduled services for today have been claimed by this attendee.</p>
@@ -357,11 +370,6 @@
 
           <!-- Option D: Checked in, but no active service in current time window right now -->
           <div v-else class="p-3 bg-light rounded-3 border text-center">
-            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-              <span>Notice: This person has checked in again today (Re-entered).</span>
-            </div>
-
             <i class="bi bi-clock-history text-amber-500 fs-2 d-block mb-1"></i>
             <h6 class="fw-bold text-slate-900 fs-7 mb-1">No Active Service Right Now</h6>
             <p class="fs-8 text-muted mb-3">Delegate is checked in today. No scannable service is active in this current time window.</p>
@@ -389,14 +397,64 @@
 <script setup lang="ts">
 import { Html5Qrcode } from 'html5-qrcode';
 import { isActiveOrScheduledEvent } from '~/utils/eventDate';
+import { dbStore } from '~/utils/db';
 
-const { executeOrQueue } = useOfflineSync();
+const { isOnline, pendingCount, executeOrQueue } = useOfflineSync();
 const push = usePush();
 const token = useCookie<string | null>('token');
 
 const eventsList = ref<any[]>([]);
 const servicesList = ref<any[]>([]);
 const selectedEventId = ref<number | string>('');
+
+const cachedRegistrationsMap = ref<Map<string, any>>(new Map());
+const isPreloadingRegistrations = ref(false);
+const fastScanMode = ref(false);
+let lastPreloadedEventId: number | string | null = null;
+
+function formatAttendeeDisplayName(logOrAttendee: any): string {
+  if (!logOrAttendee) return 'Delegate';
+  const reg = logOrAttendee.registration || logOrAttendee;
+  
+  const rawFn = String(reg.first_name || '').trim();
+  const rawLn = String(reg.last_name || '').trim();
+
+  const fn = (rawFn.toLowerCase() === 'null' || rawFn.toLowerCase() === 'undefined') ? '' : rawFn;
+  const ln = (rawLn.toLowerCase() === 'null' || rawLn.toLowerCase() === 'undefined') ? '' : rawLn;
+
+  const fullName = `${fn} ${ln}`.trim();
+  if (fullName) return fullName;
+
+  // Fallback 1: Phone number
+  const phone = String(reg.phone || logOrAttendee.phone || '').trim();
+  if (phone && phone.toLowerCase() !== 'null' && phone.toLowerCase() !== 'undefined') {
+    return `Phone: ${phone}`;
+  }
+
+  // Fallback 2: Attendee name field
+  const attendeeName = String(logOrAttendee.attendee_name || '').trim();
+  if (attendeeName && attendeeName.toLowerCase() !== 'null' && attendeeName.toLowerCase() !== 'undefined') {
+    return attendeeName;
+  }
+
+  // Fallback 3: QR Code badge
+  const qr = String(logOrAttendee.qr_code || reg.qr_code || '').trim();
+  if (qr && qr.toLowerCase() !== 'null' && qr.toLowerCase() !== 'undefined') {
+    return `Delegate (${qr})`;
+  }
+
+  return 'Delegate';
+}
+
+function getAttendeePhoneNumber(attendee: any): string {
+  if (!attendee) return '';
+  const reg = attendee.registration || attendee;
+  const phone = String(reg.phone || attendee.phone || '').trim();
+  if (!phone || phone.toLowerCase() === 'no phone' || phone.toLowerCase() === 'null' || phone === '—' || phone === '-') {
+    return '';
+  }
+  return phone;
+}
 
 // Only active & scheduled events for scanning selection
 const activeEventsList = computed(() => {
@@ -434,29 +492,120 @@ function getTodayDateStr(): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }); // YYYY-MM-DD format
 }
 
+function extractNumericRegId(val: any): number | null {
+  if (typeof val === 'number' && !isNaN(val)) return val;
+  if (!val) return null;
+  const str = String(val).trim();
+  if (/^\d+$/.test(str)) return parseInt(str, 10);
+  const match = str.match(/REG-\d+-(\d+)/i);
+  if (match && match[1]) return parseInt(match[1], 10);
+  const num = parseInt(str.replace(/\D/g, ''), 10);
+  return isNaN(num) ? null : num;
+}
+
+function isLogForScannedAttendee(l: any): boolean {
+  if (!l) return false;
+  
+  const attendee = scannedAttendee.value;
+  const scanned = scannedQrCode.value ? String(scannedQrCode.value).trim() : '';
+
+  // 1. Direct registration numeric ID match
+  const attendeeId = attendee?.id && !isNaN(Number(attendee.id)) ? Number(attendee.id) : null;
+  const logRegId = (l.registration_id || l.registration?.id) ? Number(l.registration_id || l.registration?.id) : null;
+  if (attendeeId !== null && logRegId !== null && attendeeId === logRegId) {
+    return true;
+  }
+
+  // 2. Direct string match across any known identifiers (case-insensitive)
+  const targetCodes = new Set([
+    scanned,
+    scanned.toLowerCase(),
+    attendee?.qr_code ? String(attendee.qr_code).trim() : null,
+    attendee?.qr_code ? String(attendee.qr_code).trim().toLowerCase() : null,
+    attendee?.registration_number ? String(attendee.registration_number).trim() : null,
+    attendee?.registration_number ? String(attendee.registration_number).trim().toLowerCase() : null,
+    attendee?.code ? String(attendee.code).trim() : null,
+    attendee?.code ? String(attendee.code).trim().toLowerCase() : null,
+    attendee?.ticket_code ? String(attendee.ticket_code).trim() : null,
+    attendee?.ticket_code ? String(attendee.ticket_code).trim().toLowerCase() : null,
+  ].filter(Boolean));
+
+  const logCodes = [
+    l.qr_code ? String(l.qr_code).trim() : null,
+    l.qr_code ? String(l.qr_code).trim().toLowerCase() : null,
+    l.registration?.qr_code ? String(l.registration.qr_code).trim() : null,
+    l.registration?.qr_code ? String(l.registration.qr_code).trim().toLowerCase() : null,
+    l.registration?.registration_number ? String(l.registration.registration_number).trim() : null,
+    l.registration?.registration_number ? String(l.registration.registration_number).trim().toLowerCase() : null,
+    l.registration?.code ? String(l.registration.code).trim() : null,
+    l.registration?.code ? String(l.registration.code).trim().toLowerCase() : null,
+    l.registration?.ticket_code ? String(l.registration.ticket_code).trim() : null,
+    l.registration?.ticket_code ? String(l.registration.ticket_code).trim().toLowerCase() : null,
+  ].filter(Boolean);
+
+  for (const c of logCodes) {
+    if (c && targetCodes.has(c)) {
+      return true;
+    }
+  }
+
+  // 3. Fallback numeric match for REG-X-Y formatted codes
+  const targetNum = extractNumericRegId(scanned) || extractNumericRegId(attendee?.id);
+  const logNum = extractNumericRegId(logRegId) || extractNumericRegId(l.qr_code);
+  if (targetNum !== null && logNum !== null && targetNum === logNum) {
+    return true;
+  }
+
+  return false;
+}
+
+function isLogFromToday(l: any): boolean {
+  if (!l || !l.created_at) return true;
+  const todayStr = getTodayDateStr();
+  const raw = String(l.created_at).trim();
+
+  // 1. Direct string match
+  if (raw.startsWith(todayStr) || raw.includes(todayStr)) {
+    return true;
+  }
+
+  // 2. Parse with 'Z' as UTC -> Nairobi EAT (identical to formatDate in table)
+  try {
+    let parseable = raw.replace(' ', 'T');
+    if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+      parseable += 'Z';
+    }
+    const d = new Date(parseable);
+    if (!isNaN(d.getTime())) {
+      const eatDateStr = d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      if (eatDateStr === todayStr) {
+        return true;
+      }
+    }
+  } catch {}
+
+  // 3. Fallback: Parse without forced 'Z' (in case stored as local Nairobi time)
+  try {
+    const d2 = new Date(raw.replace(' ', 'T'));
+    if (!isNaN(d2.getTime())) {
+      const localDateStr = d2.toLocaleDateString('en-CA');
+      const eatDateStr = d2.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      if (localDateStr === todayStr || eatDateStr === todayStr) {
+        return true;
+      }
+    }
+  } catch {}
+
+  return false;
+}
+
 // Get all logs for current scanned attendee sorted newest first
 const attendeeTodayLogs = computed(() => {
-  const regId = scannedAttendee.value?.id;
-  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
-  if (!realQr && !regId) return [];
-  const todayStr = getTodayDateStr();
+  if (!scannedQrCode.value && !scannedAttendee.value?.id) return [];
 
   const filtered = logs.value.filter((l: any) => {
-    const logQr = l.qr_code || l.registration?.qr_code || '';
-    const logRegId = l.registration_id || l.registration?.id;
-    const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
-    if (!matchesAttendee) return false;
-
-    // Filter by today's date in EAT
-    if (l.created_at) {
-      let parseable = String(l.created_at).trim().replace(' ', 'T');
-      if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
-        parseable += 'Z';
-      }
-      const logDateStr = new Date(parseable).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
-      return logDateStr === todayStr;
-    }
-    return true;
+    if (!isLogForScannedAttendee(l)) return false;
+    return isLogFromToday(l);
   });
 
   return filtered.sort((a: any, b: any) => {
@@ -482,7 +631,7 @@ const isAttendeeCheckedIn = computed(() => {
     return false; // Checked out today → requires new check-in!
   }
 
-  return logsToday.some((l: any) => l.scan_type === 'check_in' || !l.service_id);
+  return logsToday.some((l: any) => l.scan_type === 'check_in' || l.scan_type === 'service' || !l.service_id);
 });
 
 // Check if attendee is currently checked out today
@@ -498,14 +647,43 @@ const checkInCountToday = computed(() => {
 
 // Check if attendee has checked in multiple times or checked out and is re-entering today
 const isReentryToday = computed(() => {
-  return checkInCountToday.value > 1 || (checkInCountToday.value >= 1 && isAttendeeCheckedOutToday.value);
+  const logsToday = attendeeTodayLogs.value;
+  return logsToday.length > 0 && logsToday[0]?.scan_type === 'check_out';
 });
 
 // Filter services:
+function parseTimeToMinutes(timeStr?: string | null): number | null {
+  if (!timeStr) return null;
+  const match = String(timeStr).trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function getEATCurrentMinutes(): number {
+  try {
+    const d = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Nairobi',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(d);
+    const hour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
+    const min = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
+    return (hour % 24) * 60 + min;
+  } catch {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
+}
+
 const availableScannableServices = computed(() => {
   if (!scannedQrCode.value && !scannedAttendee.value?.id) return [];
-  const now = new Date();
-  const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  const currentMinutes = getEATCurrentMinutes();
 
   return servicesList.value.filter((srv: any) => {
     const requiresScan = srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined;
@@ -518,7 +696,7 @@ const availableScannableServices = computed(() => {
       const logQr = l.qr_code || l.registration?.qr_code || '';
       const logRegId = l.registration_id || l.registration?.id;
       const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
-      const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
+      const matchesService = Number(l.service_id) === Number(srv.id) || Number(l.service?.id) === Number(srv.id);
 
       let isToday = true;
       if (l.created_at) {
@@ -531,10 +709,24 @@ const availableScannableServices = computed(() => {
     });
     if (alreadyClaimed) return false;
 
-    if (srv.start_time && srv.end_time) {
-      if (currentTimeStr < srv.start_time || currentTimeStr > srv.end_time) {
+    // Strict time comparison: service is ONLY active within its designated window
+    const startMins = parseTimeToMinutes(srv.start_time);
+    const endMins = parseTimeToMinutes(srv.end_time);
+
+    if (startMins !== null && endMins !== null) {
+      if (currentMinutes < startMins || currentMinutes > endMins) {
         return false;
       }
+    } else if (startMins !== null) {
+      if (currentMinutes < startMins) {
+        return false;
+      }
+    } else if (endMins !== null) {
+      if (currentMinutes > endMins) {
+        return false;
+      }
+    } else {
+      return false;
     }
 
     return true;
@@ -547,8 +739,6 @@ const activeCurrentService = computed(() => {
 
 const areAllServicesClaimedToday = computed(() => {
   if (servicesList.value.length === 0) return false;
-  const regId = scannedAttendee.value?.id;
-  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
   const todayStr = getTodayDateStr();
 
   const scannableServices = servicesList.value.filter((srv: any) =>
@@ -558,9 +748,7 @@ const areAllServicesClaimedToday = computed(() => {
 
   return scannableServices.every((srv: any) => {
     return logs.value.some((l: any) => {
-      const logQr = l.qr_code || l.registration?.qr_code || '';
-      const logRegId = l.registration_id || l.registration?.id;
-      const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
+      const matchesAttendee = isLogForScannedAttendee(l);
       const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
       let isToday = true;
       if (l.created_at) {
@@ -582,6 +770,8 @@ async function claimService(serviceId: number | string) {
   try {
     await processScan(realQrCode, 'service', serviceId);
     showResultModal.value = false;
+    scannedAttendee.value = null;
+    scannedQrCode.value = '';
   } finally {
     claimingServiceId.value = null;
   }
@@ -606,6 +796,12 @@ async function confirmEventCheckOut() {
   try {
     await processScan(realQrCode, 'check_out');
     showResultModal.value = false;
+    scannedAttendee.value = null;
+    scannedQrCode.value = '';
+    push.info({
+      title: 'Ready for Next Scan',
+      message: 'Delegate checked out. Ready to scan next QR code.',
+    });
   } catch {
     // Handled in processScan
   }
@@ -645,10 +841,10 @@ const filteredLogs = computed(() => {
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim();
     list = list.filter((l: any) => {
-      const name = `${l.registration?.first_name || ''} ${l.registration?.last_name || ''} ${l.attendee_name || ''}`.toLowerCase();
-      const phone = (l.registration?.phone || '').toLowerCase();
-      const qr = (l.qr_code || '').toLowerCase();
-      return name.includes(q) || phone.includes(q) || qr.includes(q);
+      const displayName = formatAttendeeDisplayName(l).toLowerCase();
+      const phone = String(l.registration?.phone || l.phone || '').toLowerCase();
+      const qr = String(l.qr_code || '').toLowerCase();
+      return displayName.includes(q) || phone.includes(q) || qr.includes(q);
     });
   }
 
@@ -664,8 +860,84 @@ const paginatedLogs = computed(() => {
   return filteredLogs.value.slice(start, start + perPage.value);
 });
 
+function indexRegistrations(regList: any[]) {
+  const map = new Map<string, any>();
+  for (const r of regList) {
+    if (!r) continue;
+    const addKey = (k?: string | number | null) => {
+      if (!k) return;
+      const str = String(k).trim();
+      if (!str) return;
+      map.set(str, r);
+      map.set(str.toLowerCase(), r);
+    };
+
+    addKey(r.qr_code);
+    addKey(r.registration_number);
+    addKey(r.code);
+    addKey(r.ticket_code);
+    addKey(r.badge_code);
+    addKey(r.reference);
+    addKey(r.id);
+
+    if (r.id) {
+      if (r.event_id) {
+        addKey(`REG-${r.event_id}-${r.id}`);
+      }
+      if (selectedEventId.value) {
+        addKey(`REG-${selectedEventId.value}-${r.id}`);
+      }
+    }
+  }
+  cachedRegistrationsMap.value = map;
+}
+
+async function preloadRegistrations(eventId: number | string, forceRefresh = false) {
+  if (!eventId) return;
+
+  // 1. Short-circuit if already preloaded in memory for this event
+  if (!forceRefresh && Number(lastPreloadedEventId) === Number(eventId) && cachedRegistrationsMap.value.size > 0) {
+    return;
+  }
+
+  isPreloadingRegistrations.value = true;
+  lastPreloadedEventId = Number(eventId);
+
+  try {
+    const cached = await dbStore.getCachedRegistrations(eventId);
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      indexRegistrations(cached);
+      // If valid cached registrations exist in IndexedDB, bypass network fetch during scanning
+      if (!forceRefresh) return;
+    }
+
+    if (import.meta.client && navigator.onLine) {
+      try {
+        const res = await $fetch<any>(`/api/registrations?event_id=${eventId}`, {
+          headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
+        });
+        const freshList = Array.isArray(res?.data?.registrations)
+          ? res.data.registrations
+          : (Array.isArray(res?.data) ? res.data : []);
+
+        if (freshList.length > 0) {
+          indexRegistrations(freshList);
+          await dbStore.cacheRegistrations(eventId, freshList);
+        }
+      } catch (e) {
+        console.warn('Background registration preload notice (using local cache):', e);
+      }
+    }
+  } catch (err) {
+    console.error('Error preloading registrations:', err);
+  } finally {
+    isPreloadingRegistrations.value = false;
+  }
+}
+
 watch(selectedEventId, async (newEvId) => {
   if (newEvId) {
+    await preloadRegistrations(newEvId);
     await fetchLogs();
     await fetchServices();
   }
@@ -684,22 +956,40 @@ async function openVerificationForQr(qrCode: string) {
 
   scannedQrCode.value = cleanCode;
 
-  // 1. Discover delegate & auto-discover event ID
+  // 1. Instant local lookup (< 5ms)
   const attendeeData = await findAttendeeByQrCode(cleanCode);
+  if (!attendeeData) {
+    push.error({
+      title: 'Delegate Not Found',
+      message: `No registration record found for badge code: ${cleanCode}`,
+    });
+    scanFeedback.value = {
+      type: 'error',
+      message: `Unrecognized Badge: No registered delegate found matching "${cleanCode}".`,
+    };
+    return;
+  }
+
   if (attendeeData?.event_id) {
     selectedEventId.value = Number(attendeeData.event_id);
   }
 
-  // 2. Strict sequential resolution: await services & fresh logs BEFORE showing modal
-  await fetchServices();
-  await fetchLogsForce();
+  scannedAttendee.value = attendeeData;
 
-  scannedAttendee.value = attendeeData || {
-    first_name: 'Registered',
-    last_name: 'Delegate',
-    phone: '',
-    qr_code: cleanCode,
-  };
+  // 2. Fast Continuous Scan Mode auto-processing
+  if (fastScanMode.value) {
+    if (!isAttendeeCheckedIn.value && !isSelectedEventCompleted.value) {
+      await confirmEventCheckIn();
+    } else if (activeCurrentService.value) {
+      await claimService(activeCurrentService.value.id);
+    } else {
+      push.info({
+        title: 'Attendee Verified',
+        message: `${scannedAttendee.value.first_name} ${scannedAttendee.value.last_name || ''} - Status verified.`,
+      });
+    }
+    return;
+  }
 
   showCameraModal.value = false;
   showResultModal.value = true;
@@ -708,7 +998,7 @@ async function openVerificationForQr(qrCode: string) {
 async function handleScannedUrlCode() {
   const code = route.query.code;
   if (!code) return;
-  await openVerificationForQr(String(code));
+  return navigateTo({ path: '/scan', query: { code: String(code) } }, { replace: true });
 }
 
 watch(
@@ -721,17 +1011,24 @@ watch(
 );
 
 onMounted(async () => {
-  await fetchEvents();
-  await fetchServices();
   if (route.query.code) {
-    const codeFromUrl = String(route.query.code);
-    const eventIdMatch = codeFromUrl.match(/^REG-(\d+)-/i);
-    if (eventIdMatch && eventIdMatch[1]) {
-      selectedEventId.value = Number(eventIdMatch[1]);
-    }
-    await fetchLogsForce();
+    return navigateTo({ path: '/scan', query: { code: String(route.query.code) } }, { replace: true });
   }
-  await handleScannedUrlCode();
+  
+  // Warm cached logs immediately from IndexedDB so the table renders without waiting
+  try {
+    const cachedLogs = await dbStore.getAllCachedScanLogs();
+    if (cachedLogs && cachedLogs.length > 0 && logs.value.length === 0) {
+      logs.value = cachedLogs;
+    }
+  } catch {}
+
+  await fetchEvents();
+  if (selectedEventId.value) {
+    await preloadRegistrations(selectedEventId.value);
+    await fetchLogs();
+  }
+  await fetchServices();
 });
 
 onBeforeUnmount(() => {
@@ -766,13 +1063,19 @@ async function fetchServices() {
 
     servicesList.value = rawList
       .map((es: any) => {
-        if (es.service) return es.service;
+        const srvStart = es.start_time || es.service?.start_time || null;
+        const srvEnd = es.end_time || es.service?.end_time || null;
+        const srvScan = es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true);
+        const srvName = es.name || es.service?.name || `Service #${es.service_id || es.id}`;
+        const srvDesc = es.description || es.service?.description || '';
+
         return {
-          id: es.service_id || es.id,
-          name: es.name || `Service #${es.service_id || es.id}`,
-          start_time: es.start_time,
-          end_time: es.end_time,
-          requires_scan: es.requires_scan,
+          id: es.service_id || es.service?.id || es.id,
+          name: srvName,
+          start_time: srvStart,
+          end_time: srvEnd,
+          requires_scan: srvScan,
+          description: srvDesc,
         };
       })
       .filter((s: any) => s && s.id);
@@ -827,52 +1130,71 @@ async function findAttendeeByQrCode(qrCode: string): Promise<any> {
   const cleanCode = qrCode.trim();
   const prefixMatch = cleanCode.match(/^REG-(\d+)-/i);
   if (prefixMatch && prefixMatch[1]) {
-    selectedEventId.value = Number(prefixMatch[1]);
+    const matchedEventId = Number(prefixMatch[1]);
+    if (Number(selectedEventId.value) !== matchedEventId) {
+      selectedEventId.value = matchedEventId;
+    }
   }
 
-  // 1. Try finding in current selected event
+  // 1. Sub-millisecond lookup in preloaded memory map
+  let found = cachedRegistrationsMap.value.get(cleanCode);
+  if (!found) {
+    const rawId = cleanCode.split('-').pop();
+    if (rawId) {
+      found = cachedRegistrationsMap.value.get(rawId);
+    }
+  }
+
+  if (found) {
+    if (found.event_id && Number(selectedEventId.value) !== Number(found.event_id)) {
+      selectedEventId.value = Number(found.event_id);
+    }
+    return found;
+  }
+
+  // 2. Direct IndexedDB cache lookup if map miss
   if (selectedEventId.value) {
+    const cached = await dbStore.getCachedRegistrations(selectedEventId.value);
+    if (cached && Array.isArray(cached)) {
+      found = cached.find((r: any) => 
+        r.qr_code === cleanCode || 
+        r.registration_number === cleanCode || 
+        r.code === cleanCode || 
+        r.ticket_code === cleanCode || 
+        r.badge_code === cleanCode || 
+        `REG-${r.event_id}-${r.id}` === cleanCode || 
+        String(r.id) === cleanCode.split('-').pop()
+      );
+      if (found) {
+        if (found.event_id) selectedEventId.value = Number(found.event_id);
+        return found;
+      }
+    }
+  }
+
+  // 3. Fallback: Query server if online and unknown QR code
+  if (import.meta.client && navigator.onLine) {
     try {
       const regRes = await $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
-        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
+        headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
       });
       const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-      const found = regList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+      found = regList.find((r: any) => 
+        r.qr_code === cleanCode || 
+        r.registration_number === cleanCode || 
+        r.code === cleanCode || 
+        r.ticket_code === cleanCode || 
+        r.badge_code === cleanCode || 
+        `REG-${r.event_id}-${r.id}` === cleanCode || 
+        String(r.id) === cleanCode.split('-').pop()
+      );
       if (found) {
-        if (found.event_id) {
-          selectedEventId.value = Number(found.event_id);
-        }
-        await fetchServices();
-        await fetchLogsForce();
+        if (found.event_id) selectedEventId.value = Number(found.event_id);
         return found;
       }
     } catch {
-      // Fallback
+      // Offline fallback
     }
-  }
-
-  // 2. Fallback: Search globally across all registrations to auto-discover delegate's event_id
-  try {
-    const globalRes = await $fetch<any>('/api/registrations', {
-      headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-    });
-    const globalList = Array.isArray(globalRes?.data?.registrations) ? globalRes.data.registrations : (Array.isArray(globalRes?.data) ? globalRes.data : []);
-    const foundGlobal = globalList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
-    if (foundGlobal) {
-      if (foundGlobal.event_id) {
-        selectedEventId.value = Number(foundGlobal.event_id);
-      }
-      await fetchServices();
-      await fetchLogsForce();
-      return foundGlobal;
-    }
-  } catch {
-    // Fallback
-  }
-
-  if (selectedEventId.value) {
-    await fetchServices();
-    await fetchLogsForce();
   }
 
   return null;
@@ -1011,90 +1333,53 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service' 
     bodyPayload.service_id = parseInt(String(serviceId), 10);
   }
 
-  const globalPayload: Record<string, any> = {
-    ...bodyPayload,
-    event_id: Number(selectedEventId.value),
+  const currentEventObj = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
+  const eventName = currentEventObj?.name || `Event #${selectedEventId.value}`;
+
+  const attendeeData = matchedReg || scannedAttendee.value || {
+    first_name: 'Registered',
+    last_name: 'Delegate',
+    phone: '',
+    qr_code: qrCode,
   };
 
-  try {
-    let res: any;
-    try {
-      res = await $fetch<any>(`/api/events/${selectedEventId.value}/scannings`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-        body: bodyPayload,
-      });
-    } catch (primaryErr: any) {
-      try {
-        res = await $fetch<any>('/api/scannings', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
-          body: globalPayload,
-        });
-      } catch (fallbackErr: any) {
-        throw primaryErr || fallbackErr;
-      }
-    }
+  scannedAttendee.value = attendeeData;
+  scannedQrCode.value = qrCode;
 
-    const currentEventObj = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
-    const eventName = currentEventObj?.name || `Event #${selectedEventId.value}`;
+  // 1. INSTANT LOCAL UPDATE of logs state for immediate UI feedback (< 1ms)
+  const scanLabel = type === 'check_out' ? 'Check-out' : (type === 'service' ? 'Service access' : 'Check-in');
+  const localLogEntry = {
+    id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    qr_code: qrCode,
+    scan_type: type,
+    service_id: serviceId ? Number(serviceId) : null,
+    event_id: Number(selectedEventId.value),
+    registration: attendeeData,
+    created_at: new Date().toISOString(),
+  };
 
-    let attendeeData = res?.data?.registration || res?.registration || res?.data?.attendee;
-    if (!attendeeData || !attendeeData.first_name) {
-      try {
-        const regRes = await cachedFetch<any>(`/api/registrations?event_id=${selectedEventId.value}`);
-        const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-        attendeeData = regList.find((r: any) => r.qr_code === qrCode || `REG-${r.event_id}-${r.id}` === qrCode || String(r.id) === qrCode.split('-').pop());
-      } catch {
-        // Fallback
-      }
-    }
+  logs.value = [localLogEntry, ...logs.value];
 
-    if (!attendeeData) {
-      attendeeData = {
-        first_name: 'Registered',
-        last_name: 'Delegate',
-        phone: '',
-        qr_code: qrCode,
-      };
-    }
+  scanFeedback.value = {
+    type: 'success',
+    message: `${scanLabel} recorded for ${attendeeData.first_name} (${qrCode})`,
+  };
 
-    scannedAttendee.value = attendeeData;
-    scannedQrCode.value = qrCode;
+  push.success({
+    title: 'Scan Recorded',
+    message: `${scanLabel} recorded for ${attendeeData.first_name} ${attendeeData.last_name || ''}`,
+  });
 
-    const scanLabel = type === 'check_out' ? 'Check-out' : (type === 'service' ? 'Service access' : 'Check-in');
-    scanFeedback.value = {
-      type: 'success',
-      message: `${scanLabel} recorded for QR code ${qrCode} at ${eventName}`,
-    };
-    if (res?.queued) {
-      push.success({ title: 'Queued', message: `${scanLabel} for ${eventName} queued for sync.` });
-    } else {
-      push.success({ title: 'Success', message: `${scanLabel} for ${eventName} processed successfully!` });
-    }
-
-    logs.value = [
-      {
-        qr_code: qrCode,
-        scan_type: type,
-        service_id: serviceId ? Number(serviceId) : null,
-        event_id: Number(selectedEventId.value),
-        created_at: new Date().toISOString(),
-      },
-      ...logs.value,
-    ];
-
-    await fetchLogsForce();
-  } catch (err: any) {
-    console.error('Scan processing error:', err);
-    const serverErr = err?.data?.errors
-      ? (typeof err.data.errors === 'object' ? Object.values(err.data.errors).flat().join(', ') : JSON.stringify(err.data.errors))
-      : null;
-    const rawMsg = serverErr || err?.data?.message || err?.data?.error || err?.message;
-    const msg = typeof rawMsg === 'string' ? rawMsg : 'Check-in scan failed. Please verify QR code or attendee registration.';
-    scanFeedback.value = { type: 'error', message: msg };
-    push.error({ title: 'Scan Validation Error', message: msg });
-  }
+  // 2. DISPATCH NON-BLOCKING ASYNC BACKGROUND SYNC
+  const endpoint = `/api/events/${selectedEventId.value}/scannings`;
+  executeOrQueue({
+    url: endpoint,
+    method: 'POST',
+    body: bodyPayload,
+    label: `${scanLabel} - ${attendeeData.first_name || qrCode}`,
+  }).catch((err) => {
+    console.warn('Background scan sync notice:', err);
+  });
 }
 
 async function handleManualCheckin() {

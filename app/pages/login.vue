@@ -292,16 +292,21 @@ async function handleLogin() {
       });
 
       const route = useRoute();
-      // Non-admin users (scanners) go directly to /scannings — no dashboard detour.
-      // The role_id cookie is already set by setUser() above, so the middleware will
-      // also enforce this on all subsequent page navigations without any API calls.
+      // Non-admin users (scanners) go directly to /scan or /scannings — no dashboard detour.
+      // If a redirect URL is present (e.g. /scan?code=...), navigate directly to it.
       // Use external:true to force a full browser navigation so all newly-set cookies
       // (token + role_id) are included in the request headers from the server side.
+      let redirectTarget = (route.query.redirect as string) || '';
+      if (redirectTarget.startsWith('/scannings?code=')) {
+        redirectTarget = redirectTarget.replace('/scannings?code=', '/scan?code=');
+      }
       if (!authStore.isAdmin) {
-        await navigateTo('/scannings', { external: true });
+        const dest = (redirectTarget && (redirectTarget.startsWith('/scan') || redirectTarget.startsWith('/scannings')))
+          ? redirectTarget
+          : '/scan';
+        await navigateTo(dest);
       } else {
-        const redirectTarget = (route.query.redirect as string) || '/';
-        await navigateTo(redirectTarget, { external: true });
+        await navigateTo(redirectTarget || '/');
       }
     } else {
       errorMessage.value = response?.message || 'Invalid username or PIN.';

@@ -38,15 +38,6 @@
             />
           </div>
 
-          <!-- Theme Toggle -->
-          <button
-            class="theme-toggle-btn"
-            @click="toggleTheme"
-            :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
-            :aria-label="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
-          >
-            <i :class="isDark ? 'bi bi-sun-fill' : 'bi bi-moon-fill'"></i>
-          </button>
           <div class="dropdown position-relative" ref="userDropdownRef">
             <button
               class="user-btn"
@@ -112,11 +103,6 @@
       </main>
 
     </div>
-
-    <Notivue v-slot="item">
-      <Notification :item="item" />
-    </Notivue>
-
   </div>
 </template>
 
