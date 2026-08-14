@@ -181,30 +181,36 @@ describe('useOfflineSync — processQueue guard conditions', () => {
 })
 
 describe('useOfflineSync — permanent error status codes (discard logic)', () => {
-  it('20. status 400 is a permanent error', () => {
+  it('20. status 400 is a permanent validation error (discard)', () => {
     const status = 400
-    const permanent = [400, 422, 401, 403].includes(status)
+    const permanent = [400, 422].includes(status)
     expect(permanent).toBe(true)
   })
 
-  it('21. status 422 is a permanent error', () => {
-    expect([400, 422, 401, 403].includes(422)).toBe(true)
+  it('21. status 422 is a permanent validation error (discard)', () => {
+    expect([400, 422].includes(422)).toBe(true)
   })
 
-  it('22. status 401 is a permanent error', () => {
-    expect([400, 422, 401, 403].includes(401)).toBe(true)
+  it('22. status 401 is an authentication error (preserved for re-login retry)', () => {
+    const isAuth = [401, 403].includes(401)
+    const isPermanentDiscard = [400, 422].includes(401)
+    expect(isAuth).toBe(true)
+    expect(isPermanentDiscard).toBe(false)
   })
 
-  it('23. status 403 is a permanent error', () => {
-    expect([400, 422, 401, 403].includes(403)).toBe(true)
+  it('23. status 403 is a permission/auth error (preserved for retry)', () => {
+    const isAuth = [401, 403].includes(403)
+    const isPermanentDiscard = [400, 422].includes(403)
+    expect(isAuth).toBe(true)
+    expect(isPermanentDiscard).toBe(false)
   })
 
   it('24. status 500 is NOT a permanent error (retry)', () => {
-    expect([400, 422, 401, 403].includes(500)).toBe(false)
+    expect([400, 422].includes(500)).toBe(false)
   })
 
   it('25. status 503 is NOT a permanent error (retry)', () => {
-    expect([400, 422, 401, 403].includes(503)).toBe(false)
+    expect([400, 422].includes(503)).toBe(false)
   })
 })
 

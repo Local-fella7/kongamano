@@ -58,6 +58,67 @@
       </div>
     </div>
 
+    <!-- Live Scan Statistics Breakdown Bar -->
+    <div class="scan-stats-bar d-flex align-items-center gap-2 overflow-x-auto pb-2 mb-3">
+      <!-- All Scans Pill -->
+      <button
+        type="button"
+        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
+        :class="(!selectedScanTypeFilter && !selectedServiceFilter) ? 'btn-primary text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        @click="setQuickFilter('')"
+      >
+        <i class="bi bi-collection-fill"></i>
+        <span>All Scans</span>
+        <span class="badge rounded-pill" :class="(!selectedScanTypeFilter && !selectedServiceFilter) ? 'bg-white text-primary' : 'bg-slate-200 text-slate-800'">
+          {{ scanStatistics.totalScans }}
+        </span>
+      </button>
+
+      <!-- Check-ins Pill -->
+      <button
+        type="button"
+        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
+        :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'btn-emerald text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        @click="setQuickFilter('check_in')"
+      >
+        <i class="bi bi-check-circle-fill text-emerald-600" :class="{ 'text-white': selectedScanTypeFilter === 'check_in' && !selectedServiceFilter }"></i>
+        <span>Check-ins</span>
+        <span class="badge rounded-pill" :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'bg-white text-emerald-700' : 'bg-emerald-100 text-emerald-800'">
+          {{ scanStatistics.totalCheckIns }}
+        </span>
+      </button>
+
+      <!-- Check-outs Pill -->
+      <button
+        type="button"
+        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
+        :class="(selectedScanTypeFilter === 'check_out') ? 'btn-danger text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        @click="setQuickFilter('check_out')"
+      >
+        <i class="bi bi-door-closed-fill text-danger" :class="{ 'text-white': selectedScanTypeFilter === 'check_out' }"></i>
+        <span>Check-outs</span>
+        <span class="badge rounded-pill" :class="(selectedScanTypeFilter === 'check_out') ? 'bg-white text-danger' : 'bg-rose-100 text-rose-800'">
+          {{ scanStatistics.totalCheckOuts }}
+        </span>
+      </button>
+
+      <!-- Individual Service Count Pills -->
+      <button
+        v-for="srv in scanStatistics.services"
+        :key="srv.id"
+        type="button"
+        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
+        :class="(selectedServiceFilter === srv.id) ? 'btn-purple text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        @click="setQuickFilter('service', srv.id)"
+      >
+        <i class="bi bi-gift-fill text-purple-600" :class="{ 'text-white': selectedServiceFilter === srv.id }"></i>
+        <span>{{ srv.name }}</span>
+        <span class="badge rounded-pill" :class="(selectedServiceFilter === srv.id) ? 'bg-white text-purple-700' : 'bg-purple-100 text-purple-800'">
+          {{ srv.count }}
+        </span>
+      </button>
+    </div>
+
     <!-- Standardized Data Table -->
     <CommonDataTable
       v-model:searchQuery="searchQuery"
@@ -72,12 +133,14 @@
       <template #filters>
         <!-- Target Event Filter Dropdown -->
         <select
-          v-model="selectedEventId"
+          v-model.number="selectedEventId"
           class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
           style="max-width: 220px;"
         >
-          <option value="" disabled>Select Event to Scan...</option>
-          <option v-for="ev in activeEventsList" :key="ev.id" :value="ev.id">{{ ev.name }}</option>
+          <option value="" disabled>Select Event...</option>
+          <option v-for="ev in eventsList" :key="ev.id" :value="Number(ev.id)">
+            {{ ev.name || ev.title || `Event #${ev.id}` }}
+          </option>
         </select>
 
         <!-- Scan Type Filter Dropdown -->
@@ -85,11 +148,25 @@
           v-model="selectedScanTypeFilter"
           class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
           style="max-width: 175px;"
+          @change="handleScanTypeChange"
         >
           <option value="">All Scan Types</option>
           <option value="check_in">Event Check-in</option>
           <option value="service">Service Access</option>
           <option value="check_out">Event Check-out</option>
+        </select>
+
+        <!-- Specific Service Filter Dropdown (always accessible when services exist) -->
+        <select
+          v-if="servicesList.length > 0"
+          v-model="selectedServiceFilter"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 200px;"
+        >
+          <option value="">All Services ({{ scanStatistics.totalServiceScans }})</option>
+          <option v-for="srv in scanStatistics.services" :key="srv.id" :value="srv.id">
+            {{ srv.name }} ({{ srv.count }})
+          </option>
         </select>
       </template>
 
@@ -130,7 +207,7 @@
               </span>
             </td>
             <td>
-              <span class="fs-8 text-slate-700 fw-semibold">{{ log.service?.name || log.service_name || '—' }}</span>
+              <span class="fs-8 text-slate-700 fw-semibold">{{ getLogServiceName(log) }}</span>
             </td>
             <td>
               <span class="fs-8 text-muted">{{ log.created_at ? formatDate(log.created_at) : '—' }}</span>
@@ -456,6 +533,25 @@ function getAttendeePhoneNumber(attendee: any): string {
   return phone;
 }
 
+// Master services catalog map: id -> master service object
+const masterServicesMap = ref<Map<number, any>>(new Map());
+
+function getLogServiceName(log: any): string {
+  if (!log) return '—';
+  if (log.service?.name) return log.service.name;
+  if (log.service_name) return log.service_name;
+  const srvId = log.service_id ? Number(log.service_id) : (log.service?.id ? Number(log.service.id) : null);
+  if (srvId) {
+    const found = servicesList.value.find((s: any) => Number(s.id) === srvId);
+    if (found?.name && !found.name.startsWith('Service #')) return found.name;
+    const masterObj = masterServicesMap.value.get(srvId);
+    if (masterObj?.name) return masterObj.name;
+    if (found?.name) return found.name;
+    return `Service #${srvId}`;
+  }
+  return '—';
+}
+
 // Only active & scheduled events for scanning selection
 const activeEventsList = computed(() => {
   return eventsList.value.filter(isActiveOrScheduledEvent);
@@ -473,8 +569,27 @@ const claimingServiceId = ref<number | string | null>(null);
 // Filters & Pagination
 const searchQuery = ref('');
 const selectedScanTypeFilter = ref('');
+const selectedServiceFilter = ref<number | string>('');
 const currentPage = ref(1);
 const perPage = ref(10);
+
+function handleScanTypeChange() {
+  if (selectedScanTypeFilter.value !== 'service') {
+    selectedServiceFilter.value = '';
+  }
+  currentPage.value = 1;
+}
+
+function setQuickFilter(type: '' | 'check_in' | 'check_out' | 'service', serviceId?: number | string) {
+  if (type === 'service') {
+    selectedScanTypeFilter.value = 'service';
+    selectedServiceFilter.value = serviceId || '';
+  } else {
+    selectedScanTypeFilter.value = type;
+    selectedServiceFilter.value = '';
+  }
+  currentPage.value = 1;
+}
 
 const selectedEventName = computed(() => {
   const ev = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
@@ -826,11 +941,94 @@ const submitting = ref(false);
 const logs = ref<any[]>([]);
 const loadingLogs = ref(false);
 
+// Ultra-fast single-pass O(N) statistics breakdown for all services and scan types
+const scanStatistics = computed(() => {
+  let totalScans = 0;
+  let totalCheckIns = 0;
+  let totalCheckOuts = 0;
+  let totalServiceScans = 0;
+
+  // Map to store service details: id -> { id, name, count }
+  const serviceMap = new Map<string | number, { id: string | number; name: string; count: number }>();
+
+  // 1. Pre-populate with configured event services if any
+  for (const s of servicesList.value) {
+    if (s && (s.id !== undefined && s.id !== null)) {
+      const sId = Number(s.id);
+      serviceMap.set(sId, {
+        id: s.id,
+        name: s.name || `Service #${s.id}`,
+        count: 0,
+      });
+    }
+  }
+
+  // 2. Count from actual logs and dynamically discover any service in logs
+  for (const l of logs.value) {
+    totalScans++;
+    const sId = l.service_id ? Number(l.service_id) : (l.service?.id ? Number(l.service.id) : null);
+    const masterObj = sId ? masterServicesMap.value.get(sId) : null;
+    const sName = (l.service?.name && !l.service.name.startsWith('Service #'))
+      ? l.service.name
+      : (l.service_name || masterObj?.name || (sId ? `Service #${sId}` : null));
+
+    if (sId) {
+      totalServiceScans++;
+      if (!serviceMap.has(sId)) {
+        serviceMap.set(sId, {
+          id: sId,
+          name: sName || `Service #${sId}`,
+          count: 0,
+        });
+      } else {
+        const existing = serviceMap.get(sId)!;
+        if (existing.name.startsWith('Service #') && sName && !sName.startsWith('Service #')) {
+          existing.name = sName;
+        }
+      }
+      const srvItem = serviceMap.get(sId)!;
+      srvItem.count += 1;
+    } else if (l.scan_type === 'service') {
+      totalServiceScans++;
+      const genericKey = sName || 'Service Access';
+      if (!serviceMap.has(genericKey)) {
+        serviceMap.set(genericKey, {
+          id: genericKey,
+          name: genericKey,
+          count: 0,
+        });
+      }
+      const srvItem = serviceMap.get(genericKey)!;
+      srvItem.count += 1;
+    } else if (l.scan_type === 'check_out') {
+      totalCheckOuts++;
+    } else {
+      totalCheckIns++;
+    }
+  }
+
+  const services = Array.from(serviceMap.values());
+
+  return {
+    totalScans,
+    totalCheckIns,
+    totalCheckOuts,
+    totalServiceScans,
+    services,
+  };
+});
+
 // Table Filtered & Paginated List
 const filteredLogs = computed(() => {
   let list = logs.value;
 
-  if (selectedScanTypeFilter.value) {
+  if (selectedServiceFilter.value) {
+    const targetServiceId = Number(selectedServiceFilter.value);
+    list = list.filter((l: any) => {
+      const sId = l.service_id ? Number(l.service_id) : (l.service?.id ? Number(l.service.id) : null);
+      return sId === targetServiceId;
+    });
+  } else if (selectedScanTypeFilter.value) {
     if (selectedScanTypeFilter.value === 'service') {
       list = list.filter((l: any) => l.service_id || l.service || l.scan_type === 'service');
     } else {
@@ -937,9 +1135,13 @@ async function preloadRegistrations(eventId: number | string, forceRefresh = fal
 
 watch(selectedEventId, async (newEvId) => {
   if (newEvId) {
+    currentPage.value = 1;
+    selectedServiceFilter.value = '';
     await preloadRegistrations(newEvId);
-    await fetchLogs();
-    await fetchServices();
+    await Promise.all([
+      fetchLogs(),
+      fetchServices(),
+    ]);
   }
 });
 
@@ -1026,9 +1228,11 @@ onMounted(async () => {
   await fetchEvents();
   if (selectedEventId.value) {
     await preloadRegistrations(selectedEventId.value);
-    await fetchLogs();
+    await Promise.all([
+      fetchLogs(),
+      fetchServices(),
+    ]);
   }
-  await fetchServices();
 });
 
 onBeforeUnmount(() => {
@@ -1038,11 +1242,13 @@ onBeforeUnmount(() => {
 async function fetchEvents() {
   try {
     const res = await cachedFetch<any>('/api/events');
-    eventsList.value = Array.isArray(res?.data?.events) ? res.data.events : (Array.isArray(res?.data) ? res.data : []);
-    if (activeEventsList.value.length > 0 && !selectedEventId.value) {
-      selectedEventId.value = activeEventsList.value[0].id;
-    } else if (eventsList.value.length > 0 && !selectedEventId.value) {
-      selectedEventId.value = eventsList.value[0].id;
+    const rawList = Array.isArray(res?.data?.events)
+      ? res.data.events
+      : (Array.isArray(res?.data) ? res.data : (Array.isArray(res?.events) ? res.events : (Array.isArray(res) ? res : [])));
+    eventsList.value = rawList;
+    if (rawList.length > 0 && !selectedEventId.value) {
+      const active = rawList.find(isActiveOrScheduledEvent);
+      selectedEventId.value = active ? Number(active.id) : Number(rawList[0].id);
     }
   } catch (err) {
     console.error('Failed to fetch events:', err);
@@ -1055,22 +1261,53 @@ async function fetchServices() {
     return;
   }
   try {
-    const url = `/api/event-services?event_id=${selectedEventId.value}`;
-    const res = await cachedFetch<any>(url);
-    const rawList = Array.isArray(res?.data?.event_services)
-      ? res.data.event_services
-      : (Array.isArray(res?.data) ? res.data : []);
+    // 1. Fetch master services catalog and event services in parallel
+    const [masterRes, eventSrvRes] = await Promise.all([
+      cachedFetch<any>('/api/services').catch(() => null),
+      cachedFetch<any>(`/api/event-services?event_id=${selectedEventId.value}`).catch(() => null),
+    ]);
+
+    // Build master catalog map: id -> master service
+    const masterList = Array.isArray(masterRes?.data?.services)
+      ? masterRes.data.services
+      : (Array.isArray(masterRes?.data) ? masterRes.data : (Array.isArray(masterRes?.services) ? masterRes.services : []));
+
+    for (const ms of masterList) {
+      if (ms?.id) {
+        masterServicesMap.value.set(Number(ms.id), ms);
+      }
+    }
+
+    let rawList: any[] = [];
+    if (eventSrvRes) {
+      rawList = Array.isArray(eventSrvRes?.data?.event_services)
+        ? eventSrvRes.data.event_services
+        : (Array.isArray(eventSrvRes?.data) ? eventSrvRes.data : (Array.isArray(eventSrvRes?.event_services) ? eventSrvRes.event_services : (Array.isArray(eventSrvRes) ? eventSrvRes : [])));
+    }
+
+    if (rawList.length === 0) {
+      // Fallback to IndexedDB cache
+      const cached = await dbStore.getCachedEventServices(Number(selectedEventId.value));
+      if (Array.isArray(cached) && cached.length > 0) {
+        rawList = cached;
+      }
+    }
 
     servicesList.value = rawList
       .map((es: any) => {
-        const srvStart = es.start_time || es.service?.start_time || null;
-        const srvEnd = es.end_time || es.service?.end_time || null;
+        const srvId = es.service_id ? Number(es.service_id) : (es.service?.id ? Number(es.service.id) : Number(es.id));
+        const masterObj = masterServicesMap.value.get(srvId);
+        const srvName = (es.name && !es.name.startsWith('Service #'))
+          ? es.name
+          : (es.service?.name || masterObj?.name || es.name || `Service #${srvId}`);
+
+        const srvStart = es.start_time || es.service?.start_time || masterObj?.start_time || null;
+        const srvEnd = es.end_time || es.service?.end_time || masterObj?.end_time || null;
         const srvScan = es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true);
-        const srvName = es.name || es.service?.name || `Service #${es.service_id || es.id}`;
-        const srvDesc = es.description || es.service?.description || '';
+        const srvDesc = es.description || es.service?.description || masterObj?.description || '';
 
         return {
-          id: es.service_id || es.service?.id || es.id,
+          id: srvId,
           name: srvName,
           start_time: srvStart,
           end_time: srvEnd,
@@ -1080,7 +1317,7 @@ async function fetchServices() {
       })
       .filter((s: any) => s && s.id);
   } catch (err) {
-    console.error('Failed to fetch event services:', err);
+    console.warn('Event services fetch notice:', err);
     servicesList.value = [];
   }
 }
@@ -1095,8 +1332,12 @@ async function fetchLogs() {
     } catch {
       res = await cachedFetch<any>(`/api/events/${selectedEventId.value}/scannings`);
     }
-    logs.value = Array.isArray(res?.data?.scannings) ? res.data.scannings : (Array.isArray(res?.data) ? res.data : []);
+    const rawList = Array.isArray(res?.data?.scannings)
+      ? res.data.scannings
+      : (Array.isArray(res?.data) ? res.data : (Array.isArray(res?.scannings) ? res.scannings : (Array.isArray(res) ? res : [])));
+    logs.value = rawList;
   } catch (err) {
+    console.error('Failed to fetch scannings logs:', err);
     logs.value = [];
   } finally {
     loadingLogs.value = false;
@@ -1478,6 +1719,26 @@ onUnmounted(() => {
 .btn-emerald:hover:not(:disabled) {
   background-color: var(--green-600);
   color: #ffffff;
+}
+
+.btn-purple {
+  background-color: #7e22ce;
+  color: #ffffff;
+  border: none;
+}
+
+.btn-purple:hover:not(:disabled) {
+  background-color: #6b21a8;
+  color: #ffffff;
+}
+
+.scan-stats-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.scan-stats-bar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
 
 .data-table {
