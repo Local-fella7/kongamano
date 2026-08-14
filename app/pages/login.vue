@@ -291,6 +291,12 @@ async function handleLogin() {
       // before token/role_id are persisted and bounce us straight back to /login.
       await nextTick();
 
+      // Automatically flush any pending offline scans using the freshly acquired token
+      try {
+        const { processQueue } = useOfflineSync();
+        processQueue().catch((e) => console.warn('Background sync after login notice:', e));
+      } catch {}
+
       push.success({
         title: 'Authentication Successful',
         message: `Welcome back, ${authStore.user?.first_name || username.value}!`,

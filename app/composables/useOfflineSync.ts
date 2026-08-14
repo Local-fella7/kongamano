@@ -14,6 +14,36 @@ export interface QueuedAction {
 
 const STORAGE_KEY = 'kongamano_offline_queue';
 
+/**
+ * Robust multi-tier token retriever:
+ * 1. Checks document.cookie directly (instant, bypasses detached Vue reactivity in background tasks)
+ * 2. Checks localStorage fallbacks
+ */
+export function getActiveAuthToken(): string | null {
+  if (!import.meta.client) return null;
+
+  // 1. Direct document.cookie regex lookup
+  try {
+    const match = document.cookie.match(new RegExp('(?:^|;\\s*)token=([^;]*)'));
+    if (match && match[1]) {
+      const val = decodeURIComponent(match[1]).trim();
+      if (val && val !== 'null' && val !== 'undefined') {
+        return val;
+      }
+    }
+  } catch {}
+
+  // 2. LocalStorage fallback
+  try {
+    const lsToken = localStorage.getItem('token') || localStorage.getItem('kongamano_token');
+    if (lsToken && lsToken !== 'null' && lsToken !== 'undefined') {
+      return lsToken.trim();
+    }
+  } catch {}
+
+  return null;
+}
+
 // Get or initialize global state on window to guarantee 100% singleton behavior
 // even if the bundler re-evaluates the module scope or splits code in Dev mode.
 function getGlobalSyncState() {
@@ -87,13 +117,15 @@ export function useOfflineSync() {
     for (const item of itemsToProcess) {
       try {
         // ── Conflict Detection ──────────────────
+        const activeToken = getActiveAuthToken() || (token?.value ?? null);
+
         // If updating or deleting, and the client queued body contains updated_at,
         // check if the server has a newer modification to prevent silent data loss.
         if ((item.method === 'PUT' || item.method === 'DELETE') && item.body && item.body.updated_at) {
           try {
             const serverItem = await $fetch<any>(apiPath(item.url), {
               headers: {
-                ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
+                ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
               },
@@ -121,7 +153,7 @@ export function useOfflineSync() {
           method: item.method,
           body: item.body,
           headers: {
-            ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
+            ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
             'Content-Type': 'application/json',
             Accept: 'application/json',
           },
@@ -192,11 +224,12 @@ export function useOfflineSync() {
 
     if (currentlyOnline) {
       try {
+        const activeToken = getActiveAuthToken() || (token?.value ?? null);
         const response = await $fetch<any>(apiPath(options.url), {
           method,
           body: options.body,
           headers: {
-            ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
+            ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
             'Content-Type': 'application/json',
             Accept: 'application/json',
           },
