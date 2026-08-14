@@ -131,5 +131,25 @@ export const dbStore = {
       }
     }
     return combined;
+  },
+
+  async cacheEventServices(eventId: number | string, services: any[]): Promise<void> {
+    await this.set(`services_cache_${eventId}`, services);
+  },
+
+  async getCachedEventServices(eventId: number | string): Promise<any[] | null> {
+    return await this.get(`services_cache_${eventId}`);
+  },
+
+  async getAllCachedEventServices(): Promise<any[]> {
+    const all = await this.getAll();
+    const srvCaches = all.filter((item) => String(item.key).startsWith('services_cache_'));
+    const combined: any[] = [];
+    for (const item of srvCaches) {
+      if (Array.isArray(item.value)) {
+        combined.push(...item.value);
+      }
+    }
+    return combined;
   }
 };

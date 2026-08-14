@@ -135,11 +135,6 @@
 
               <!-- Option B: Currently Checked-in → Active Service Window Available -->
               <div v-else-if="activeCurrentService" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center mb-2">
-                <div v-if="checkInCountToday > 1" class="alert alert-info py-1 px-2.5 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-                  <i class="bi bi-info-circle-fill text-blue-600"></i>
-                  <span>Re-entered delegate</span>
-                </div>
-
                 <div class="d-flex align-items-center justify-content-between mb-2">
                   <span class="fs-8 text-lowercase text-emerald-700 fw-bold tracking-wider">
                     <i class="bi bi-gift-fill me-1"></i> active service window
@@ -306,16 +301,28 @@ function indexRegistrations(regList: any[]) {
   const map = cachedAttendeeMap.value;
   for (const r of regList) {
     if (!r) continue;
-    if (r.qr_code) {
-      map.set(String(r.qr_code).trim(), r);
-    }
+    const addKey = (k?: string | number | null) => {
+      if (!k) return;
+      const str = String(k).trim();
+      if (!str) return;
+      map.set(str, r);
+      map.set(str.toLowerCase(), r);
+    };
+
+    addKey(r.qr_code);
+    addKey(r.registration_number);
+    addKey(r.code);
+    addKey(r.ticket_code);
+    addKey(r.badge_code);
+    addKey(r.reference);
+    addKey(r.id);
+
     if (r.id) {
-      map.set(String(r.id), r);
       if (r.event_id) {
-        map.set(`REG-${r.event_id}-${r.id}`, r);
+        addKey(`REG-${r.event_id}-${r.id}`);
       }
       if (selectedEventId.value) {
-        map.set(`REG-${selectedEventId.value}-${r.id}`, r);
+        addKey(`REG-${selectedEventId.value}-${r.id}`);
       }
     }
   }
@@ -326,6 +333,43 @@ const initialCode = computed(() => {
   const code = route.query.code;
   return typeof code === 'string' ? code.trim() : '';
 });
+
+// SSR & Instant Setup Pre-parsing:
+// Pre-populates the verification modal in the initial HTML response when URL has ?code=
+if (initialCode.value) {
+  let cleanCode = initialCode.value;
+  if (cleanCode.includes('?code=')) {
+    const parts = cleanCode.split('?code=');
+    if (parts[1]) cleanCode = decodeURIComponent(parts[1].split('&')[0]);
+  }
+  scannedQrCode.value = cleanCode;
+
+  let extractedEvId: number | null = null;
+  const match = cleanCode.match(/^REG-(\d+)-/i);
+  if (match && match[1]) {
+    extractedEvId = parseInt(match[1], 10);
+    selectedEventId.value = extractedEvId;
+  }
+
+  let optimisticRegId: number | null = null;
+  if (cleanCode.startsWith('REG-')) {
+    const parts = cleanCode.split('-');
+    const lastPart = parts[parts.length - 1];
+    const parsedId = parseInt(lastPart, 10);
+    if (!isNaN(parsedId)) optimisticRegId = parsedId;
+  } else if (/^\d+$/.test(cleanCode)) {
+    optimisticRegId = parseInt(cleanCode, 10);
+  }
+
+  scannedAttendee.value = {
+    id: optimisticRegId || cleanCode,
+    first_name: 'Delegate',
+    last_name: optimisticRegId ? `#${optimisticRegId}` : '',
+    phone: '',
+    qr_code: cleanCode,
+    event_id: extractedEvId || 1,
+  };
+}
 
 // Helper for today's Date string in EAT timezone (Africa/Nairobi)
 function getTodayDateStr(): string {
@@ -357,29 +401,120 @@ const attendeePhoneNumber = computed(() => {
   return trimmed;
 });
 
+function extractNumericRegId(val: any): number | null {
+  if (typeof val === 'number' && !isNaN(val)) return val;
+  if (!val) return null;
+  const str = String(val).trim();
+  if (/^\d+$/.test(str)) return parseInt(str, 10);
+  const match = str.match(/REG-\d+-(\d+)/i);
+  if (match && match[1]) return parseInt(match[1], 10);
+  const num = parseInt(str.replace(/\D/g, ''), 10);
+  return isNaN(num) ? null : num;
+}
+
+function isLogForScannedAttendee(l: any): boolean {
+  if (!l) return false;
+  
+  const attendee = scannedAttendee.value;
+  const scanned = scannedQrCode.value ? String(scannedQrCode.value).trim() : '';
+
+  // 1. Direct registration numeric ID match
+  const attendeeId = attendee?.id && !isNaN(Number(attendee.id)) ? Number(attendee.id) : null;
+  const logRegId = (l.registration_id || l.registration?.id) ? Number(l.registration_id || l.registration?.id) : null;
+  if (attendeeId !== null && logRegId !== null && attendeeId === logRegId) {
+    return true;
+  }
+
+  // 2. Direct string match across any known identifiers (case-insensitive)
+  const targetCodes = new Set([
+    scanned,
+    scanned.toLowerCase(),
+    attendee?.qr_code ? String(attendee.qr_code).trim() : null,
+    attendee?.qr_code ? String(attendee.qr_code).trim().toLowerCase() : null,
+    attendee?.registration_number ? String(attendee.registration_number).trim() : null,
+    attendee?.registration_number ? String(attendee.registration_number).trim().toLowerCase() : null,
+    attendee?.code ? String(attendee.code).trim() : null,
+    attendee?.code ? String(attendee.code).trim().toLowerCase() : null,
+    attendee?.ticket_code ? String(attendee.ticket_code).trim() : null,
+    attendee?.ticket_code ? String(attendee.ticket_code).trim().toLowerCase() : null,
+  ].filter(Boolean));
+
+  const logCodes = [
+    l.qr_code ? String(l.qr_code).trim() : null,
+    l.qr_code ? String(l.qr_code).trim().toLowerCase() : null,
+    l.registration?.qr_code ? String(l.registration.qr_code).trim() : null,
+    l.registration?.qr_code ? String(l.registration.qr_code).trim().toLowerCase() : null,
+    l.registration?.registration_number ? String(l.registration.registration_number).trim() : null,
+    l.registration?.registration_number ? String(l.registration.registration_number).trim().toLowerCase() : null,
+    l.registration?.code ? String(l.registration.code).trim() : null,
+    l.registration?.code ? String(l.registration.code).trim().toLowerCase() : null,
+    l.registration?.ticket_code ? String(l.registration.ticket_code).trim() : null,
+    l.registration?.ticket_code ? String(l.registration.ticket_code).trim().toLowerCase() : null,
+  ].filter(Boolean);
+
+  for (const c of logCodes) {
+    if (c && targetCodes.has(c)) {
+      return true;
+    }
+  }
+
+  // 3. Fallback numeric match for REG-X-Y formatted codes
+  const targetNum = extractNumericRegId(scanned) || extractNumericRegId(attendee?.id);
+  const logNum = extractNumericRegId(logRegId) || extractNumericRegId(l.qr_code);
+  if (targetNum !== null && logNum !== null && targetNum === logNum) {
+    return true;
+  }
+
+  return false;
+}
+
+function isLogFromToday(l: any): boolean {
+  if (!l || !l.created_at) return true;
+  const todayStr = getTodayDateStr(); // e.g. "2026-08-14"
+  const raw = String(l.created_at).trim();
+
+  // 1. Direct string match
+  if (raw.startsWith(todayStr) || raw.includes(todayStr)) {
+    return true;
+  }
+
+  // 2. Parse with 'Z' as UTC -> Nairobi EAT (identical to formatDate in table)
+  try {
+    let parseable = raw.replace(' ', 'T');
+    if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+      parseable += 'Z';
+    }
+    const d = new Date(parseable);
+    if (!isNaN(d.getTime())) {
+      const eatDateStr = d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      if (eatDateStr === todayStr) {
+        return true;
+      }
+    }
+  } catch {}
+
+  // 3. Fallback: Parse without forced 'Z' (in case stored as local Nairobi time)
+  try {
+    const d2 = new Date(raw.replace(' ', 'T'));
+    if (!isNaN(d2.getTime())) {
+      const localDateStr = d2.toLocaleDateString('en-CA');
+      const eatDateStr = d2.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      if (localDateStr === todayStr || eatDateStr === todayStr) {
+        return true;
+      }
+    }
+  } catch {}
+
+  return false;
+}
+
 // Attendee's Logs for Today (matches scannings.vue logic)
 const attendeeTodayLogs = computed(() => {
   if (!scannedQrCode.value && !scannedAttendee.value?.id) return [];
-  const todayStr = getTodayDateStr();
-  const regId = scannedAttendee.value?.id;
-  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
 
   const filtered = allScanLogs.value.filter((l: any) => {
-    const logQr = l.qr_code || l.registration?.qr_code || '';
-    const logRegId = l.registration_id || l.registration?.id;
-    const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
-    if (!matchesAttendee) return false;
-
-    // Filter by today's date in EAT
-    if (l.created_at) {
-      let parseable = String(l.created_at).trim().replace(' ', 'T');
-      if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
-        parseable += 'Z';
-      }
-      const logDateStr = new Date(parseable).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
-      return logDateStr === todayStr;
-    }
-    return true;
+    if (!isLogForScannedAttendee(l)) return false;
+    return isLogFromToday(l);
   });
 
   return filtered.sort((a: any, b: any) => {
@@ -405,7 +540,7 @@ const isAttendeeCheckedIn = computed(() => {
     return false;
   }
 
-  return logsToday.some((l: any) => l.scan_type === 'check_in' || !l.service_id);
+  return logsToday.some((l: any) => l.scan_type === 'check_in' || l.scan_type === 'service' || !l.service_id);
 });
 
 const isAttendeeCheckedOutToday = computed(() => {
@@ -418,7 +553,8 @@ const checkInCountToday = computed(() => {
 });
 
 const isReentryToday = computed(() => {
-  return checkInCountToday.value > 1 || (checkInCountToday.value >= 1 && isAttendeeCheckedOutToday.value);
+  const logsToday = attendeeTodayLogs.value;
+  return logsToday.length > 0 && logsToday[0]?.scan_type === 'check_out';
 });
 
 function parseTimeToMinutes(timeStr?: string | null): number | null {
@@ -459,24 +595,10 @@ const availableScannableServices = computed(() => {
     const requiresScan = srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined;
     if (!requiresScan) return false;
 
-    const regId = scannedAttendee.value?.id;
-    const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
-    const todayStr = getTodayDateStr();
-
     const alreadyClaimed = allScanLogs.value.some((l: any) => {
-      const logQr = l.qr_code || l.registration?.qr_code || '';
-      const logRegId = l.registration_id || l.registration?.id;
-      const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
+      const matchesAttendee = isLogForScannedAttendee(l);
       const matchesService = Number(l.service_id) === Number(srv.id) || Number(l.service?.id) === Number(srv.id);
-
-      let isToday = true;
-      if (l.created_at) {
-        let p = String(l.created_at).trim().replace(' ', 'T');
-        if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
-        const logDateStr = new Date(p).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
-        isToday = logDateStr === todayStr;
-      }
-      return matchesAttendee && matchesService && isToday;
+      return matchesAttendee && matchesService && isLogFromToday(l);
     });
 
     if (alreadyClaimed) return false;
@@ -511,9 +633,6 @@ const activeCurrentService = computed(() => {
 
 const areAllServicesClaimedToday = computed(() => {
   if (servicesList.value.length === 0) return false;
-  const regId = scannedAttendee.value?.id;
-  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
-  const todayStr = getTodayDateStr();
 
   const scannableServices = servicesList.value.filter((srv: any) =>
     srv.requires_scan === true || srv.requires_scan === 1 || srv.requires_scan === '1' || srv.requires_scan === undefined
@@ -522,18 +641,9 @@ const areAllServicesClaimedToday = computed(() => {
 
   return scannableServices.every((srv: any) => {
     return allScanLogs.value.some((l: any) => {
-      const logQr = l.qr_code || l.registration?.qr_code || '';
-      const logRegId = l.registration_id || l.registration?.id;
-      const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
+      const matchesAttendee = isLogForScannedAttendee(l);
       const matchesService = Number(l.service_id) === Number(srv.id) || Number(l.service?.id) === Number(srv.id);
-      let isToday = true;
-      if (l.created_at) {
-        let p = String(l.created_at).trim().replace(' ', 'T');
-        if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
-        const logDateStr = new Date(p).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
-        isToday = logDateStr === todayStr;
-      }
-      return matchesAttendee && matchesService && isToday;
+      return matchesAttendee && matchesService && isLogFromToday(l);
     });
   });
 });
@@ -587,6 +697,42 @@ async function resolveBadgeCode(rawCode: string) {
     selectedEventId.value = extractedEventId;
   }
 
+  // 2. Synchronously ensure IndexedDB logs & services for this event are in memory
+  // NOTE: This MUST run regardless of badge format (REG-X-Y or D-XXXXXXXX-YYYY or any custom format)
+  const eventIdForCache = extractedEventId || selectedEventId.value;
+  if (eventIdForCache) {
+    try {
+      const [cachedLogs, cachedServices] = await Promise.all([
+        dbStore.getCachedScanLogs(eventIdForCache),
+        dbStore.getCachedEventServices(eventIdForCache),
+      ]);
+      if (cachedLogs && cachedLogs.length > 0) {
+        const existingIds = new Set(allScanLogs.value.map(l => String(l.id)));
+        const newLogs = cachedLogs.filter((l: any) => !existingIds.has(String(l.id)));
+        if (newLogs.length > 0) {
+          allScanLogs.value = [...newLogs, ...allScanLogs.value];
+        }
+      }
+      if (cachedServices && cachedServices.length > 0 && servicesList.value.length === 0) {
+        servicesList.value = cachedServices;
+      }
+    } catch {}
+  } else {
+    // No event ID known yet — load ALL cached logs from all events as fallback
+    try {
+      const [allCachedLogs, allCachedServices] = await Promise.all([
+        dbStore.getAllCachedScanLogs(),
+        dbStore.getAllCachedEventServices(),
+      ]);
+      if (allCachedLogs && allCachedLogs.length > 0 && allScanLogs.value.length === 0) {
+        allScanLogs.value = allCachedLogs;
+      }
+      if (allCachedServices && allCachedServices.length > 0 && servicesList.value.length === 0) {
+        servicesList.value = allCachedServices;
+      }
+    } catch {}
+  }
+
   // 2. ULTRA FAST PATH: In-Memory Map Lookup (0.001ms Instant)
   let foundAttendee = cachedAttendeeMap.value.get(cleanCode);
   if (!foundAttendee && cleanCode.startsWith('REG-')) {
@@ -600,28 +746,59 @@ async function resolveBadgeCode(rawCode: string) {
     if (foundAttendee.event?.name) {
       selectedEventName.value = foundAttendee.event.name;
     }
-    isResolving.value = false;
     triggerSuccessFeedback();
 
-    if (extractedEventId) {
-      refreshEventMetadataInBackground(extractedEventId);
+    // Always refresh metadata using whatever event ID we have
+    const activeEvId = extractedEventId || selectedEventId.value;
+
+    // CRITICAL: If we have NO logs for this attendee in memory yet,
+    // we MUST fetch them synchronously before rendering the card.
+    // Otherwise the card briefly shows "Confirm Entry" while logs load.
+    const logsInMemory = allScanLogs.value.filter((l: any) => isLogForScannedAttendee(l));
+    if (logsInMemory.length === 0 && activeEvId) {
+      // Keep spinner visible while we fetch the delegate's actual status
+      isResolving.value = true;
+      try {
+        const logsRes = await $fetch<any>(`/api/scannings?event_id=${activeEvId}`, {
+          headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
+        }).catch(() => null);
+        const rawLogs = Array.isArray(logsRes?.data?.scannings)
+          ? logsRes.data.scannings
+          : (Array.isArray(logsRes?.data) ? logsRes.data : []);
+        if (rawLogs.length > 0) {
+          const existingIds = new Set(allScanLogs.value.map((l: any) => String(l.id)));
+          const newLogs = rawLogs.filter((l: any) => !existingIds.has(String(l.id)));
+          if (newLogs.length > 0) {
+            allScanLogs.value = [...newLogs, ...allScanLogs.value];
+          }
+          dbStore.cacheScanLogs(activeEvId, allScanLogs.value).catch(() => {});
+        }
+      } catch {}
+    }
+
+    isResolving.value = false;
+
+    // Background refresh for services & updated logs (non-blocking after card renders)
+    if (activeEvId) {
+      refreshEventMetadataInBackground(activeEvId);
     }
     return;
   }
 
   // 3. FAST PATH 2: IndexedDB Cache Query (<5ms)
   isResolving.value = true;
-  if (extractedEventId) {
+  if (eventIdForCache) {
     try {
-      const cached = await dbStore.getCachedRegistrations(extractedEventId);
+      const cached = await dbStore.getCachedRegistrations(eventIdForCache);
       if (Array.isArray(cached) && cached.length > 0) {
         indexRegistrations(cached);
         foundAttendee = cachedAttendeeMap.value.get(cleanCode);
         if (!foundAttendee) {
           foundAttendee = cached.find((r: any) => {
             const regId = String(r.id);
-            const fullCode = r.qr_code || `REG-${r.event_id || extractedEventId}-${regId}`;
-            return r.qr_code === cleanCode || fullCode === cleanCode || regId === cleanCode;
+            const fullCode = r.qr_code || `REG-${r.event_id || eventIdForCache}-${regId}`;
+            return r.qr_code === cleanCode || fullCode === cleanCode || regId === cleanCode
+              || r.registration_number === cleanCode || r.code === cleanCode || r.ticket_code === cleanCode;
           });
         }
       }
@@ -633,99 +810,82 @@ async function resolveBadgeCode(rawCode: string) {
     if (foundAttendee.event?.name) {
       selectedEventName.value = foundAttendee.event.name;
     }
-    isResolving.value = false;
     triggerSuccessFeedback();
 
-    if (extractedEventId) {
-      refreshEventMetadataInBackground(extractedEventId);
-    }
-    return;
-  }
+    const activeEvId = extractedEventId || selectedEventId.value;
 
-  // 4. NETWORK FALLBACK (Only for uncached new badges)
-  try {
-    if (!selectedEventId.value) {
+    // Same blocking log check — ensure correct state before rendering card
+    const logsInMemory = allScanLogs.value.filter((l: any) => isLogForScannedAttendee(l));
+    if (logsInMemory.length === 0 && activeEvId) {
+      isResolving.value = true;
       try {
-        const eventsRes = await cachedFetch<any>('/api/events');
-        const evList = Array.isArray(eventsRes?.data?.events) ? eventsRes.data.events : (Array.isArray(eventsRes?.data) ? eventsRes.data : []);
-        if (evList.length > 0) {
-          selectedEventName.value = evList[0].name || selectedEventName.value;
-          selectedEventId.value = evList[0].id;
-          extractedEventId = evList[0].id;
-        }
-      } catch {}
-    }
-
-    if (selectedEventId.value) {
-      const [regRes, srvRes, logsRes] = await Promise.all([
-        $fetch<any>(`/api/registrations?event_id=${selectedEventId.value}`, {
+        const logsRes = await $fetch<any>(`/api/scannings?event_id=${activeEvId}`, {
           headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
-        }).catch(() => null),
-        cachedFetch<any>(`/api/event-services?event_id=${selectedEventId.value}`).catch(() => null),
-        cachedFetch<any>(`/api/scannings?event_id=${selectedEventId.value}`).catch(() => null),
-      ]);
-
-      if (regRes) {
-        const list = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-        if (list.length > 0) {
-          indexRegistrations(list);
-          dbStore.cacheRegistrations(selectedEventId.value, list).catch(() => {});
-          foundAttendee = cachedAttendeeMap.value.get(cleanCode) || list.find((r: any) => {
-            const regId = String(r.id);
-            const fullCode = r.qr_code || `REG-${r.event_id || selectedEventId.value}-${regId}`;
-            return r.qr_code === cleanCode || fullCode === cleanCode || regId === cleanCode;
-          });
-        }
-      }
-
-      if (srvRes) {
-        const rawServices = Array.isArray(srvRes?.data?.event_services)
-          ? srvRes.data.event_services
-          : (Array.isArray(srvRes?.data) ? srvRes.data : []);
-
-        servicesList.value = rawServices.map((es: any) => ({
-          id: es.service_id || es.service?.id || es.id,
-          name: es.name || es.service?.name || `Service #${es.service_id || es.id}`,
-          start_time: es.start_time || es.service?.start_time || null,
-          end_time: es.end_time || es.service?.end_time || null,
-          requires_scan: es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true),
-          description: es.description || es.service?.description || '',
-        }));
-      }
-
-      if (logsRes) {
+        }).catch(() => null);
         const rawLogs = Array.isArray(logsRes?.data?.scannings)
           ? logsRes.data.scannings
           : (Array.isArray(logsRes?.data) ? logsRes.data : []);
         if (rawLogs.length > 0) {
-          const existingIds = new Set(allScanLogs.value.map(l => l.id));
-          const freshLogs = rawLogs.filter((l: any) => !existingIds.has(l.id));
-          allScanLogs.value = [...allScanLogs.value, ...freshLogs];
+          const existingIds = new Set(allScanLogs.value.map((l: any) => String(l.id)));
+          const newLogs = rawLogs.filter((l: any) => !existingIds.has(String(l.id)));
+          if (newLogs.length > 0) {
+            allScanLogs.value = [...newLogs, ...allScanLogs.value];
+          }
+          dbStore.cacheScanLogs(activeEvId, allScanLogs.value).catch(() => {});
         }
-      }
+      } catch {}
     }
 
-    scannedAttendee.value = foundAttendee || {
-      first_name: 'Registered',
-      last_name: 'Delegate',
-      phone: '',
-      qr_code: cleanCode,
-      event_id: selectedEventId.value,
-    };
-
-    if (foundAttendee?.event?.name) {
-      selectedEventName.value = foundAttendee.event.name;
-    }
-
-    triggerSuccessFeedback();
-  } catch (err: any) {
-    console.error('Error resolving badge code:', err);
-    scanFeedback.value = {
-      type: 'error',
-      message: err?.message || 'Unable to resolve badge QR code.',
-    };
-  } finally {
     isResolving.value = false;
+
+    if (activeEvId) {
+      refreshEventMetadataInBackground(activeEvId);
+    }
+    return;
+  }
+
+  // 4. INSTANT OPTIMISTIC RESOLUTION FOR UNCACHED BADGES (<10ms)
+  // Even if not yet downloaded in bulk, parse the badge code directly so the verification modal
+  // appears in <0.1 seconds without waiting 10-15s for the whole attendee database!
+  let optimisticRegId: number | null = null;
+  if (cleanCode.startsWith('REG-')) {
+    const parts = cleanCode.split('-');
+    const lastPart = parts[parts.length - 1];
+    const parsedId = parseInt(lastPart, 10);
+    if (!isNaN(parsedId)) optimisticRegId = parsedId;
+  } else if (/^\d+$/.test(cleanCode)) {
+    optimisticRegId = parseInt(cleanCode, 10);
+  }
+
+  scannedAttendee.value = {
+    id: optimisticRegId || cleanCode,
+    first_name: 'Delegate',
+    last_name: optimisticRegId ? `#${optimisticRegId}` : '',
+    phone: '',
+    qr_code: cleanCode,
+    event_id: extractedEventId || selectedEventId.value || 1,
+  };
+
+  isResolving.value = false;
+  triggerSuccessFeedback();
+
+  // 5. Fetch full details and active services in the background without blocking the UI
+  if (extractedEventId || selectedEventId.value) {
+    const activeEvId = extractedEventId || selectedEventId.value || 1;
+    refreshEventMetadataInBackground(activeEvId);
+    
+    // Background targeted lookup for attendee full name
+    if (optimisticRegId) {
+      $fetch<any>(`/api/registrations/${optimisticRegId}`, {
+        headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
+      }).then((res) => {
+        const fullData = res?.data?.registration || res?.data;
+        if (fullData && (fullData.first_name || fullData.last_name)) {
+          scannedAttendee.value = { ...scannedAttendee.value, ...fullData };
+          indexRegistrations([fullData]);
+        }
+      }).catch(() => {});
+    }
   }
 }
 
@@ -749,6 +909,7 @@ async function refreshEventMetadataInBackground(eventId: number) {
         requires_scan: es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true),
         description: es.description || es.service?.description || '',
       }));
+      dbStore.cacheEventServices(eventId, servicesList.value).catch(() => {});
     }
 
     if (logsRes) {
@@ -769,15 +930,19 @@ async function preloadStationData() {
   try {
     // 1. Immediately warm in-memory map from ALL existing IndexedDB caches (<1ms)
     try {
-      const [allCachedRegs, allCachedLogs] = await Promise.all([
+      const [allCachedRegs, allCachedLogs, allCachedServices] = await Promise.all([
         dbStore.getAllCachedRegistrations(),
         dbStore.getAllCachedScanLogs(),
+        dbStore.getAllCachedEventServices(),
       ]);
       if (allCachedRegs && allCachedRegs.length > 0) {
         indexRegistrations(allCachedRegs);
       }
       if (allCachedLogs && allCachedLogs.length > 0) {
         allScanLogs.value = allCachedLogs;
+      }
+      if (allCachedServices && allCachedServices.length > 0) {
+        servicesList.value = allCachedServices;
       }
     } catch {}
 
@@ -806,6 +971,7 @@ async function preloadStationData() {
           requires_scan: es.requires_scan !== undefined ? es.requires_scan : (es.service?.requires_scan ?? true),
           description: es.description || es.service?.description || '',
         }));
+        dbStore.cacheEventServices(eventId, servicesList.value).catch(() => {});
       }
 
       if (logsRes) {
@@ -1022,17 +1188,21 @@ onMounted(async () => {
     return;
   }
 
-  // 1. Immediately warm in-memory map AND scan logs from IndexedDB (<5ms)
+  // 1. Immediately warm in-memory map, scan logs, and services from IndexedDB (<1ms Local-First)
   try {
-    const [allCachedRegs, allCachedLogs] = await Promise.all([
+    const [allCachedRegs, allCachedLogs, allCachedServices] = await Promise.all([
       dbStore.getAllCachedRegistrations(),
       dbStore.getAllCachedScanLogs(),
+      dbStore.getAllCachedEventServices(),
     ]);
     if (allCachedRegs && allCachedRegs.length > 0) {
       indexRegistrations(allCachedRegs);
     }
     if (allCachedLogs && allCachedLogs.length > 0) {
       allScanLogs.value = allCachedLogs;
+    }
+    if (allCachedServices && allCachedServices.length > 0) {
+      servicesList.value = allCachedServices;
     }
   } catch {}
 

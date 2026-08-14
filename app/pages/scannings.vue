@@ -323,11 +323,6 @@
 
           <!-- Option B: Currently Checked-in → Show Next Active Service Card (No Check-In button!) -->
           <div v-else-if="activeCurrentService" class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle">
-            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-              <span>Notice: This person has checked in again today (Re-entered).</span>
-            </div>
-
             <div class="d-flex align-items-center justify-content-between mb-2">
               <span class="fs-8 text-lowercase fw-bold text-primary tracking-wider">active service window</span>
               <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-dark border border-slate-400 fs-8 fw-bold shadow-2xs" style="color: #000000 !important;">
@@ -360,11 +355,6 @@
 
           <!-- Option C: All active services claimed today -->
           <div v-else-if="areAllServicesClaimedToday" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 text-center">
-            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-              <span>Notice: This person has checked in again today (Re-entered).</span>
-            </div>
-
             <i class="bi bi-check-circle-fill text-emerald-600 fs-2 d-block mb-1"></i>
             <h6 class="fw-bold text-slate-900 fs-7 mb-1">All Services Claimed For Today!</h6>
             <p class="fs-8 text-muted mb-3">All scheduled services for today have been claimed by this attendee.</p>
@@ -380,11 +370,6 @@
 
           <!-- Option D: Checked in, but no active service in current time window right now -->
           <div v-else class="p-3 bg-light rounded-3 border text-center">
-            <div v-if="checkInCountToday > 1" class="alert alert-info py-1.5 px-3 fs-8 mb-2 rounded-3 text-start d-flex align-items-center gap-2">
-              <i class="bi bi-info-circle-fill fs-6 text-blue-600"></i>
-              <span>Notice: This person has checked in again today (Re-entered).</span>
-            </div>
-
             <i class="bi bi-clock-history text-amber-500 fs-2 d-block mb-1"></i>
             <h6 class="fw-bold text-slate-900 fs-7 mb-1">No Active Service Right Now</h6>
             <p class="fs-8 text-muted mb-3">Delegate is checked in today. No scannable service is active in this current time window.</p>
@@ -507,29 +492,120 @@ function getTodayDateStr(): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }); // YYYY-MM-DD format
 }
 
+function extractNumericRegId(val: any): number | null {
+  if (typeof val === 'number' && !isNaN(val)) return val;
+  if (!val) return null;
+  const str = String(val).trim();
+  if (/^\d+$/.test(str)) return parseInt(str, 10);
+  const match = str.match(/REG-\d+-(\d+)/i);
+  if (match && match[1]) return parseInt(match[1], 10);
+  const num = parseInt(str.replace(/\D/g, ''), 10);
+  return isNaN(num) ? null : num;
+}
+
+function isLogForScannedAttendee(l: any): boolean {
+  if (!l) return false;
+  
+  const attendee = scannedAttendee.value;
+  const scanned = scannedQrCode.value ? String(scannedQrCode.value).trim() : '';
+
+  // 1. Direct registration numeric ID match
+  const attendeeId = attendee?.id && !isNaN(Number(attendee.id)) ? Number(attendee.id) : null;
+  const logRegId = (l.registration_id || l.registration?.id) ? Number(l.registration_id || l.registration?.id) : null;
+  if (attendeeId !== null && logRegId !== null && attendeeId === logRegId) {
+    return true;
+  }
+
+  // 2. Direct string match across any known identifiers (case-insensitive)
+  const targetCodes = new Set([
+    scanned,
+    scanned.toLowerCase(),
+    attendee?.qr_code ? String(attendee.qr_code).trim() : null,
+    attendee?.qr_code ? String(attendee.qr_code).trim().toLowerCase() : null,
+    attendee?.registration_number ? String(attendee.registration_number).trim() : null,
+    attendee?.registration_number ? String(attendee.registration_number).trim().toLowerCase() : null,
+    attendee?.code ? String(attendee.code).trim() : null,
+    attendee?.code ? String(attendee.code).trim().toLowerCase() : null,
+    attendee?.ticket_code ? String(attendee.ticket_code).trim() : null,
+    attendee?.ticket_code ? String(attendee.ticket_code).trim().toLowerCase() : null,
+  ].filter(Boolean));
+
+  const logCodes = [
+    l.qr_code ? String(l.qr_code).trim() : null,
+    l.qr_code ? String(l.qr_code).trim().toLowerCase() : null,
+    l.registration?.qr_code ? String(l.registration.qr_code).trim() : null,
+    l.registration?.qr_code ? String(l.registration.qr_code).trim().toLowerCase() : null,
+    l.registration?.registration_number ? String(l.registration.registration_number).trim() : null,
+    l.registration?.registration_number ? String(l.registration.registration_number).trim().toLowerCase() : null,
+    l.registration?.code ? String(l.registration.code).trim() : null,
+    l.registration?.code ? String(l.registration.code).trim().toLowerCase() : null,
+    l.registration?.ticket_code ? String(l.registration.ticket_code).trim() : null,
+    l.registration?.ticket_code ? String(l.registration.ticket_code).trim().toLowerCase() : null,
+  ].filter(Boolean);
+
+  for (const c of logCodes) {
+    if (c && targetCodes.has(c)) {
+      return true;
+    }
+  }
+
+  // 3. Fallback numeric match for REG-X-Y formatted codes
+  const targetNum = extractNumericRegId(scanned) || extractNumericRegId(attendee?.id);
+  const logNum = extractNumericRegId(logRegId) || extractNumericRegId(l.qr_code);
+  if (targetNum !== null && logNum !== null && targetNum === logNum) {
+    return true;
+  }
+
+  return false;
+}
+
+function isLogFromToday(l: any): boolean {
+  if (!l || !l.created_at) return true;
+  const todayStr = getTodayDateStr();
+  const raw = String(l.created_at).trim();
+
+  // 1. Direct string match
+  if (raw.startsWith(todayStr) || raw.includes(todayStr)) {
+    return true;
+  }
+
+  // 2. Parse with 'Z' as UTC -> Nairobi EAT (identical to formatDate in table)
+  try {
+    let parseable = raw.replace(' ', 'T');
+    if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+      parseable += 'Z';
+    }
+    const d = new Date(parseable);
+    if (!isNaN(d.getTime())) {
+      const eatDateStr = d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      if (eatDateStr === todayStr) {
+        return true;
+      }
+    }
+  } catch {}
+
+  // 3. Fallback: Parse without forced 'Z' (in case stored as local Nairobi time)
+  try {
+    const d2 = new Date(raw.replace(' ', 'T'));
+    if (!isNaN(d2.getTime())) {
+      const localDateStr = d2.toLocaleDateString('en-CA');
+      const eatDateStr = d2.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+      if (localDateStr === todayStr || eatDateStr === todayStr) {
+        return true;
+      }
+    }
+  } catch {}
+
+  return false;
+}
+
 // Get all logs for current scanned attendee sorted newest first
 const attendeeTodayLogs = computed(() => {
-  const regId = scannedAttendee.value?.id;
-  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
-  if (!realQr && !regId) return [];
-  const todayStr = getTodayDateStr();
+  if (!scannedQrCode.value && !scannedAttendee.value?.id) return [];
 
   const filtered = logs.value.filter((l: any) => {
-    const logQr = l.qr_code || l.registration?.qr_code || '';
-    const logRegId = l.registration_id || l.registration?.id;
-    const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
-    if (!matchesAttendee) return false;
-
-    // Filter by today's date in EAT
-    if (l.created_at) {
-      let parseable = String(l.created_at).trim().replace(' ', 'T');
-      if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
-        parseable += 'Z';
-      }
-      const logDateStr = new Date(parseable).toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
-      return logDateStr === todayStr;
-    }
-    return true;
+    if (!isLogForScannedAttendee(l)) return false;
+    return isLogFromToday(l);
   });
 
   return filtered.sort((a: any, b: any) => {
@@ -555,7 +631,7 @@ const isAttendeeCheckedIn = computed(() => {
     return false; // Checked out today → requires new check-in!
   }
 
-  return logsToday.some((l: any) => l.scan_type === 'check_in' || !l.service_id);
+  return logsToday.some((l: any) => l.scan_type === 'check_in' || l.scan_type === 'service' || !l.service_id);
 });
 
 // Check if attendee is currently checked out today
@@ -571,7 +647,8 @@ const checkInCountToday = computed(() => {
 
 // Check if attendee has checked in multiple times or checked out and is re-entering today
 const isReentryToday = computed(() => {
-  return checkInCountToday.value > 1 || (checkInCountToday.value >= 1 && isAttendeeCheckedOutToday.value);
+  const logsToday = attendeeTodayLogs.value;
+  return logsToday.length > 0 && logsToday[0]?.scan_type === 'check_out';
 });
 
 // Filter services:
@@ -662,8 +739,6 @@ const activeCurrentService = computed(() => {
 
 const areAllServicesClaimedToday = computed(() => {
   if (servicesList.value.length === 0) return false;
-  const regId = scannedAttendee.value?.id;
-  const realQr = scannedAttendee.value?.qr_code || scannedQrCode.value;
   const todayStr = getTodayDateStr();
 
   const scannableServices = servicesList.value.filter((srv: any) =>
@@ -673,9 +748,7 @@ const areAllServicesClaimedToday = computed(() => {
 
   return scannableServices.every((srv: any) => {
     return logs.value.some((l: any) => {
-      const logQr = l.qr_code || l.registration?.qr_code || '';
-      const logRegId = l.registration_id || l.registration?.id;
-      const matchesAttendee = (realQr && logQr === realQr) || (scannedQrCode.value && logQr === scannedQrCode.value) || (regId && Number(logRegId) === Number(regId));
+      const matchesAttendee = isLogForScannedAttendee(l);
       const matchesService = l.service_id === Number(srv.id) || l.service?.id === Number(srv.id);
       let isToday = true;
       if (l.created_at) {
@@ -791,16 +864,28 @@ function indexRegistrations(regList: any[]) {
   const map = new Map<string, any>();
   for (const r of regList) {
     if (!r) continue;
-    if (r.qr_code) {
-      map.set(String(r.qr_code).trim(), r);
-    }
+    const addKey = (k?: string | number | null) => {
+      if (!k) return;
+      const str = String(k).trim();
+      if (!str) return;
+      map.set(str, r);
+      map.set(str.toLowerCase(), r);
+    };
+
+    addKey(r.qr_code);
+    addKey(r.registration_number);
+    addKey(r.code);
+    addKey(r.ticket_code);
+    addKey(r.badge_code);
+    addKey(r.reference);
+    addKey(r.id);
+
     if (r.id) {
-      map.set(String(r.id), r);
       if (r.event_id) {
-        map.set(`REG-${r.event_id}-${r.id}`, r);
+        addKey(`REG-${r.event_id}-${r.id}`);
       }
       if (selectedEventId.value) {
-        map.set(`REG-${selectedEventId.value}-${r.id}`, r);
+        addKey(`REG-${selectedEventId.value}-${r.id}`);
       }
     }
   }
@@ -1054,7 +1139,15 @@ async function findAttendeeByQrCode(qrCode: string): Promise<any> {
   if (selectedEventId.value) {
     const cached = await dbStore.getCachedRegistrations(selectedEventId.value);
     if (cached && Array.isArray(cached)) {
-      found = cached.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+      found = cached.find((r: any) => 
+        r.qr_code === cleanCode || 
+        r.registration_number === cleanCode || 
+        r.code === cleanCode || 
+        r.ticket_code === cleanCode || 
+        r.badge_code === cleanCode || 
+        `REG-${r.event_id}-${r.id}` === cleanCode || 
+        String(r.id) === cleanCode.split('-').pop()
+      );
       if (found) {
         if (found.event_id) selectedEventId.value = Number(found.event_id);
         return found;
@@ -1069,7 +1162,15 @@ async function findAttendeeByQrCode(qrCode: string): Promise<any> {
         headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
       });
       const regList = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-      found = regList.find((r: any) => r.qr_code === cleanCode || `REG-${r.event_id}-${r.id}` === cleanCode || String(r.id) === cleanCode.split('-').pop());
+      found = regList.find((r: any) => 
+        r.qr_code === cleanCode || 
+        r.registration_number === cleanCode || 
+        r.code === cleanCode || 
+        r.ticket_code === cleanCode || 
+        r.badge_code === cleanCode || 
+        `REG-${r.event_id}-${r.id}` === cleanCode || 
+        String(r.id) === cleanCode.split('-').pop()
+      );
       if (found) {
         if (found.event_id) selectedEventId.value = Number(found.event_id);
         return found;
