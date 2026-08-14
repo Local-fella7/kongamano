@@ -342,4 +342,25 @@ describe('Scan Station & Verification Logic Unit Tests', () => {
       expect(isLogFromToday(yesterdayCreatedAt, todayEAT)).toBe(false)
     })
   })
+
+  describe('7. Canonical QR Code Generation for Backend Payload', () => {
+    function resolveCanonicalQrCode(attendee: any, selectedEventId: number | null, rawInput: string): string {
+      return attendee?.qr_code 
+        || (attendee?.id && selectedEventId ? `REG-${selectedEventId}-${attendee.id}` : rawInput)
+    }
+
+    it('uses registered qr_code when present on attendee object', () => {
+      const attendee = { id: 10, qr_code: 'REG-1-00010', registration_number: 'D-20260818-10000' }
+      expect(resolveCanonicalQrCode(attendee, 1, 'D-20260818-10000')).toBe('REG-1-00010')
+    })
+
+    it('falls back to standardized REG-{eventId}-{id} format when qr_code is missing', () => {
+      const attendee = { id: 45, qr_code: null, registration_number: 'D-20260818-00045' }
+      expect(resolveCanonicalQrCode(attendee, 2, 'D-20260818-00045')).toBe('REG-2-45')
+    })
+
+    it('preserves raw input string if attendee is not registered', () => {
+      expect(resolveCanonicalQrCode(null, 1, 'UNKNOWN-123')).toBe('UNKNOWN-123')
+    })
+  })
 })
