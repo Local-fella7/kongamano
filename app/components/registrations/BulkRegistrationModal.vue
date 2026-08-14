@@ -24,11 +24,12 @@
             v-model.number="form.quantity"
             type="number"
             min="1"
-            max="1000"
+            max="500"
             class="form-control form-control-sm rounded-3 py-2 fw-bold text-slate-900"
-            placeholder="e.g. 10"
+            placeholder="e.g. 500"
             required
           />
+          <small class="text-muted fs-8 d-block mt-1">Backend limit: Max 500 passes per batch.</small>
         </div>
 
         <div class="col-12 col-sm-6">
@@ -96,6 +97,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
   (e: 'imported'): void;
+  (e: 'openBulkQrDownload', eventId: number | string): void;
 }>();
 
 const { executeOrQueue } = useOfflineSync();
@@ -145,12 +147,12 @@ watch(
 
 function extractLocationList(res: any, key: string): string[] {
   const pluralKey = key.endsWith('y') ? `${key.slice(0, -1)}ies` : `${key}s`;
-  const raw = res?.data?.[pluralKey] || res?.data?.[key] || res?.data || res || [];
+  const raw = res?.data?.[pluralKey] ?? res?.data?.[key] ?? (Array.isArray(res?.data) ? res.data : null) ?? res?.[pluralKey] ?? res?.[key] ?? (Array.isArray(res) ? res : []);
   if (!Array.isArray(raw)) return [];
   return raw.map((item: any) => {
     if (typeof item === 'string') return item;
     if (typeof item === 'object' && item !== null) {
-      return item.name || item[key] || item.title || Object.values(item)[0] || String(item);
+      return item.name || item.title || item[key] || Object.values(item)[0] || String(item);
     }
     return String(item);
   }).filter(Boolean);
@@ -247,9 +249,16 @@ async function handleSubmit() {
 
     emit('update:modelValue', false);
     emit('imported');
+    emit('openBulkQrDownload', payload.event_id);
   } catch (err: any) {
     console.error('Bulk QR generation error:', err);
-    error.value = err?.data?.message || 'Failed to generate bulk QR codes.';
+    const validationErrors = err?.data?.errors;
+    if (validationErrors && typeof validationErrors === 'object') {
+      const messages = Object.values(validationErrors).flat().join(' ');
+      error.value = `Validation failed: ${messages}`;
+    } else {
+      error.value = err?.data?.message || err?.message || 'Failed to generate bulk QR codes.';
+    }
   } finally {
     submitting.value = false;
   }

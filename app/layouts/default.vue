@@ -190,6 +190,11 @@ const currentPageTitle = computed(() => {
   if (p.startsWith('/scannings')) return 'Scannings & Check-ins';
   if (p.startsWith('/payments')) return 'Payments';
   if (p.startsWith('/agents')) return 'Agents';
+  if (p.startsWith('/reports/executive')) return 'Reports — Executive Summaries';
+  if (p.startsWith('/reports/delegates')) return 'Reports — Delegates & Registrations';
+  if (p.startsWith('/reports/financial')) return 'Reports — Financial Ledgers';
+  if (p.startsWith('/reports/attendance')) return 'Reports — Attendance & Scannings';
+  if (p.startsWith('/reports')) return 'Reports & Analytics';
   if (p.startsWith('/notifications')) return 'Notifications';
   if (p.startsWith('/users')) return 'Users & Staff';
   if (p.startsWith('/profile')) return 'My Profile';

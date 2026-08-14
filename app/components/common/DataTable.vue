@@ -61,76 +61,47 @@
     <!-- Pagination Bar -->
     <div
       v-if="!loading && totalCount > 0"
-      class="pagination-footer px-4 py-3 bg-white border-top d-flex align-items-center justify-content-between flex-wrap gap-3 mt-auto"
+      class="pagination-footer px-4 py-3 bg-white border-top gap-3 mt-auto"
     >
-      <!-- Left Side: Range Info -->
-      <div class="fs-7 text-muted fw-medium">
+      <!-- Left Column: Range Info -->
+      <div class="pagination-footer__meta fs-7 text-muted fw-medium text-nowrap">
         Showing <span class="fw-bold text-slate-900">{{ startIndex + 1 }}</span> to
         <span class="fw-bold text-slate-900">{{ Math.min(endIndex, totalCount) }}</span> of
         <span class="fw-bold text-slate-900">{{ totalCount }}</span> entries
       </div>
 
-      <!-- Right Side: Per Page Selector + Page Numbers -->
-      <div class="d-flex align-items-center gap-3">
-        <div class="d-flex align-items-center gap-2">
-          <span class="fs-7 text-muted fw-medium text-nowrap">Per Page:</span>
-          <select
-            :value="perPage"
-            @change="$emit('update:perPage', Number(($event.target as HTMLSelectElement).value))"
-            class="form-select form-select-sm rounded-3 fs-7 border-slate-200 shadow-2xs cursor-pointer px-3"
-            style="width: auto;"
-          >
-            <option :value="5">5</option>
-            <option :value="10">10</option>
-            <option :value="25">25</option>
-            <option :value="50">50</option>
-          </select>
-        </div>
+      <!-- Center Column: Page Numbers Navigation -->
+      <div class="pagination-footer__pages">
+        <AppPagination
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          @update:current-page="$emit('update:currentPage', $event)"
+        />
+      </div>
 
-        <nav v-if="totalPages > 1" aria-label="Page navigation">
-          <ul class="pagination pagination-sm mb-0 gap-1">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <button
-                class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0"
-                style="width: 32px; height: 32px;"
-                @click="$emit('update:currentPage', currentPage - 1)"
-                :disabled="currentPage === 1"
-              >
-                <i class="bi bi-chevron-left fs-8"></i>
-              </button>
-            </li>
-            <li
-              v-for="page in totalPages"
-              :key="page"
-              class="page-item"
-              :class="{ active: currentPage === page }"
-            >
-              <button
-                class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0"
-                style="width: 32px; height: 32px;"
-                @click="$emit('update:currentPage', page)"
-              >
-                {{ page }}
-              </button>
-            </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-              <button
-                class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0"
-                style="width: 32px; height: 32px;"
-                @click="$emit('update:currentPage', currentPage + 1)"
-                :disabled="currentPage === totalPages"
-              >
-                <i class="bi bi-chevron-right fs-8"></i>
-              </button>
-            </li>
-          </ul>
-        </nav>
+      <!-- Right Column: Per Page Selector -->
+      <div class="pagination-footer__per-page d-flex align-items-center gap-2 text-nowrap">
+        <span class="fs-7 text-muted fw-medium">Per Page:</span>
+        <select
+          :value="perPage"
+          @change="$emit('update:perPage', Number(($event.target as HTMLSelectElement).value))"
+          class="form-select form-select-sm rounded-3 fs-7 border-slate-200 shadow-2xs cursor-pointer px-3"
+          style="width: auto;"
+        >
+          <option :value="5">5</option>
+          <option :value="10">10</option>
+          <option :value="25">25</option>
+          <option :value="50">50</option>
+          <option :value="100">100</option>
+        </select>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import AppPagination from './AppPagination.vue';
+
 defineProps<{
   loading: boolean;
   totalCount: number;

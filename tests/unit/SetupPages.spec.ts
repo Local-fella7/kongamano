@@ -18,6 +18,13 @@ describe('Setup System Pages Form & Payload Validation', () => {
     return ''
   }
 
+  function validateNotificationTemplateForm(form: { name: string; title: string; content?: string }) {
+    if (!form.name.trim() || !form.title.trim() || !form.content?.trim()) {
+      return 'Name, title, and content are all required.'
+    }
+    return ''
+  }
+
   it('1. validates empty role name error', () => {
     expect(validateSimpleNameForm('', 'Role')).toBe('Role name is required.')
   })
@@ -44,5 +51,13 @@ describe('Setup System Pages Form & Payload Validation', () => {
 
   it('7. passes valid accommodation form', () => {
     expect(validateAccommodationForm({ name: 'Deluxe Room', capacity: 4 })).toBe('')
+  })
+
+  it('8. validates missing content in notification template form', () => {
+    expect(validateNotificationTemplateForm({ name: 'welcome', title: 'Welcome', content: '' })).toBe('Name, title, and content are all required.')
+  })
+
+  it('9. passes valid notification template form with content', () => {
+    expect(validateNotificationTemplateForm({ name: 'welcome', title: 'Welcome', content: 'Hello {{first_name}}' })).toBe('')
   })
 })

@@ -111,12 +111,14 @@ const userInitials = computed(() => {
 // Dropdown open states
 const setupOpen = ref(route.path.startsWith('/setup'));
 const eventsOpen = ref(route.path.startsWith('/events'));
-const notificationsOpen = ref(route.path.startsWith('/notifications'));
+const reportsOpen = ref(route.path.startsWith('/reports'));
+const notificationsOpen = ref(route.path.startsWith('/notifications') || route.path.startsWith('/notification-registrations'));
 
 watch(() => route.path, (p) => {
   if (p.startsWith('/setup')) setupOpen.value = true;
   if (p.startsWith('/events')) eventsOpen.value = true;
-  if (p.startsWith('/notifications')) notificationsOpen.value = true;
+  if (p.startsWith('/reports')) reportsOpen.value = true;
+  if (p.startsWith('/notifications') || p.startsWith('/notification-registrations')) notificationsOpen.value = true;
 });
 
 function isChildActive(item: any): boolean {
@@ -126,6 +128,7 @@ function isChildActive(item: any): boolean {
 function getItemOpenState(item: any): boolean {
   if (item.name === 'Events') return eventsOpen.value;
   if (item.name === 'Setup') return setupOpen.value;
+  if (item.name === 'Reports & Analytics' || item.name === 'Reports') return reportsOpen.value;
   if (item.name === 'Notifications') return notificationsOpen.value;
   return false;
 }
@@ -133,6 +136,7 @@ function getItemOpenState(item: any): boolean {
 function toggleItemOpen(item: any) {
   if (item.name === 'Events') eventsOpen.value = !eventsOpen.value;
   if (item.name === 'Setup') setupOpen.value = !setupOpen.value;
+  if (item.name === 'Reports & Analytics' || item.name === 'Reports') reportsOpen.value = !reportsOpen.value;
   if (item.name === 'Notifications') notificationsOpen.value = !notificationsOpen.value;
 }
 
@@ -157,6 +161,16 @@ const navGroups = [
         children: [
           { name: 'Notifications Catalog', to: '/notifications', icon: 'bi-bell-fill' },
           { name: 'Notification Registrations', to: '/notification-registrations', icon: 'bi-envelope-check-fill' },
+        ],
+      },
+      {
+        name: 'Reports & Analytics',
+        icon: 'bi-file-earmark-bar-graph-fill',
+        children: [
+          { name: 'Executive Summaries', to: '/reports/executive', icon: 'bi-speedometer2' },
+          { name: 'Delegates & Registrations', to: '/reports/delegates', icon: 'bi-people-fill' },
+          { name: 'Financial Ledgers', to: '/reports/financial', icon: 'bi-cash-coin' },
+          { name: 'Attendance & Scannings', to: '/reports/attendance', icon: 'bi-qr-code-scan' },
         ],
       },
     ],

@@ -157,40 +157,23 @@
       </div>
 
       <!-- Bottom Pagination Bar -->
-      <div v-if="crud.filteredItems.value.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between flex-wrap gap-3 px-4 py-3 bg-white mt-auto">
+      <div v-if="crud.filteredItems.value.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 gap-3 px-4 py-3 bg-white mt-auto">
         <!-- Left Side: Range Info -->
-        <div class="fs-7 text-muted fw-medium">
+        <div class="pagination-footer__meta fs-7 text-muted fw-medium">
           Showing <span class="fw-bold text-slate-900">{{ (crud.currentPage.value - 1) * crud.perPage.value + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(crud.currentPage.value * crud.perPage.value, crud.filteredItems.value.length) }}</span> of <span class="fw-bold text-slate-900">{{ crud.filteredItems.value.length }}</span> event services
         </div>
 
-        <!-- Center: Page Numbers Navigation -->
-        <nav v-if="crud.totalPages.value > 1" aria-label="Page navigation">
-          <ul class="pagination pagination-sm mb-0 gap-1">
-            <li class="page-item" :class="{ disabled: crud.currentPage.value === 1 }">
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value--" :disabled="crud.currentPage.value === 1">
-                <i class="bi bi-chevron-left fs-8"></i>
-              </button>
-            </li>
-            <li
-              v-for="page in crud.totalPages.value"
-              :key="page"
-              class="page-item"
-              :class="{ active: crud.currentPage.value === page }"
-            >
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value = page">
-                {{ page }}
-              </button>
-            </li>
-            <li class="page-item" :class="{ disabled: crud.currentPage.value === crud.totalPages.value }">
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value++" :disabled="crud.currentPage.value === crud.totalPages.value">
-                <i class="bi bi-chevron-right fs-8"></i>
-              </button>
-            </li>
-          </ul>
-        </nav>
+        <!-- Center Column: Page Numbers Navigation -->
+        <div class="pagination-footer__pages">
+          <AppPagination
+            :current-page="crud.currentPage.value"
+            :total-pages="crud.totalPages.value"
+            @update:current-page="crud.currentPage.value = $event"
+          />
+        </div>
 
         <!-- Right Side: Per Page Selector -->
-        <div class="d-flex align-items-center gap-2">
+        <div class="pagination-footer__per-page d-flex align-items-center gap-2">
           <span class="fs-7 text-muted fw-medium text-nowrap">Per Page:</span>
           <select v-model="crud.perPage.value" class="form-select form-select-sm rounded-3 fs-7 border-slate-200 shadow-2xs cursor-pointer px-3" style="width: auto;">
             <option :value="6">6</option>
@@ -322,6 +305,7 @@
 </template>
 
 <script setup lang="ts">
+import AppPagination from '~/components/common/AppPagination.vue';
 import type { EventService } from '~/types/event-assignment';
 import type { Event } from '~/types/event';
 import type { Service } from '~/types/service';

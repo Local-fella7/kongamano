@@ -307,8 +307,8 @@
 
             <div class="d-flex align-items-center justify-content-between mb-2">
               <span class="fs-8 text-uppercase fw-bold text-primary tracking-wider">Active Service Window</span>
-              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-700 border fs-8">
-                <i class="bi bi-clock me-1"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
+              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-900 border border-slate-300 fs-8 fw-bold shadow-2xs">
+                <i class="bi bi-clock-fill me-1 text-primary"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
               </span>
             </div>
             <h5 class="fw-extrabold text-slate-900 fs-6 mb-1">{{ activeCurrentService.name }}</h5>
@@ -753,12 +753,32 @@ async function fetchEvents() {
 }
 
 async function fetchServices() {
+  if (!selectedEventId.value) {
+    servicesList.value = [];
+    return;
+  }
   try {
-    const url = selectedEventId.value ? `/api/services?event_id=${selectedEventId.value}` : '/api/services';
+    const url = `/api/event-services?event_id=${selectedEventId.value}`;
     const res = await cachedFetch<any>(url);
-    servicesList.value = Array.isArray(res?.data?.services) ? res.data.services : (Array.isArray(res?.data) ? res.data : []);
+    const rawList = Array.isArray(res?.data?.event_services)
+      ? res.data.event_services
+      : (Array.isArray(res?.data) ? res.data : []);
+
+    servicesList.value = rawList
+      .map((es: any) => {
+        if (es.service) return es.service;
+        return {
+          id: es.service_id || es.id,
+          name: es.name || `Service #${es.service_id || es.id}`,
+          start_time: es.start_time,
+          end_time: es.end_time,
+          requires_scan: es.requires_scan,
+        };
+      })
+      .filter((s: any) => s && s.id);
   } catch (err) {
-    console.error('Failed to fetch services:', err);
+    console.error('Failed to fetch event services:', err);
+    servicesList.value = [];
   }
 }
 
@@ -1113,6 +1133,10 @@ function formatDate(dateStr?: string | null): string {
     return dateStr;
   }
 }
+
+onUnmounted(() => {
+  stopScanner();
+});
 </script>
 
 <style scoped>

@@ -220,49 +220,32 @@
       </div>
 
       <!-- Bottom Pagination Bar -->
-      <div v-if="filteredEventsList.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between flex-nowrap gap-3 px-4 py-3 bg-white mt-auto">
-        <!-- Left Side: Range Info & Per Page Selector in a single line -->
-        <div class="d-flex align-items-center gap-3 fs-7 text-muted fw-medium text-nowrap flex-shrink-0">
-          <div>
-            Showing <span class="fw-bold text-slate-900">{{ (crud.currentPage.value - 1) * crud.perPage.value + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(crud.currentPage.value * crud.perPage.value, filteredEventsList.length) }}</span> of <span class="fw-bold text-slate-900">{{ filteredEventsList.length }}</span> events
-          </div>
-
-          <div class="d-flex align-items-center gap-1.5 ms-2">
-            <span class="fs-8 text-muted fw-semibold">Per page:</span>
-            <select v-model="crud.perPage.value" class="form-select form-select-sm rounded-3 fs-8 py-1 px-2 border-slate-200 shadow-2xs" style="width: auto;">
-              <option :value="6">6</option>
-              <option :value="9">9</option>
-              <option :value="12">12</option>
-              <option :value="24">24</option>
-            </select>
-          </div>
+      <div v-if="filteredEventsList.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 gap-3 px-4 py-3 bg-white mt-auto">
+        <!-- Left Column: Range Info -->
+        <div class="pagination-footer__meta fs-7 text-muted fw-medium text-nowrap">
+          Showing <span class="fw-bold text-slate-900">{{ (crud.currentPage.value - 1) * crud.perPage.value + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(crud.currentPage.value * crud.perPage.value, filteredEventsList.length) }}</span> of <span class="fw-bold text-slate-900">{{ filteredEventsList.length }}</span> events
         </div>
 
-        <!-- Right Side: Page Numbers Navigation in a single line -->
-        <nav v-if="totalPages > 1" aria-label="Page navigation" class="ms-auto flex-shrink-0">
-          <ul class="pagination pagination-sm mb-0 gap-1 flex-nowrap">
-            <li class="page-item" :class="{ disabled: crud.currentPage.value === 1 }">
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value--" :disabled="crud.currentPage.value === 1">
-                <i class="bi bi-chevron-left fs-8"></i>
-              </button>
-            </li>
-            <li
-              v-for="page in totalPages"
-              :key="page"
-              class="page-item"
-              :class="{ active: crud.currentPage.value === page }"
-            >
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value = page">
-                {{ page }}
-              </button>
-            </li>
-            <li class="page-item" :class="{ disabled: crud.currentPage.value === totalPages }">
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="crud.currentPage.value++" :disabled="crud.currentPage.value === totalPages">
-                <i class="bi bi-chevron-right fs-8"></i>
-              </button>
-            </li>
-          </ul>
-        </nav>
+        <!-- Center Column: Page Numbers Navigation -->
+        <div class="pagination-footer__pages">
+          <AppPagination
+            :current-page="crud.currentPage.value"
+            :total-pages="totalPages"
+            @update:current-page="crud.currentPage.value = $event"
+          />
+        </div>
+
+        <!-- Right Column: Per Page Selector -->
+        <div class="pagination-footer__per-page d-flex align-items-center gap-1.5 text-nowrap">
+          <span class="fs-8 text-muted fw-semibold">Per Page:</span>
+          <select v-model="crud.perPage.value" class="form-select form-select-sm rounded-3 fs-8 py-1 px-2 border-slate-200 shadow-2xs" style="width: auto;">
+            <option :value="6">6</option>
+            <option :value="12">12</option>
+            <option :value="24">24</option>
+            <option :value="48">48</option>
+            <option :value="96">96</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -717,6 +700,7 @@
 </template>
 
 <script setup lang="ts">
+import AppPagination from '~/components/common/AppPagination.vue';
 import type { Event } from '~/types/event';
 import type { EventType } from '~/types/event-type';
 import type { EventService, EventAccommodation } from '~/types/event-assignment';

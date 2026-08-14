@@ -100,47 +100,31 @@
       </div>
 
       <!-- Bottom Pagination Bar -->
-      <div v-if="filteredRoles.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between flex-nowrap gap-3 px-4 py-3 bg-white mt-auto">
-        <div class="d-flex align-items-center gap-3 fs-7 text-muted fw-medium text-nowrap flex-shrink-0">
-          <div>
-            Showing <span class="fw-bold text-slate-900">{{ (currentPage - 1) * perPage + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(currentPage * perPage, filteredRoles.length) }}</span> of <span class="fw-bold text-slate-900">{{ filteredRoles.length }}</span> roles
-          </div>
-
-          <div class="d-flex align-items-center gap-1.5 ms-2">
-            <span class="fs-8 text-muted fw-semibold">Per page:</span>
-            <select v-model="perPage" class="form-select form-select-sm rounded-3 fs-8 py-1 px-2 border-slate-200 shadow-2xs" style="width: auto;">
-              <option :value="6">6</option>
-              <option :value="12">12</option>
-              <option :value="24">24</option>
-              <option :value="48">48</option>
-            </select>
-          </div>
+      <div v-if="filteredRoles.length > 0" class="pagination-footer card border-0 shadow-sm rounded-4 gap-3 px-4 py-3 bg-white mt-auto">
+        <!-- Left Column: Range Info -->
+        <div class="pagination-footer__meta fs-7 text-muted fw-medium text-nowrap">
+          Showing <span class="fw-bold text-slate-900">{{ (currentPage - 1) * perPage + 1 }}</span> to <span class="fw-bold text-slate-900">{{ Math.min(currentPage * perPage, filteredRoles.length) }}</span> of <span class="fw-bold text-slate-900">{{ filteredRoles.length }}</span> roles
         </div>
 
-        <nav v-if="totalPages > 1" aria-label="Page navigation" class="ms-auto flex-shrink-0">
-          <ul class="pagination pagination-sm mb-0 gap-1 flex-nowrap">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage--" :disabled="currentPage === 1">
-                <i class="bi bi-chevron-left fs-8"></i>
-              </button>
-            </li>
-            <li
-              v-for="page in totalPages"
-              :key="page"
-              class="page-item"
-              :class="{ active: currentPage === page }"
-            >
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage = page">
-                {{ page }}
-              </button>
-            </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-              <button class="page-link rounded-3 border-0 shadow-2xs d-flex align-items-center justify-content-center p-0" style="width: 32px; height: 32px;" @click="currentPage++" :disabled="currentPage === totalPages">
-                <i class="bi bi-chevron-right fs-8"></i>
-              </button>
-            </li>
-          </ul>
-        </nav>
+        <!-- Center Column: Page Numbers Navigation -->
+        <div class="pagination-footer__pages">
+          <AppPagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            @update:current-page="currentPage = $event"
+          />
+        </div>
+
+        <!-- Right Column: Per Page Selector -->
+        <div class="pagination-footer__per-page d-flex align-items-center gap-1.5 text-nowrap">
+          <span class="fs-8 text-muted fw-semibold">Per Page:</span>
+          <select v-model="perPage" class="form-select form-select-sm rounded-3 fs-8 py-1 px-2 border-slate-200 shadow-2xs" style="width: auto;">
+            <option :value="6">6</option>
+            <option :value="12">12</option>
+            <option :value="24">24</option>
+            <option :value="48">48</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -158,6 +142,7 @@
 </template>
 
 <script setup lang="ts">
+import AppPagination from '~/components/common/AppPagination.vue';
 import type { Role } from '~/types/auth';
 import type { FeatureGroup } from '~/types/feature-group';
 import type { Feature } from '~/types/feature';

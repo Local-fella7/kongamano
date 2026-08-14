@@ -364,11 +364,18 @@ async function fetchRoles() {
 
     if (Array.isArray(res?.data?.roles)) {
       roles.value = res.data.roles;
+    } else if (Array.isArray(res?.roles)) {
+      roles.value = res.roles;
     } else if (Array.isArray(res?.data)) {
       roles.value = res.data;
+    } else if (Array.isArray(res)) {
+      roles.value = res;
+    } else {
+      roles.value = [];
     }
   } catch (err: any) {
-    push.error({ title: 'Error', message: err?.data?.message || 'Failed to load roles.' });
+    console.error('Failed to load roles:', err);
+    roles.value = [];
   } finally {
     rolesLoading.value = false;
   }
