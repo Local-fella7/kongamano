@@ -178,11 +178,168 @@ describe('Scan Station & Verification Logic Unit Tests', () => {
       expect(extractCode('https://kongamano.org/scan?code=REG-2-00456')).toBe('REG-2-00456')
       expect(extractCode('http://192.168.1.50:3000/scan?code=REG-2-00456&event_id=2')).toBe('REG-2-00456')
       expect(extractCode('https://kongamano.org/scannings?code=REG-1-00001')).toBe('REG-1-00001')
+      expect(extractCode('https://kongamano.org/scan?code=D-20260818-10000')).toBe('D-20260818-10000')
     })
 
     it('preserves clean raw codes untouched', () => {
       expect(extractCode('REG-3-00099')).toBe('REG-3-00099')
       expect(extractCode('00099')).toBe('00099')
+    })
+  })
+
+  describe('5. Multi-Badge Identifier & Registration Matching', () => {
+    function extractNumericRegId(val: any): number | null {
+      if (typeof val === 'number' && !isNaN(val)) return val
+      if (!val) return null
+      const str = String(val).trim()
+      if (/^\d+$/.test(str)) return parseInt(str, 10)
+      const match = str.match(/REG-\d+-(\d+)/i)
+      if (match && match[1]) return parseInt(match[1], 10)
+      const num = parseInt(str.replace(/\D/g, ''), 10)
+      return isNaN(num) ? null : num
+    }
+
+    function isLogForScannedAttendee(l: any, scannedAttendee: any, scannedQrCode: string): boolean {
+      if (!l) return false
+      const scanned = scannedQrCode ? String(scannedQrCode).trim() : ''
+
+      const attendeeId = scannedAttendee?.id && !isNaN(Number(scannedAttendee.id)) ? Number(scannedAttendee.id) : null
+      const logRegId = (l.registration_id || l.registration?.id) ? Number(l.registration_id || l.registration?.id) : null
+      if (attendeeId !== null && logRegId !== null && attendeeId === logRegId) {
+        return true
+      }
+
+      const targetCodes = new Set([
+        scanned,
+        scanned.toLowerCase(),
+        scannedAttendee?.qr_code ? String(scannedAttendee.qr_code).trim() : null,
+        scannedAttendee?.qr_code ? String(scannedAttendee.qr_code).trim().toLowerCase() : null,
+        scannedAttendee?.registration_number ? String(scannedAttendee.registration_number).trim() : null,
+        scannedAttendee?.registration_number ? String(scannedAttendee.registration_number).trim().toLowerCase() : null,
+        scannedAttendee?.code ? String(scannedAttendee.code).trim() : null,
+        scannedAttendee?.code ? String(scannedAttendee.code).trim().toLowerCase() : null,
+        scannedAttendee?.ticket_code ? String(scannedAttendee.ticket_code).trim() : null,
+        scannedAttendee?.ticket_code ? String(scannedAttendee.ticket_code).trim().toLowerCase() : null,
+      ].filter(Boolean))
+
+      const logCodes = [
+        l.qr_code ? String(l.qr_code).trim() : null,
+        l.qr_code ? String(l.qr_code).trim().toLowerCase() : null,
+        l.registration?.qr_code ? String(l.registration.qr_code).trim() : null,
+        l.registration?.qr_code ? String(l.registration.qr_code).trim().toLowerCase() : null,
+        l.registration?.registration_number ? String(l.registration.registration_number).trim() : null,
+        l.registration?.registration_number ? String(l.registration.registration_number).trim().toLowerCase() : null,
+        l.registration?.code ? String(l.registration.code).trim() : null,
+        l.registration?.code ? String(l.registration.code).trim().toLowerCase() : null,
+        l.registration?.ticket_code ? String(l.registration.ticket_code).trim() : null,
+        l.registration?.ticket_code ? String(l.registration.ticket_code).trim().toLowerCase() : null,
+      ].filter(Boolean)
+
+      for (const c of logCodes) {
+        if (c && targetCodes.has(c)) {
+          return true
+        }
+      }
+
+      const targetNum = extractNumericRegId(scanned) || extractNumericRegId(scannedAttendee?.id)
+      const logNum = extractNumericRegId(logRegId) || extractNumericRegId(l.qr_code)
+      if (targetNum !== null && logNum !== null && targetNum === logNum) {
+        return true
+      }
+
+      return false
+    }
+
+    it('matches custom badge codes like D-20260818-10000 directly by string', () => {
+      const attendee = {
+        id: 'D-20260818-10000',
+        qr_code: 'D-20260818-10000',
+        registration_number: 'D-20260818-10000'
+      }
+      const log = {
+        id: 1,
+        qr_code: 'D-20260818-10000',
+        scan_type: 'check_in'
+      }
+      expect(isLogForScannedAttendee(log, attendee, 'D-20260818-10000')).toBe(true)
+    })
+
+    it('matches numeric ID when attendee has real registration ID and log has registration_id', () => {
+      const attendee = {
+        id: 42,
+        first_name: 'John',
+        qr_code: 'REG-1-00042'
+      }
+      const log = {
+        id: 5,
+        registration_id: 42,
+        qr_code: null,
+        scan_type: 'check_in'
+      }
+      expect(isLogForScannedAttendee(log, attendee, 'REG-1-00042')).toBe(true)
+    })
+
+    it('returns false for completely different attendees', () => {
+      const attendee = {
+        id: 10,
+        qr_code: 'REG-1-10'
+      }
+      const log = {
+        id: 99,
+        registration_id: 20,
+        qr_code: 'REG-1-20',
+        scan_type: 'check_in'
+      }
+      expect(isLogForScannedAttendee(log, attendee, 'REG-1-10')).toBe(false)
+    })
+  })
+
+  describe('6. Date Parsing & EAT Timezone Validation for Today Checks', () => {
+    function isLogFromToday(created_at: string | null | undefined, todayDateStr: string): boolean {
+      if (!created_at) return true
+      const raw = String(created_at).trim()
+
+      if (raw.startsWith(todayDateStr) || raw.includes(todayDateStr)) {
+        return true
+      }
+
+      try {
+        let parseable = raw.replace(' ', 'T')
+        if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) {
+          parseable += 'Z'
+        }
+        const d = new Date(parseable)
+        if (!isNaN(d.getTime())) {
+          const eatDateStr = d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' })
+          if (eatDateStr === todayDateStr) {
+            return true
+          }
+        }
+      } catch {}
+
+      return false
+    }
+
+    it('correctly identifies early-morning 01:26 am check-in as today in EAT', () => {
+      // 14 Aug 2026 01:26 am EAT stored as UTC timestamp 2026-08-13 22:26:00
+      const utcCreatedAt = '2026-08-13 22:26:00'
+      const todayEAT = '2026-08-14'
+
+      expect(isLogFromToday(utcCreatedAt, todayEAT)).toBe(true)
+    })
+
+    it('correctly matches direct ISO date string for today', () => {
+      const createdAt = '2026-08-14T08:30:00Z'
+      const todayEAT = '2026-08-14'
+
+      expect(isLogFromToday(createdAt, todayEAT)).toBe(true)
+    })
+
+    it('returns false for scans that occurred on a previous day', () => {
+      const yesterdayCreatedAt = '2026-08-10 10:00:00'
+      const todayEAT = '2026-08-14'
+
+      expect(isLogFromToday(yesterdayCreatedAt, todayEAT)).toBe(false)
     })
   })
 })
