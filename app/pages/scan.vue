@@ -720,39 +720,10 @@ async function resolveBadgeCode(rawCode: string) {
     if (foundAttendee.event?.name) {
       selectedEventName.value = foundAttendee.event.name;
     }
+    isResolving.value = false;
     triggerSuccessFeedback();
 
-    // Always refresh metadata using whatever event ID we have
     const activeEvId = extractedEventId || selectedEventId.value;
-
-    // CRITICAL: If we have NO logs for this attendee in memory yet,
-    // we MUST fetch them synchronously before rendering the card.
-    // Otherwise the card briefly shows "Confirm Entry" while logs load.
-    const logsInMemory = allScanLogs.value.filter((l: any) => isLogForScannedAttendee(l));
-    if (logsInMemory.length === 0 && activeEvId) {
-      // Keep spinner visible while we fetch the delegate's actual status
-      isResolving.value = true;
-      try {
-        const logsRes = await $fetch<any>(`/api/scannings?event_id=${activeEvId}`, {
-          headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
-        }).catch(() => null);
-        const rawLogs = Array.isArray(logsRes?.data?.scannings)
-          ? logsRes.data.scannings
-          : (Array.isArray(logsRes?.data) ? logsRes.data : []);
-        if (rawLogs.length > 0) {
-          const existingIds = new Set(allScanLogs.value.map((l: any) => String(l.id)));
-          const newLogs = rawLogs.filter((l: any) => !existingIds.has(String(l.id)));
-          if (newLogs.length > 0) {
-            allScanLogs.value = [...newLogs, ...allScanLogs.value];
-          }
-          dbStore.cacheScanLogs(activeEvId, allScanLogs.value).catch(() => {});
-        }
-      } catch {}
-    }
-
-    isResolving.value = false;
-
-    // Background refresh for services & updated logs (non-blocking after card renders)
     if (activeEvId) {
       refreshEventMetadataInBackground(activeEvId);
     }
@@ -760,7 +731,6 @@ async function resolveBadgeCode(rawCode: string) {
   }
 
   // 3. FAST PATH 2: IndexedDB Cache Query (<5ms)
-  isResolving.value = true;
   if (eventIdForCache) {
     try {
       const cached = await dbStore.getCachedRegistrations(eventIdForCache);
@@ -784,34 +754,10 @@ async function resolveBadgeCode(rawCode: string) {
     if (foundAttendee.event?.name) {
       selectedEventName.value = foundAttendee.event.name;
     }
+    isResolving.value = false;
     triggerSuccessFeedback();
 
     const activeEvId = extractedEventId || selectedEventId.value;
-
-    // Same blocking log check — ensure correct state before rendering card
-    const logsInMemory = allScanLogs.value.filter((l: any) => isLogForScannedAttendee(l));
-    if (logsInMemory.length === 0 && activeEvId) {
-      isResolving.value = true;
-      try {
-        const logsRes = await $fetch<any>(`/api/scannings?event_id=${activeEvId}`, {
-          headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
-        }).catch(() => null);
-        const rawLogs = Array.isArray(logsRes?.data?.scannings)
-          ? logsRes.data.scannings
-          : (Array.isArray(logsRes?.data) ? logsRes.data : []);
-        if (rawLogs.length > 0) {
-          const existingIds = new Set(allScanLogs.value.map((l: any) => String(l.id)));
-          const newLogs = rawLogs.filter((l: any) => !existingIds.has(String(l.id)));
-          if (newLogs.length > 0) {
-            allScanLogs.value = [...newLogs, ...allScanLogs.value];
-          }
-          dbStore.cacheScanLogs(activeEvId, allScanLogs.value).catch(() => {});
-        }
-      } catch {}
-    }
-
-    isResolving.value = false;
-
     if (activeEvId) {
       refreshEventMetadataInBackground(activeEvId);
     }
@@ -819,8 +765,6 @@ async function resolveBadgeCode(rawCode: string) {
   }
 
   // 4. INSTANT OPTIMISTIC RESOLUTION FOR UNCACHED BADGES (<10ms)
-  // Even if not yet downloaded in bulk, parse the badge code directly so the verification modal
-  // appears in <0.1 seconds without waiting 10-15s for the whole attendee database!
   let optimisticRegId: number | null = null;
   if (cleanCode.startsWith('REG-')) {
     const parts = cleanCode.split('-');
@@ -840,31 +784,13 @@ async function resolveBadgeCode(rawCode: string) {
     event_id: extractedEventId || selectedEventId.value || 1,
   };
 
-  const activeEvId = extractedEventId || selectedEventId.value;
-
-  // Synchronously fetch logs if we have none for this badge code yet
-  const logsInMemory = allScanLogs.value.filter((l: any) => isLogForScannedAttendee(l));
-  if (logsInMemory.length === 0 && activeEvId) {
-    try {
-      const logsRes = await $fetch<any>(`/api/scannings?event_id=${activeEvId}`, {
-        headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
-      }).catch(() => null);
-      const rawLogs = Array.isArray(logsRes?.data?.scannings)
-        ? logsRes.data.scannings
-        : (Array.isArray(logsRes?.data) ? logsRes.data : []);
-      if (rawLogs.length > 0) {
-        const existingIds = new Set(allScanLogs.value.map((l: any) => String(l.id)));
-        const newLogs = rawLogs.filter((l: any) => !existingIds.has(String(l.id)));
-        if (newLogs.length > 0) {
-          allScanLogs.value = [...newLogs, ...allScanLogs.value];
-        }
-        dbStore.cacheScanLogs(activeEvId, allScanLogs.value).catch(() => {});
-      }
-    } catch {}
-  }
-
   isResolving.value = false;
   triggerSuccessFeedback();
+
+  const activeEvId = extractedEventId || selectedEventId.value;
+  if (activeEvId) {
+    refreshEventMetadataInBackground(activeEvId);
+  }
 
   // 5. Fetch full details and active services in the background without blocking the UI
   if (extractedEventId || selectedEventId.value) {
@@ -984,16 +910,13 @@ async function preloadStationData() {
       }
 
       // 3. Background sync fresh registrations into IndexedDB & in-memory map
-      const cached = await dbStore.getCachedRegistrations(eventId);
-      if (!cached || cached.length === 0) {
-        const regRes = await $fetch<any>(`/api/registrations?event_id=${eventId}`, {
-          headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
-        }).catch(() => null);
-        const list = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
-        if (list.length > 0) {
-          indexRegistrations(list);
-          await dbStore.cacheRegistrations(eventId, list);
-        }
+      const regRes = await $fetch<any>(`/api/registrations?event_id=${eventId}`, {
+        headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
+      }).catch(() => null);
+      const list = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
+      if (list.length > 0) {
+        indexRegistrations(list);
+        await dbStore.cacheRegistrations(eventId, list);
       }
     }
   } catch (err) {
