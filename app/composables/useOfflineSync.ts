@@ -70,6 +70,11 @@ export function useOfflineSync() {
 
   // Process all queued items when online
   async function processQueue() {
+    // Ground truth online check
+    if (import.meta.client && typeof navigator !== 'undefined') {
+      isOnline.value = navigator.onLine;
+    }
+
     if (!isOnline.value || isSyncing.value || queue.value.length === 0) {
       return;
     }
@@ -81,7 +86,7 @@ export function useOfflineSync() {
 
     for (const item of itemsToProcess) {
       try {
-        // ── Conflict Detection (Number 4) ──────────────────
+        // ── Conflict Detection ──────────────────
         // If updating or deleting, and the client queued body contains updated_at,
         // check if the server has a newer modification to prevent silent data loss.
         if ((item.method === 'PUT' || item.method === 'DELETE') && item.body && item.body.updated_at) {
@@ -89,6 +94,7 @@ export function useOfflineSync() {
             const serverItem = await $fetch<any>(apiPath(item.url), {
               headers: {
                 ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
+                'Content-Type': 'application/json',
                 Accept: 'application/json',
               },
             });
@@ -116,6 +122,7 @@ export function useOfflineSync() {
           body: item.body,
           headers: {
             ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
+            'Content-Type': 'application/json',
             Accept: 'application/json',
           },
         });
@@ -128,11 +135,19 @@ export function useOfflineSync() {
         console.error(`Failed to sync queued action [${item.label}]:`, err);
         const statusCode = err?.status || err?.statusCode;
 
-        if (statusCode && (statusCode === 400 || statusCode === 422 || statusCode === 401 || statusCode === 403)) {
+        if (statusCode === 401 || statusCode === 403) {
+          // Authentication issue — keep in queue so scans are not lost when session expires
+          push.error({
+            title: 'Authentication Required',
+            message: 'Session expired or not authorized. Please log in to sync offline scans.',
+          });
+          item.retryCount = (item.retryCount || 0) + 1;
+          failCount++;
+        } else if (statusCode === 400 || statusCode === 422) {
           // Permanent logical/validation errors - discard to avoid blocking the queue
           push.error({
             title: `Sync Failed: ${item.label}`,
-            message: err?.data?.message || 'Data validation or authorization failed on the server. Action discarded.',
+            message: err?.data?.message || 'Data validation failed on the server. Action discarded.',
           });
           queue.value = queue.value.filter((q) => q.id !== item.id);
           await saveQueue();
@@ -182,6 +197,7 @@ export function useOfflineSync() {
           body: options.body,
           headers: {
             ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
+            'Content-Type': 'application/json',
             Accept: 'application/json',
           },
         });
@@ -207,7 +223,7 @@ export function useOfflineSync() {
   async function queueItem(url: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body: any, label: string) {
     const newItem: QueuedAction = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      url: apiPath(url),
+      url,
       method,
       body,
       label,
@@ -240,21 +256,28 @@ export function useOfflineSync() {
         syncState.listenersInitialized = true;
 
         window.addEventListener('online', () => {
-          // Check if we are already in online state to prevent duplicate notifications
-          // from browser-fired double events
-          if (isOnline.value === true) return;
+          const wasOffline = !isOnline.value;
           isOnline.value = true;
-          push.info({ title: 'Online', message: 'Connection restored. Processing offline queue...' });
+          if (wasOffline) {
+            push.info({ title: 'Online', message: 'Connection restored. Processing offline queue...' });
+          }
           processQueue();
         });
 
         window.addEventListener('offline', () => {
-          // Check if we are already in offline state to prevent duplicate notifications
-          // from browser-fired double events
-          if (isOnline.value === false) return;
           isOnline.value = false;
           push.warning({ title: 'Offline Mode', message: 'Network connection lost. Actions will be queued locally.' });
         });
+
+        // Periodic heartbeat check in case browser missed the online event
+        setInterval(() => {
+          if (navigator.onLine) {
+            isOnline.value = true;
+            if (queue.value.length > 0 && !isSyncing.value) {
+              processQueue();
+            }
+          }
+        }, 15000);
       }
 
       // Auto-trigger sync on mount if online & pending items exist
