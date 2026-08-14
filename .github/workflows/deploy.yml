@@ -42,7 +42,6 @@ jobs:
         run: pnpm run build:cpanel-static
         env:
           NUXT_API_BASE: ${{ secrets.NUXT_API_BASE }}
-          NUXT_PUBLIC_STATIC_CPANEL: "1"
 
       - name: Upload to FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
