@@ -958,16 +958,23 @@ async function openVerificationForQr(qrCode: string) {
 
   // 1. Instant local lookup (< 5ms)
   const attendeeData = await findAttendeeByQrCode(cleanCode);
+  if (!attendeeData) {
+    push.error({
+      title: 'Delegate Not Found',
+      message: `No registration record found for badge code: ${cleanCode}`,
+    });
+    scanFeedback.value = {
+      type: 'error',
+      message: `Unrecognized Badge: No registered delegate found matching "${cleanCode}".`,
+    };
+    return;
+  }
+
   if (attendeeData?.event_id) {
     selectedEventId.value = Number(attendeeData.event_id);
   }
 
-  scannedAttendee.value = attendeeData || {
-    first_name: 'Registered',
-    last_name: 'Delegate',
-    phone: '',
-    qr_code: cleanCode,
-  };
+  scannedAttendee.value = attendeeData;
 
   // 2. Fast Continuous Scan Mode auto-processing
   if (fastScanMode.value) {

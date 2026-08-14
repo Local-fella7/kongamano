@@ -764,52 +764,18 @@ async function resolveBadgeCode(rawCode: string) {
     return;
   }
 
-  // 4. INSTANT OPTIMISTIC RESOLUTION FOR UNCACHED BADGES (<10ms)
-  let optimisticRegId: number | null = null;
-  if (cleanCode.startsWith('REG-')) {
-    const parts = cleanCode.split('-');
-    const lastPart = parts[parts.length - 1];
-    const parsedId = parseInt(lastPart, 10);
-    if (!isNaN(parsedId)) optimisticRegId = parsedId;
-  } else if (/^\d+$/.test(cleanCode)) {
-    optimisticRegId = parseInt(cleanCode, 10);
-  }
-
-  scannedAttendee.value = {
-    id: optimisticRegId || cleanCode,
-    first_name: 'Delegate',
-    last_name: optimisticRegId ? `#${optimisticRegId}` : '',
-    phone: '',
-    qr_code: cleanCode,
-    event_id: extractedEventId || selectedEventId.value || 1,
-  };
-
+  // 4. BADGE NOT FOUND IN REGISTRATIONS
   isResolving.value = false;
-  triggerSuccessFeedback();
-
-  const activeEvId = extractedEventId || selectedEventId.value;
-  if (activeEvId) {
-    refreshEventMetadataInBackground(activeEvId);
-  }
-
-  // 5. Fetch full details and active services in the background without blocking the UI
-  if (extractedEventId || selectedEventId.value) {
-    const activeEvId = extractedEventId || selectedEventId.value || 1;
-    refreshEventMetadataInBackground(activeEvId);
-    
-    // Background targeted lookup for attendee full name
-    if (optimisticRegId) {
-      $fetch<any>(`/api/registrations/${optimisticRegId}`, {
-        headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
-      }).then((res) => {
-        const fullData = res?.data?.registration || res?.data;
-        if (fullData && (fullData.first_name || fullData.last_name)) {
-          scannedAttendee.value = { ...scannedAttendee.value, ...fullData };
-          indexRegistrations([fullData]);
-        }
-      }).catch(() => {});
-    }
-  }
+  scannedAttendee.value = null;
+  scanFeedback.value = {
+    type: 'error',
+    message: `Unrecognized Badge: No registered delegate found matching code "${cleanCode}".`,
+  };
+  push.error({
+    title: 'Delegate Not Found',
+    message: `No registration record found for badge code: ${cleanCode}`,
+  });
+  resumeCamera();
 }
 
 async function refreshEventMetadataInBackground(eventId: number) {
