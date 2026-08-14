@@ -48,4 +48,29 @@ describe('dbStore IndexedDB utility comprehensive tests', () => {
     const cached = await dbStore.getCachedRegistrations(1)
     expect(cached).toBeNull()
   })
+
+  it('9. resolves cacheScanLogs and getCachedScanLogs safely', async () => {
+    const logs = [{ id: 1, scan_type: 'check_in', event_id: 1 }]
+    await expect(dbStore.cacheScanLogs(1, logs)).resolves.not.toThrow()
+    const cached = await dbStore.getCachedScanLogs(1)
+    expect(cached).toBeNull()
+  })
+
+  it('10. resolves getAll and returns empty array outside client environment', async () => {
+    const all = await dbStore.getAll()
+    expect(Array.isArray(all)).toBe(true)
+    expect(all).toEqual([])
+  })
+
+  it('11. resolves getAllCachedRegistrations and returns array safely', async () => {
+    const regs = await dbStore.getAllCachedRegistrations()
+    expect(Array.isArray(regs)).toBe(true)
+    expect(regs).toEqual([])
+  })
+
+  it('12. resolves getAllCachedScanLogs and returns array safely', async () => {
+    const logs = await dbStore.getAllCachedScanLogs()
+    expect(Array.isArray(logs)).toBe(true)
+    expect(logs).toEqual([])
+  })
 })
