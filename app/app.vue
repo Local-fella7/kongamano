@@ -6,6 +6,7 @@
     </NuxtLayout>
 
     <!-- Global Toast Notifications -->
+    <!-- comment -->
     <Notivue v-slot="item">
       <Notification :item="item" />
     </Notivue>
