@@ -141,11 +141,11 @@
                 </div>
 
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                  <span class="fs-8 text-uppercase text-emerald-700 fw-bold tracking-wider">
-                    <i class="bi bi-gift-fill me-1"></i> Active Service Window
+                  <span class="fs-8 text-lowercase text-emerald-700 fw-bold tracking-wider">
+                    <i class="bi bi-gift-fill me-1"></i> active service window
                   </span>
-                  <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-900 border border-slate-300 fs-8 fw-bold shadow-2xs">
-                    <i class="bi bi-clock-fill me-1 text-primary"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
+                  <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-dark border border-slate-400 fs-8 fw-bold shadow-2xs" style="color: #000000 !important;">
+                    <i class="bi bi-clock-fill me-1 text-dark" style="color: #000000 !important;"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
                   </span>
                 </div>
                 <h5 class="fw-extrabold text-slate-900 fs-6 mb-1">{{ activeCurrentService.name }}</h5>

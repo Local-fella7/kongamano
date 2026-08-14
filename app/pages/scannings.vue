@@ -329,9 +329,9 @@
             </div>
 
             <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="fs-8 text-uppercase fw-bold text-primary tracking-wider">Active Service Window</span>
-              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-slate-900 border border-slate-300 fs-8 fw-bold shadow-2xs">
-                <i class="bi bi-clock-fill me-1 text-primary"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
+              <span class="fs-8 text-lowercase fw-bold text-primary tracking-wider">active service window</span>
+              <span v-if="activeCurrentService.start_time && activeCurrentService.end_time" class="badge bg-white text-dark border border-slate-400 fs-8 fw-bold shadow-2xs" style="color: #000000 !important;">
+                <i class="bi bi-clock-fill me-1 text-dark" style="color: #000000 !important;"></i> {{ activeCurrentService.start_time }} – {{ activeCurrentService.end_time }}
               </span>
             </div>
             <h5 class="fw-extrabold text-slate-900 fs-6 mb-1">{{ activeCurrentService.name }}</h5>

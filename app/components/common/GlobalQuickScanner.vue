@@ -16,8 +16,8 @@
 
       <!-- 2. Active Service Window Banner -->
       <div v-if="activeCurrentService" class="p-3 bg-emerald-50 rounded-3 border border-emerald-200 mb-3 text-center">
-        <span class="fs-8 text-uppercase text-emerald-700 fw-extrabold tracking-wider">
-          <i class="bi bi-gift-fill me-1"></i> Active Service Window
+        <span class="fs-8 text-lowercase text-emerald-700 fw-extrabold tracking-wider">
+          <i class="bi bi-gift-fill me-1"></i> active service window
         </span>
         <h4 class="fw-extrabold text-slate-900 mb-1 fs-5 mt-1">🎁 {{ activeCurrentService.name }}</h4>
         <span v-if="activeCurrentService.start_time || activeCurrentService.end_time" class="badge bg-white text-dark border border-slate-400 fs-7 fw-bold px-3 py-1.5 shadow-2xs style-black-time" style="color: #000000 !important; font-weight: 800;">
