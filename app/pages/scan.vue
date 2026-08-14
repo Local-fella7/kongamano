@@ -946,8 +946,14 @@ async function executeScanAction(type: 'check_in' | 'service' | 'check_out', ser
   // 3. Background Non-Blocking Sync
   try {
     const validBackendScanType = type === 'check_out' ? 'check_out' : 'check_in';
+    
+    // Canonical QR code expected by backend:
+    // If attendee was matched by phone or registration number, send their real registered qr_code or standard REG-X-Y
+    const canonicalQrCode = attendee?.qr_code 
+      || (attendee?.id && selectedEventId.value ? `REG-${selectedEventId.value}-${attendee.id}` : qr);
+
     const bodyPayload: Record<string, any> = {
-      qr_code: qr,
+      qr_code: canonicalQrCode,
       scan_type: validBackendScanType,
       event_id: Number(selectedEventId.value),
     };
@@ -956,14 +962,24 @@ async function executeScanAction(type: 'check_in' | 'service' | 'check_out', ser
     }
 
     const endpoint = `/api/events/${selectedEventId.value}/scannings`;
-    executeOrQueue({
+    const res = await executeOrQueue({
       url: endpoint,
       method: 'POST',
       body: bodyPayload,
-      label: `${actionLabel} - ${attendeeFullName.value} (${qr})`,
-    }).catch((err) => {
-      console.warn('Background sync notice:', err);
+      label: `${actionLabel} - ${attendeeFullName.value} (${canonicalQrCode})`,
     });
+
+    if (res?.success === false) {
+      push.error({
+        title: 'Recording Failed',
+        message: res?.message || 'Server rejected scan recording. Please try again.',
+      });
+      scanFeedback.value = {
+        type: 'error',
+        message: res?.message || 'Scan failed to record on server.',
+      };
+      return;
+    }
 
     if (type === 'check_out' || type === 'service') {
       // Completed final action (service claimed or checked out) -> close card and resume camera
@@ -979,6 +995,16 @@ async function executeScanAction(type: 'check_in' | 'service' | 'check_out', ser
         message: 'Attendee is checked in. You can now claim active services below.',
       });
     }
+  } catch (err: any) {
+    console.error('Scan execution error:', err);
+    push.error({
+      title: 'Scan Failed',
+      message: err?.data?.message || err?.message || 'Failed to record scan.',
+    });
+    scanFeedback.value = {
+      type: 'error',
+      message: err?.data?.message || err?.message || 'Failed to record scan.',
+    };
   } finally {
     isSubmitting.value = false;
   }
