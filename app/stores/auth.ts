@@ -8,15 +8,54 @@ export const useAuthStore = defineStore('auth', () => {
   // can gate access synchronously without making an API call.
   const roleId = useCookie<number | null>('role_id', { default: () => null, maxAge: 60 * 60 * 24 * 7 });
 
+  // Client-side initialization: Hydrate from localStorage if cookie/in-memory state was lost
+  if (import.meta.client) {
+    try {
+      if (!token.value) {
+        const storedToken = localStorage.getItem('token') || localStorage.getItem('kongamano_token');
+        if (storedToken && storedToken !== 'null' && storedToken !== 'undefined') {
+          token.value = storedToken.trim();
+        }
+      }
+      if (roleId.value === null || roleId.value === undefined) {
+        const storedRole = localStorage.getItem('role_id') || localStorage.getItem('kongamano_role_id');
+        if (storedRole && storedRole !== 'null' && storedRole !== 'undefined') {
+          roleId.value = parseInt(storedRole, 10);
+        }
+      }
+      const storedUser = localStorage.getItem('kongamano_user');
+      if (storedUser && !user.value) {
+        try {
+          user.value = JSON.parse(storedUser);
+        } catch {}
+      }
+    } catch {}
+  }
+
   const isAuthenticated = computed(() => !!token.value);
   // Checks the cookie first (survives page reloads without API calls),
-  // falls back to the in-memory user object.
+  // falls back to the in-memory user object or localStorage.
   const isAdmin = computed(() => (roleId.value ?? user.value?.role_id) === 1);
 
   function setUser(userData: User | null) {
     user.value = userData;
     // Mirror role_id into the cookie so middleware can read it synchronously
     roleId.value = userData?.role_id ?? null;
+    if (import.meta.client) {
+      try {
+        if (userData) {
+          localStorage.setItem('kongamano_user', JSON.stringify(userData));
+          if (userData.role_id !== undefined && userData.role_id !== null) {
+            localStorage.setItem('role_id', String(userData.role_id));
+            localStorage.setItem('kongamano_role_id', String(userData.role_id));
+          }
+        } else {
+          localStorage.removeItem('kongamano_user');
+          localStorage.removeItem('role_id');
+          localStorage.removeItem('kongamano_role_id');
+        }
+      } catch {}
+    }
   }
 
   function setToken(tokenValue: string | null) {
@@ -43,12 +82,11 @@ export const useAuthStore = defineStore('auth', () => {
         headers: { Authorization: `Bearer ${token.value}` },
       });
       if (res?.data?.user) {
-        user.value = res.data.user;
-        // Keep role_id cookie in sync after a user fetch
-        roleId.value = res.data.user.role_id ?? null;
+        setUser(res.data.user);
       }
     } catch (err) {
-      console.error('Failed to fetch user:', err);
+      // In offline mode, do not clear user; retain existing cached profile
+      console.warn('Network request failed for user profile (offline mode fallback):', err);
     }
   }
 
@@ -60,6 +98,9 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         localStorage.removeItem('token');
         localStorage.removeItem('kongamano_token');
+        localStorage.removeItem('role_id');
+        localStorage.removeItem('kongamano_role_id');
+        localStorage.removeItem('kongamano_user');
       } catch {}
     }
     navigateTo('/login');

@@ -74,16 +74,44 @@
         </span>
       </button>
 
-      <!-- Check-ins Pill -->
+      <!-- Unique Attendees Pill (Deduplicated End-of-Day Count) -->
       <button
         type="button"
         class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
         :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'btn-emerald text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
         @click="setQuickFilter('check_in')"
+        title="Unique delegates who checked in today (deduplicated 1 per attendee)"
       >
-        <i class="bi bi-check-circle-fill text-emerald-600" :class="{ 'text-white': selectedScanTypeFilter === 'check_in' && !selectedServiceFilter }"></i>
-        <span>Check-ins</span>
+        <i class="bi bi-person-check-fill text-emerald-600" :class="{ 'text-white': selectedScanTypeFilter === 'check_in' && !selectedServiceFilter }"></i>
+        <span>Unique Attendees</span>
         <span class="badge rounded-pill" :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'bg-white text-emerald-700' : 'bg-emerald-100 text-emerald-800'">
+          {{ scanStatistics.uniqueAttendeesCount }}
+        </span>
+      </button>
+
+      <!-- Currently Inside Pill -->
+      <div
+        class="badge bg-white text-slate-700 border border-slate-200 rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 shadow-2xs"
+        title="Delegates currently inside (checked in without a subsequent check-out)"
+      >
+        <i class="bi bi-building-check text-primary"></i>
+        <span>Inside Now</span>
+        <span class="badge rounded-pill bg-primary text-white">
+          {{ scanStatistics.currentlyInside }}
+        </span>
+      </div>
+
+      <!-- Raw Check-ins Pill (Includes Re-entries) -->
+      <button
+        type="button"
+        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
+        :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'btn-emerald text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        @click="setQuickFilter('check_in')"
+        title="Total check-in transactions recorded (first check-ins + re-entries)"
+      >
+        <i class="bi bi-qr-code-scan text-emerald-600" :class="{ 'text-white': selectedScanTypeFilter === 'check_in' && !selectedServiceFilter }"></i>
+        <span>Total Check-ins</span>
+        <span class="badge rounded-pill" :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'bg-white text-emerald-700' : 'bg-slate-200 text-slate-700'">
           {{ scanStatistics.totalCheckIns }}
         </span>
       </button>
@@ -948,6 +976,11 @@ const scanStatistics = computed(() => {
   let totalCheckOuts = 0;
   let totalServiceScans = 0;
 
+  // Deduplication tracking sets and maps
+  const uniqueAttendeesSet = new Set<string | number>();
+  // Map of attendee identifier -> latest scan object (assuming logs sorted or tracking newest)
+  const attendeeLatestScanMap = new Map<string | number, any>();
+
   // Map to store service details: id -> { id, name, count }
   const serviceMap = new Map<string | number, { id: string | number; name: string; count: number }>();
 
@@ -966,6 +999,32 @@ const scanStatistics = computed(() => {
   // 2. Count from actual logs and dynamically discover any service in logs
   for (const l of logs.value) {
     totalScans++;
+
+    // Attendee deduplication identifier
+    const regId = l.registration_id || l.registration?.id;
+    const qrIdentifier = l.qr_code || l.registration?.qr_code;
+    const attendeeKey = regId ? `id_${regId}` : (qrIdentifier ? `qr_${String(qrIdentifier).trim().toLowerCase()}` : null);
+
+    if (attendeeKey) {
+      const existingLatest = attendeeLatestScanMap.get(attendeeKey);
+      if (!existingLatest) {
+        attendeeLatestScanMap.set(attendeeKey, l);
+      } else {
+        const getLogTime = (logItem: any) => {
+          if (logItem.created_at) {
+            let p = String(logItem.created_at).trim().replace(' ', 'T');
+            if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z';
+            const t = new Date(p).getTime();
+            if (!isNaN(t)) return t;
+          }
+          return Number(logItem.id) || 0;
+        };
+        if (getLogTime(l) >= getLogTime(existingLatest)) {
+          attendeeLatestScanMap.set(attendeeKey, l);
+        }
+      }
+    }
+
     const sId = l.service_id ? Number(l.service_id) : (l.service?.id ? Number(l.service.id) : null);
     const masterObj = sId ? masterServicesMap.value.get(sId) : null;
     const sName = (l.service?.name && !l.service.name.startsWith('Service #'))
@@ -1004,6 +1063,17 @@ const scanStatistics = computed(() => {
       totalCheckOuts++;
     } else {
       totalCheckIns++;
+      if (attendeeKey) {
+        uniqueAttendeesSet.add(attendeeKey);
+      }
+    }
+  }
+
+  // Calculate currently inside count: unique attendees whose most recent scan was check_in (not check_out)
+  let currentlyInside = 0;
+  for (const [key, latestLog] of attendeeLatestScanMap.entries()) {
+    if (latestLog && latestLog.scan_type !== 'check_out' && uniqueAttendeesSet.has(key)) {
+      currentlyInside++;
     }
   }
 
@@ -1012,6 +1082,8 @@ const scanStatistics = computed(() => {
   return {
     totalScans,
     totalCheckIns,
+    uniqueAttendeesCount: uniqueAttendeesSet.size,
+    currentlyInside,
     totalCheckOuts,
     totalServiceScans,
     services,

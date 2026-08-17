@@ -8,6 +8,8 @@ describe('Scannings Analytics & Service Breakdown Unit Tests', () => {
     let totalCheckOuts = 0
     let totalServiceScans = 0
 
+    const uniqueAttendeesSet = new Set<string | number>()
+    const attendeeLatestScanMap = new Map<string | number, any>()
     const serviceMap = new Map<string | number, { id: string | number; name: string; count: number }>()
 
     // 1. Pre-populate with configured event services
@@ -30,6 +32,31 @@ describe('Scannings Analytics & Service Breakdown Unit Tests', () => {
     // 2. Count from actual logs and dynamically discover any service in logs
     for (const l of logs) {
       totalScans++
+
+      const regId = l.registration_id || l.registration?.id
+      const qrIdentifier = l.qr_code || l.registration?.qr_code
+      const attendeeKey = regId ? `id_${regId}` : (qrIdentifier ? `qr_${String(qrIdentifier).trim().toLowerCase()}` : null)
+
+      if (attendeeKey) {
+        const existingLatest = attendeeLatestScanMap.get(attendeeKey)
+        if (!existingLatest) {
+          attendeeLatestScanMap.set(attendeeKey, l)
+        } else {
+          const getLogTime = (logItem: any) => {
+            if (logItem.created_at) {
+              let p = String(logItem.created_at).trim().replace(' ', 'T')
+              if (!/Z|[+-]\d{2}:?\d{2}$/i.test(p)) p += 'Z'
+              const t = new Date(p).getTime()
+              if (!isNaN(t)) return t
+            }
+            return Number(logItem.id) || 0
+          }
+          if (getLogTime(l) >= getLogTime(existingLatest)) {
+            attendeeLatestScanMap.set(attendeeKey, l)
+          }
+        }
+      }
+
       const sId = l.service_id ? Number(l.service_id) : (l.service?.id ? Number(l.service.id) : null)
       const masterObj = sId ? masterServicesMap.get(sId) : null
       const sName = (l.service?.name && !l.service.name.startsWith('Service #'))
@@ -68,12 +95,24 @@ describe('Scannings Analytics & Service Breakdown Unit Tests', () => {
         totalCheckOuts++
       } else {
         totalCheckIns++
+        if (attendeeKey) {
+          uniqueAttendeesSet.add(attendeeKey)
+        }
+      }
+    }
+
+    let currentlyInside = 0
+    for (const [key, latestLog] of attendeeLatestScanMap.entries()) {
+      if (latestLog && latestLog.scan_type !== 'check_out' && uniqueAttendeesSet.has(key)) {
+        currentlyInside++
       }
     }
 
     return {
       totalScans,
       totalCheckIns,
+      uniqueAttendeesCount: uniqueAttendeesSet.size,
+      currentlyInside,
       totalCheckOuts,
       totalServiceScans,
       services: Array.from(serviceMap.values()),
@@ -175,6 +214,8 @@ describe('Scannings Analytics & Service Breakdown Unit Tests', () => {
 
       expect(stats.totalScans).toBe(6)
       expect(stats.totalCheckIns).toBe(2)
+      expect(stats.uniqueAttendeesCount).toBe(2)
+      expect(stats.currentlyInside).toBe(1) // REG-1-001 checked out, REG-1-002 still inside
       expect(stats.totalCheckOuts).toBe(1)
       expect(stats.totalServiceScans).toBe(3)
 
