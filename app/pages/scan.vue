@@ -1094,12 +1094,9 @@ function resetAndOpenScanner() {
   resumeCamera();
 }
 
-onMounted(async () => {
-  if (!token.value) {
-    navigateTo({ path: '/login', query: { redirect: route.fullPath } });
-    return;
-  }
+let hubSyncInterval: any = null;
 
+onMounted(async () => {
   // 1. Immediately warm in-memory map, scan logs, and services from IndexedDB (<1ms Local-First)
   try {
     const [allCachedRegs, allCachedLogs, allCachedServices] = await Promise.all([
@@ -1127,6 +1124,14 @@ onMounted(async () => {
 
   // 3. Preload/sync fresh metadata in background without blocking UI
   preloadStationData();
+
+  // 4. Background multi-device sync: poll for other tablets' scans every 4s
+  hubSyncInterval = setInterval(() => {
+    const activeEvId = selectedEventId.value;
+    if (activeEvId) {
+      refreshEventMetadataInBackground(activeEvId);
+    }
+  }, 4000);
 });
 
 watch(
@@ -1139,6 +1144,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  if (hubSyncInterval) clearInterval(hubSyncInterval);
   stopCamera();
 });
 </script>
