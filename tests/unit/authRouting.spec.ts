@@ -63,13 +63,40 @@ describe('Auth Routing & Middleware Tests', () => {
   })
 
   describe('Route Middleware Guard Logic', () => {
-    function runMiddleware(toPath: string, tokenVal: string | null, roleIdVal: number | null, queryRedirect?: string, queryCode?: string) {
+    function runMiddleware(
+      toPath: string,
+      tokenVal: string | null,
+      roleIdVal: number | null,
+      queryRedirect?: string,
+      queryCode?: string,
+      isOnline: boolean = true,
+      lsToken?: string | null,
+      lsRoleId?: string | null
+    ) {
       const token = { value: tokenVal }
       const roleId = { value: roleIdVal }
-      const isAdmin = roleId.value === 1
 
-      // 1. Not authenticated → send to login
-      if (!token.value && toPath !== '/login' && toPath !== '/forgot-password') {
+      let activeToken = token.value
+      let activeRoleId = roleId.value
+
+      // Fallback from localStorage
+      if (!activeToken && lsToken) {
+        activeToken = lsToken.trim()
+        token.value = activeToken
+      }
+      if ((activeRoleId === null || activeRoleId === undefined) && lsRoleId) {
+        activeRoleId = parseInt(lsRoleId, 10)
+        roleId.value = activeRoleId
+      }
+
+      const isAdmin = activeRoleId === 1
+
+      // 1. Not authenticated → send to login (unless offline on scanner page)
+      if (!activeToken && toPath !== '/login' && toPath !== '/forgot-password') {
+        if (!isOnline && (toPath === '/scan' || toPath === '/scannings')) {
+          return null // allowed in offline mode
+        }
+
         let targetPath = toPath
         if (toPath === '/scannings' && queryCode) {
           targetPath = `/scan?code=${encodeURIComponent(queryCode)}`
@@ -83,7 +110,7 @@ describe('Auth Routing & Middleware Tests', () => {
       }
 
       // 3. Authenticated + trying to visit login/forgot-password → redirect away
-      if (token.value && (toPath === '/login' || toPath === '/forgot-password')) {
+      if (activeToken && (toPath === '/login' || toPath === '/forgot-password')) {
         if (queryRedirect) {
           if (queryRedirect.startsWith('/scannings?code=')) {
             const code = queryRedirect.split('/scannings?code=')[1]
@@ -97,14 +124,24 @@ describe('Auth Routing & Middleware Tests', () => {
       }
 
       // 4. Authenticated + non-admin trying to visit any page except /scannings or /scan → block instantly
-      if (token.value && !isAdmin && toPath !== '/scannings' && toPath !== '/scan') {
+      if (activeToken && !isAdmin && toPath !== '/scannings' && toPath !== '/scan') {
         return '/scan'
       }
 
       return null // allowed
     }
 
-    it('redirects unauthenticated user to /login', () => {
+    it('allows scan station to remain accessible when offline without blocking user', () => {
+      const result = runMiddleware('/scan', null, null, undefined, undefined, false)
+      expect(result).toBeNull()
+    })
+
+    it('hydrates missing cookie from localStorage on page reload', () => {
+      const result = runMiddleware('/scan', null, null, undefined, undefined, true, 'cached_offline_token', '2')
+      expect(result).toBeNull()
+    })
+
+    it('redirects unauthenticated user to /login when online', () => {
       const result = runMiddleware('/events', null, null)
       expect(result).toEqual({ path: '/login', query: { redirect: '/events' } })
     })
