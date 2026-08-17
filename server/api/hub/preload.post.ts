@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody, createError } from 'h3';
-import { localHubStore } from '~/server/utils/localHubStore';
+import { localHubStore } from '../../utils/localHubStore';
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);

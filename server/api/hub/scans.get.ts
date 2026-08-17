@@ -1,5 +1,5 @@
 import { defineEventHandler, getQuery } from 'h3';
-import { localHubStore } from '~/server/utils/localHubStore';
+import { localHubStore } from '../../utils/localHubStore';
 
 export default defineEventHandler((event) => {
   const query = getQuery(event);

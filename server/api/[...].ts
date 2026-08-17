@@ -1,5 +1,5 @@
 import { defineEventHandler, proxyRequest, readBody, getQuery } from 'h3';
-import { localHubStore } from '~/server/utils/localHubStore';
+import { localHubStore } from '../utils/localHubStore';
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event);
