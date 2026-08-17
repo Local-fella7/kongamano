@@ -59,17 +59,17 @@
     </div>
 
     <!-- Live Scan Statistics Breakdown Bar -->
-    <div class="scan-stats-bar d-flex align-items-center gap-2 overflow-x-auto pb-2 mb-3">
+    <div class="scan-stats-bar d-flex align-items-center gap-2.5 overflow-x-auto pb-2 mb-3">
       <!-- All Scans Pill -->
       <button
         type="button"
-        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
-        :class="(!selectedScanTypeFilter && !selectedServiceFilter) ? 'btn-primary text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        class="btn btn-sm rounded-pill px-3 py-2 fs-8 fw-bold text-nowrap d-flex align-items-center gap-2 transition-all shadow-2xs"
+        :class="(!selectedScanTypeFilter && !selectedServiceFilter) ? 'btn-primary text-white' : 'btn-light text-slate-800 border border-slate-300 bg-white'"
         @click="setQuickFilter('')"
       >
         <i class="bi bi-collection-fill"></i>
         <span>All Scans</span>
-        <span class="badge rounded-pill" :class="(!selectedScanTypeFilter && !selectedServiceFilter) ? 'bg-white text-primary' : 'bg-slate-200 text-slate-800'">
+        <span class="badge rounded-pill px-2.5 py-1 fs-8 fw-extrabold" :class="(!selectedScanTypeFilter && !selectedServiceFilter) ? 'bg-white text-primary' : 'bg-slate-100 text-slate-900 border border-slate-200'">
           {{ scanStatistics.totalScans }}
         </span>
       </button>
@@ -77,26 +77,27 @@
       <!-- Unique Attendees Pill (Deduplicated End-of-Day Count) -->
       <button
         type="button"
-        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
-        :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'btn-emerald text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        class="btn btn-sm rounded-pill px-3 py-2 fs-8 fw-bold text-nowrap d-flex align-items-center gap-2 transition-all shadow-2xs"
+        :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'btn-emerald text-white' : 'btn-light text-slate-800 border border-slate-300 bg-white'"
         @click="setQuickFilter('check_in')"
         title="Unique delegates who checked in today (deduplicated 1 per attendee)"
       >
         <i class="bi bi-person-check-fill text-emerald-600" :class="{ 'text-white': selectedScanTypeFilter === 'check_in' && !selectedServiceFilter }"></i>
         <span>Unique Attendees</span>
-        <span class="badge rounded-pill" :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'bg-white text-emerald-700' : 'bg-emerald-100 text-emerald-800'">
+        <span class="badge rounded-pill px-2.5 py-1 fs-8 fw-extrabold" :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'bg-white text-emerald-700' : 'bg-emerald-50 text-emerald-800 border border-emerald-300'">
           {{ scanStatistics.uniqueAttendeesCount }}
         </span>
       </button>
 
-      <!-- Currently Inside Pill -->
+      <!-- Currently Inside Pill (High Visibility) -->
       <div
-        class="badge bg-white text-slate-700 border border-slate-200 rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 shadow-2xs"
-        title="Delegates currently inside (checked in without a subsequent check-out)"
+        class="stat-inside-pill d-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-white border border-slate-300 shadow-2xs text-slate-900 fs-8 fw-bold text-nowrap"
+        title="Delegates currently inside the venue (most recent scan was check-in)"
       >
-        <i class="bi bi-building-check text-primary"></i>
+        <span class="pulse-dot bg-success rounded-circle me-0.5" style="width: 8px; height: 8px; display: inline-block;"></span>
+        <i class="bi bi-geo-alt-fill text-primary"></i>
         <span>Inside Now</span>
-        <span class="badge rounded-pill bg-primary text-white">
+        <span class="badge rounded-pill px-2.5 py-1 fs-8 fw-extrabold bg-primary text-white shadow-2xs">
           {{ scanStatistics.currentlyInside }}
         </span>
       </div>
@@ -104,14 +105,14 @@
       <!-- Raw Check-ins Pill (Includes Re-entries) -->
       <button
         type="button"
-        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
-        :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'btn-emerald text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        class="btn btn-sm rounded-pill px-3 py-2 fs-8 fw-bold text-nowrap d-flex align-items-center gap-2 transition-all shadow-2xs"
+        :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'btn-emerald text-white' : 'btn-light text-slate-800 border border-slate-300 bg-white'"
         @click="setQuickFilter('check_in')"
         title="Total check-in transactions recorded (first check-ins + re-entries)"
       >
         <i class="bi bi-qr-code-scan text-emerald-600" :class="{ 'text-white': selectedScanTypeFilter === 'check_in' && !selectedServiceFilter }"></i>
         <span>Total Check-ins</span>
-        <span class="badge rounded-pill" :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'bg-white text-emerald-700' : 'bg-slate-200 text-slate-700'">
+        <span class="badge rounded-pill px-2.5 py-1 fs-8 fw-extrabold" :class="(selectedScanTypeFilter === 'check_in' && !selectedServiceFilter) ? 'bg-white text-emerald-700' : 'bg-slate-100 text-slate-900 border border-slate-200'">
           {{ scanStatistics.totalCheckIns }}
         </span>
       </button>
@@ -119,13 +120,13 @@
       <!-- Check-outs Pill -->
       <button
         type="button"
-        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
-        :class="(selectedScanTypeFilter === 'check_out') ? 'btn-danger text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        class="btn btn-sm rounded-pill px-3 py-2 fs-8 fw-bold text-nowrap d-flex align-items-center gap-2 transition-all shadow-2xs"
+        :class="(selectedScanTypeFilter === 'check_out') ? 'btn-danger text-white' : 'btn-light text-slate-800 border border-slate-300 bg-white'"
         @click="setQuickFilter('check_out')"
       >
         <i class="bi bi-door-closed-fill text-danger" :class="{ 'text-white': selectedScanTypeFilter === 'check_out' }"></i>
         <span>Check-outs</span>
-        <span class="badge rounded-pill" :class="(selectedScanTypeFilter === 'check_out') ? 'bg-white text-danger' : 'bg-rose-100 text-rose-800'">
+        <span class="badge rounded-pill px-2.5 py-1 fs-8 fw-extrabold" :class="(selectedScanTypeFilter === 'check_out') ? 'bg-white text-danger' : 'bg-rose-50 text-rose-800 border border-rose-200'">
           {{ scanStatistics.totalCheckOuts }}
         </span>
       </button>
@@ -135,13 +136,13 @@
         v-for="srv in scanStatistics.services"
         :key="srv.id"
         type="button"
-        class="btn btn-sm rounded-pill px-3 py-1.5 fs-8 fw-semibold text-nowrap d-flex align-items-center gap-1.5 transition-all"
-        :class="(selectedServiceFilter === srv.id) ? 'btn-purple text-white shadow-2xs' : 'btn-light text-slate-700 border border-slate-200'"
+        class="btn btn-sm rounded-pill px-3 py-2 fs-8 fw-bold text-nowrap d-flex align-items-center gap-2 transition-all shadow-2xs"
+        :class="(selectedServiceFilter === srv.id) ? 'btn-purple text-white' : 'btn-light text-slate-800 border border-slate-300 bg-white'"
         @click="setQuickFilter('service', srv.id)"
       >
         <i class="bi bi-gift-fill text-purple-600" :class="{ 'text-white': selectedServiceFilter === srv.id }"></i>
         <span>{{ srv.name }}</span>
-        <span class="badge rounded-pill" :class="(selectedServiceFilter === srv.id) ? 'bg-white text-purple-700' : 'bg-purple-100 text-purple-800'">
+        <span class="badge rounded-pill px-2.5 py-1 fs-8 fw-extrabold" :class="(selectedServiceFilter === srv.id) ? 'bg-white text-purple-700' : 'bg-purple-50 text-purple-800 border border-purple-200'">
           {{ srv.count }}
         </span>
       </button>
@@ -183,6 +184,29 @@
           <option value="service">Service Access</option>
           <option value="check_out">Event Check-out</option>
         </select>
+
+        <!-- Date Filter Dropdown -->
+        <select
+          v-model="selectedDateFilter"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 175px;"
+          @change="handleDateFilterChange"
+        >
+          <option value="">All Dates</option>
+          <option value="today">Today ({{ todayFormattedStr }})</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="custom">Specific Date...</option>
+        </select>
+
+        <!-- Custom Date Input -->
+        <input
+          v-if="selectedDateFilter === 'custom'"
+          v-model="customDateFilter"
+          type="date"
+          class="form-control form-control-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
+          style="max-width: 160px;"
+          @change="currentPage = 1"
+        />
 
         <!-- Specific Service Filter Dropdown (always accessible when services exist) -->
         <select
@@ -598,6 +622,8 @@ const claimingServiceId = ref<number | string | null>(null);
 const searchQuery = ref('');
 const selectedScanTypeFilter = ref('');
 const selectedServiceFilter = ref<number | string>('');
+const selectedDateFilter = ref('');
+const customDateFilter = ref('');
 const currentPage = ref(1);
 const perPage = ref(10);
 
@@ -607,6 +633,49 @@ function handleScanTypeChange() {
   }
   currentPage.value = 1;
 }
+
+function handleDateFilterChange() {
+  if (selectedDateFilter.value !== 'custom') {
+    customDateFilter.value = '';
+  }
+  currentPage.value = 1;
+}
+
+const todayFormattedStr = computed(() => {
+  return getTodayDateStr();
+});
+
+function getLogDateStr(l: any): string | null {
+  if (!l?.created_at) return null;
+  const raw = String(l.created_at).trim();
+  try {
+    let parseable = raw.replace(' ', 'T');
+    if (!/Z|[+-]\d{2}:?\d{2}$/i.test(parseable)) parseable += 'Z';
+    const d = new Date(parseable);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+    }
+  } catch {}
+  try {
+    const d2 = new Date(raw.replace(' ', 'T'));
+    if (!isNaN(d2.getTime())) {
+      return d2.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+    }
+  } catch {}
+  return raw.substring(0, 10);
+}
+
+const activeTargetDate = computed(() => {
+  if (!selectedDateFilter.value) return null;
+  if (selectedDateFilter.value === 'today') return getTodayDateStr();
+  if (selectedDateFilter.value === 'yesterday') {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+  }
+  if (selectedDateFilter.value === 'custom') return customDateFilter.value || null;
+  return null;
+});
 
 function setQuickFilter(type: '' | 'check_in' | 'check_out' | 'service', serviceId?: number | string) {
   if (type === 'service') {
@@ -996,8 +1065,12 @@ const scanStatistics = computed(() => {
     }
   }
 
-  // 2. Count from actual logs and dynamically discover any service in logs
-  for (const l of logs.value) {
+  // 2. Count from actual logs (filtered by selected date if set) and dynamically discover any service in logs
+  const targetLogs = activeTargetDate.value
+    ? logs.value.filter((l: any) => getLogDateStr(l) === activeTargetDate.value)
+    : logs.value;
+
+  for (const l of targetLogs) {
     totalScans++;
 
     // Attendee deduplication identifier
@@ -1094,6 +1167,13 @@ const scanStatistics = computed(() => {
 const filteredLogs = computed(() => {
   let list = logs.value;
 
+  // 1. Date Filter (Today, Yesterday, Specific Date)
+  if (activeTargetDate.value) {
+    const targetDate = activeTargetDate.value;
+    list = list.filter((l: any) => getLogDateStr(l) === targetDate);
+  }
+
+  // 2. Service Filter
   if (selectedServiceFilter.value) {
     const targetServiceId = Number(selectedServiceFilter.value);
     list = list.filter((l: any) => {
@@ -1108,6 +1188,7 @@ const filteredLogs = computed(() => {
     }
   }
 
+  // 3. Search Query
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim();
     list = list.filter((l: any) => {
@@ -1802,6 +1883,21 @@ onUnmounted(() => {
 .btn-purple:hover:not(:disabled) {
   background-color: #6b21a8;
   color: #ffffff;
+}
+
+.stat-inside-pill {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.pulse-dot {
+  animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
 }
 
 .scan-stats-bar::-webkit-scrollbar {

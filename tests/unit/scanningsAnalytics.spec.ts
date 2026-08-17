@@ -137,8 +137,15 @@ describe('Scannings Analytics & Service Breakdown Unit Tests', () => {
   }
 
   // ── Helper 3: Filter Logs ──────────────────────────────────────────────────
-  function filterLogs(logs: any[], selectedScanType: string, selectedServiceId: number | string, searchQuery = '') {
+  function filterLogs(logs: any[], selectedScanType: string, selectedServiceId: number | string, searchQuery = '', targetDate?: string) {
     let list = logs
+
+    if (targetDate) {
+      list = list.filter((l: any) => {
+        const raw = String(l.created_at || '').trim()
+        return raw.startsWith(targetDate)
+      })
+    }
 
     if (selectedServiceId) {
       const targetSrvId = Number(selectedServiceId)
@@ -300,6 +307,23 @@ describe('Scannings Analytics & Service Breakdown Unit Tests', () => {
       const filtered = filterLogs(sampleLogs, 'check_out', '')
       expect(filtered.length).toBe(1)
       expect(filtered[0].scan_type).toBe('check_out')
+    })
+
+    it('filters scans by specific target date (YYYY-MM-DD)', () => {
+      const multiDayLogs = [
+        { id: 1, scan_type: 'check_in', qr_code: 'REG-1-001', created_at: '2026-08-16T08:30:00Z' },
+        { id: 2, scan_type: 'service', service_id: 10, qr_code: 'REG-1-001', created_at: '2026-08-16T12:00:00Z' },
+        { id: 3, scan_type: 'check_in', qr_code: 'REG-1-002', created_at: '2026-08-17T09:15:00Z' },
+        { id: 4, scan_type: 'check_in', qr_code: 'REG-1-003', created_at: '2026-08-17T10:00:00Z' },
+      ]
+
+      const day1Logs = filterLogs(multiDayLogs, '', '', '', '2026-08-16')
+      const day2Logs = filterLogs(multiDayLogs, '', '', '', '2026-08-17')
+
+      expect(day1Logs.length).toBe(2)
+      expect(day2Logs.length).toBe(2)
+      expect(day1Logs.every((l) => l.created_at.startsWith('2026-08-16'))).toBe(true)
+      expect(day2Logs.every((l) => l.created_at.startsWith('2026-08-17'))).toBe(true)
     })
   })
 
