@@ -1,19 +1,19 @@
 <template>
   <div class="scannings-page d-flex flex-column min-vh-100">
     <!-- Page Header -->
-    <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
-      <div class="d-flex align-items-center gap-3">
+    <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3 mb-md-4">
+      <div class="d-flex align-items-center gap-2.5">
         <div class="header-icon-box">
           <i class="bi bi-qr-code-scan"></i>
         </div>
         <div>
-          <h2 class="page-heading">Scannings & Check-ins</h2>
-          <p class="page-subheading">Live attendee check-in scanner and event service access logs.</p>
+          <h2 class="page-heading fs-5 fs-md-4 mb-0">Scannings & Check-ins</h2>
+          <p class="page-subheading fs-8 fs-md-7 mb-0">Live attendee check-in scanner and event service access logs.</p>
         </div>
       </div>
 
       <!-- Action Buttons -->
-      <div class="d-flex align-items-center flex-wrap gap-2">
+      <div class="header-actions-wrap d-flex align-items-center flex-wrap gap-2 w-100 w-sm-auto">
         <div v-if="pendingCount > 0" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill py-2 px-3 fs-8 fw-semibold d-flex align-items-center gap-1.5" title="Queued scans syncing in background">
           <span class="spinner-grow spinner-grow-sm text-warning" role="status"></span>
           <span>{{ pendingCount }} Syncing</span>
@@ -39,7 +39,7 @@
         </div>
 
         <button
-          class="btn btn-outline-primary rounded-3 py-2 px-3 fw-semibold fs-7 shadow-2xs d-flex align-items-center gap-2"
+          class="btn btn-outline-primary rounded-3 py-2 px-3 fw-semibold fs-8 shadow-2xs d-flex align-items-center justify-content-center gap-2 flex-grow-1 flex-sm-grow-0"
           :disabled="!selectedEventId"
           @click="showManualModal = true"
         >
@@ -48,7 +48,7 @@
         </button>
 
         <button
-          class="btn btn-emerald rounded-3 py-2 px-3 fw-bold fs-7 shadow-2xs d-flex align-items-center gap-2"
+          class="btn btn-emerald rounded-3 py-2 px-3 fw-bold fs-8 shadow-2xs d-flex align-items-center justify-content-center gap-2 flex-grow-1 flex-sm-grow-0"
           :disabled="!selectedEventId"
           @click="openCameraModal"
         >
@@ -59,7 +59,7 @@
     </div>
 
     <!-- Live Scan Statistics Breakdown Bar -->
-    <div class="scan-stats-bar d-flex align-items-center gap-2.5 overflow-x-auto pb-2 mb-3">
+    <div class="scan-stats-bar d-flex align-items-center gap-2 overflow-x-auto pb-2 mb-3">
       <!-- All Scans Pill -->
       <button
         type="button"
@@ -163,8 +163,7 @@
         <!-- Target Event Filter Dropdown -->
         <select
           v-model.number="selectedEventId"
-          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
-          style="max-width: 220px;"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs filter-select"
         >
           <option value="" disabled>Select Event...</option>
           <option v-for="ev in eventsList" :key="ev.id" :value="Number(ev.id)">
@@ -175,8 +174,7 @@
         <!-- Scan Type Filter Dropdown -->
         <select
           v-model="selectedScanTypeFilter"
-          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
-          style="max-width: 175px;"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs filter-select"
           @change="handleScanTypeChange"
         >
           <option value="">All Scan Types</option>
@@ -188,8 +186,7 @@
         <!-- Date Filter Dropdown -->
         <select
           v-model="selectedDateFilter"
-          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
-          style="max-width: 175px;"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs filter-select"
           @change="handleDateFilterChange"
         >
           <option value="">All Dates</option>
@@ -203,8 +200,7 @@
           v-if="selectedDateFilter === 'custom'"
           v-model="customDateFilter"
           type="date"
-          class="form-control form-control-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
-          style="max-width: 160px;"
+          class="form-control form-control-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs filter-select"
           @change="currentPage = 1"
         />
 
@@ -212,8 +208,7 @@
         <select
           v-if="servicesList.length > 0"
           v-model="selectedServiceFilter"
-          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs"
-          style="max-width: 200px;"
+          class="form-select form-select-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs filter-select"
         >
           <option value="">All Services ({{ scanStatistics.totalServiceScans }})</option>
           <option v-for="srv in scanStatistics.services" :key="srv.id" :value="srv.id">
@@ -1944,5 +1939,61 @@ onUnmounted(() => {
   color: var(--slate-300);
   font-size: 0.8rem;
   width: 40px;
+}
+
+/* ── Mobile Responsive Styles ───────────────────────────────── */
+.filter-select {
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+
+.scan-stats-bar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.scan-stats-bar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .scannings-page {
+    padding: 0.25rem 0;
+  }
+
+  .header-actions-wrap {
+    width: 100%;
+  }
+
+  .header-actions-wrap .btn {
+    min-height: 40px;
+  }
+
+  .filter-select {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .row-index {
+    display: none;
+  }
+
+  .data-table th:first-child {
+    display: none;
+  }
+
+  .page-heading {
+    font-size: 1.15rem;
+  }
+
+  .page-subheading {
+    font-size: 0.75rem;
+  }
 }
 </style>
