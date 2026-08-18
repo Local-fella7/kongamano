@@ -184,6 +184,7 @@ const navGroups = [
         name: 'Setup',
         icon: 'bi-gear-wide-connected',
         children: [
+          { name: 'Local Hub Station', to: '/setup/local-hub', icon: 'bi-router-fill' },
           { name: 'Roles', to: '/setup/roles', icon: 'bi-shield-fill-check' },
           { name: 'Event Types', to: '/setup/event-types', icon: 'bi-tag-fill' },
           { name: 'Payment Modes', to: '/setup/payment-modes', icon: 'bi-wallet2' },
