@@ -906,6 +906,18 @@ async function handleClaimService(serviceId: number | string) {
 async function executeScanAction(type: 'check_in' | 'service' | 'check_out', serviceId?: number | string) {
   if (!selectedEventId.value || !scannedQrCode.value) return;
 
+  if (isSelectedEventCompleted.value) {
+    push.error({
+      title: 'Event Has Ended',
+      message: `Cannot record scan: "${selectedEventName.value}" has already completed. Check-ins and service claims are closed.`,
+    });
+    scanFeedback.value = {
+      type: 'error',
+      message: `Scan Rejected: "${selectedEventName.value}" has already completed.`,
+    };
+    return;
+  }
+
   isSubmitting.value = true;
   const qr = scannedQrCode.value;
   const attendee = scannedAttendee.value;
