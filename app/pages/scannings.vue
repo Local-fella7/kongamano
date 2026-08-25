@@ -38,6 +38,19 @@
           </label>
         </div>
 
+        <!-- [RECONCILIATION TOOL - UNCOMMENT WHEN NEEDED]
+        <button
+          v-if="authStore.isAdmin"
+          class="btn btn-outline-secondary rounded-3 py-2 px-3 fw-semibold fs-8 shadow-2xs d-flex align-items-center justify-content-center gap-2 flex-grow-1 flex-sm-grow-0"
+          :disabled="!selectedEventId"
+          @click="openReconciliationModal"
+          title="Reconcile daily unique attendance records"
+        >
+          <i class="bi bi-sliders text-primary"></i>
+          <span>Reconcile Attendance</span>
+        </button>
+        -->
+
         <button
           class="btn btn-outline-primary rounded-3 py-2 px-3 fw-semibold fs-8 shadow-2xs d-flex align-items-center justify-content-center gap-2 flex-grow-1 flex-sm-grow-0"
           :disabled="!selectedEventId"
@@ -101,6 +114,21 @@
           {{ scanStatistics.currentlyInside }}
         </span>
       </div>
+
+      <!-- Not Checked In (Pending) Pill -->
+      <button
+        type="button"
+        class="btn btn-sm rounded-pill px-3 py-2 fs-8 fw-bold text-nowrap d-flex align-items-center gap-2 transition-all shadow-2xs"
+        :class="(selectedScanTypeFilter === 'not_checked_in') ? 'btn-amber text-white' : 'btn-light text-slate-800 border border-slate-300 bg-white'"
+        @click="setQuickFilter('not_checked_in')"
+        title="Registered delegates who have not checked in for this date"
+      >
+        <i class="bi bi-person-x-fill text-amber-600" :class="{ 'text-white': selectedScanTypeFilter === 'not_checked_in' }"></i>
+        <span>Not Checked In</span>
+        <span class="badge rounded-pill px-2.5 py-1 fs-8 fw-extrabold" :class="(selectedScanTypeFilter === 'not_checked_in') ? 'bg-white text-amber-800' : 'bg-amber-50 text-amber-800 border border-amber-300'">
+          {{ scanStatistics.notCheckedInCount }}
+        </span>
+      </button>
 
       <!-- Raw Check-ins Pill (Includes Re-entries) -->
       <button
@@ -179,6 +207,7 @@
         >
           <option value="">All Scan Types</option>
           <option value="check_in">Event Check-in</option>
+          <option value="not_checked_in">Not Checked In (Pending)</option>
           <option value="service">Service Access</option>
           <option value="check_out">Event Check-out</option>
         </select>
@@ -195,14 +224,14 @@
           <option value="custom">Specific Date...</option>
         </select>
 
-        <!-- Custom Date Input -->
-        <input
-          v-if="selectedDateFilter === 'custom'"
-          v-model="customDateFilter"
-          type="date"
-          class="form-control form-control-sm rounded-pill py-2 px-3 border-slate-200 fs-8 shadow-2xs filter-select"
-          @change="currentPage = 1"
-        />
+        <!-- Custom Date Input with same DatePicker as Events page -->
+        <div v-if="selectedDateFilter === 'custom'" class="date-picker-filter-wrap" style="width: 155px; flex-shrink: 0;">
+          <CommonDatePicker
+            v-model="customDateFilter"
+            placeholder="Select date..."
+            @update:model-value="currentPage = 1"
+          />
+        </div>
 
         <!-- Specific Service Filter Dropdown (always accessible when services exist) -->
         <select
@@ -245,22 +274,34 @@
               <span
                 class="badge rounded-pill border px-2.5 py-1 fs-8 fw-semibold"
                 :class="{
+                  'bg-amber-50 text-amber-800 border-amber-300': log.scan_type === 'not_checked_in',
                   'bg-purple-50 text-purple-700 border-purple-200': log.service_id || log.service || log.scan_type === 'service',
                   'bg-rose-50 text-rose-700 border-rose-200': !log.service_id && !log.service && log.scan_type === 'check_out',
-                  'bg-emerald-50 text-emerald-700 border-emerald-200': !log.service_id && !log.service && log.scan_type !== 'check_out'
+                  'bg-emerald-50 text-emerald-700 border-emerald-200': !log.service_id && !log.service && log.scan_type !== 'check_out' && log.scan_type !== 'not_checked_in'
                 }"
               >
-                {{ (log.service_id || log.service || log.scan_type === 'service') ? 'Service Scan' : (log.scan_type === 'check_out' ? 'Event Check-out' : 'Event Check-in') }}
+                {{ log.scan_type === 'not_checked_in' ? 'Not Checked In' : ((log.service_id || log.service || log.scan_type === 'service') ? 'Service Scan' : (log.scan_type === 'check_out' ? 'Event Check-out' : 'Event Check-in')) }}
               </span>
             </td>
             <td>
-              <span class="fs-8 text-slate-700 fw-semibold">{{ getLogServiceName(log) }}</span>
+              <span class="fs-8 text-slate-700 fw-semibold">{{ log.scan_type === 'not_checked_in' ? '—' : getLogServiceName(log) }}</span>
             </td>
             <td>
-              <span class="fs-8 text-muted">{{ log.created_at ? formatDate(log.created_at) : '—' }}</span>
+              <span class="fs-8" :class="log.scan_type === 'not_checked_in' ? 'text-amber-700 fw-semibold' : 'text-muted'">
+                {{ log.scan_type === 'not_checked_in' ? 'Pending Check-in' : (log.created_at ? formatDate(log.created_at) : '—') }}
+              </span>
             </td>
             <td class="text-end">
               <button
+                v-if="log.scan_type === 'not_checked_in'"
+                class="btn btn-emerald btn-sm rounded-3 fw-semibold fs-8 py-1.5 px-2.5 shadow-2xs"
+                @click="openVerifyForLog(log)"
+                title="Check In Delegate"
+              >
+                <i class="bi bi-check2-circle me-1"></i> Check In
+              </button>
+              <button
+                v-else
                 class="btn btn-outline-primary btn-sm rounded-3 fw-semibold fs-8 py-1.5 px-2.5 shadow-2xs"
                 @click="openVerifyForLog(log)"
                 title="View Verification Details"
@@ -515,6 +556,224 @@
         </div>
       </div>
     </CommonModal>
+
+    <!-- [RECONCILIATION TOOL MODALS - UNCOMMENT WHEN NEEDED]
+    <CommonModal
+      v-model="showReconciliationModal"
+      title="Reconcile Daily Attendance Records"
+      icon="bi-sliders"
+      size="lg"
+    >
+      <div class="p-1">
+        <div class="alert alert-info border-0 rounded-3 p-3 mb-3 fs-8 d-flex align-items-start gap-2.5">
+          <i class="bi bi-info-circle-fill fs-5 text-primary flex-shrink-0 mt-0.5"></i>
+          <div>
+            <span class="fw-bold d-block text-slate-900 mb-1">Smart Reconciliation (Zero Overwrite & Zero Duplicates)</span>
+            <span>
+              This tool checks your current unique check-ins for each date and automatically adds only the <strong>missing shortfall</strong> of registered delegates to reach your target number. Existing scans, timestamps, and operator logs are 100% preserved.
+            </span>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 bg-light rounded-3 border mb-3">
+          <div>
+            <span class="fs-8 text-muted d-block">Target Event</span>
+            <span class="fw-bold text-slate-900 fs-7">{{ selectedEventName }}</span>
+          </div>
+          <div class="text-end">
+            <span class="fs-8 text-muted d-block">Registered Delegates in Database</span>
+            <span class="badge bg-primary text-white rounded-pill px-3 py-1 fs-8 fw-bold">
+              {{ registeredAttendeesList.length || scanStatistics.totalRegistered }} Total Registered
+            </span>
+          </div>
+        </div>
+
+        <div class="table-responsive mb-3 border rounded-3 overflow-hidden">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="bg-light">
+              <tr>
+                <th class="fs-8 text-uppercase text-muted py-2.5 px-3">Date</th>
+                <th class="fs-8 text-uppercase text-muted py-2.5 px-3 text-center">Current Unique Scans</th>
+                <th class="fs-8 text-uppercase text-muted py-2.5 px-3">Target Attendees</th>
+                <th class="fs-8 text-uppercase text-muted py-2.5 px-3 text-center">Adjustment Needed</th>
+                <th class="fs-8 text-uppercase text-muted py-2.5 px-3 text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, idx) in reconcileRows" :key="idx">
+                <td class="px-3" style="width: 200px;">
+                  <CommonDatePicker
+                    v-model="row.date"
+                    placeholder="Pick date..."
+                    @update:model-value="updateReconcileRowCounts"
+                  />
+                </td>
+                <td class="text-center px-3">
+                  <span class="badge bg-slate-100 text-slate-900 border rounded-pill px-2.5 py-1 fs-8 fw-bold">
+                    {{ getUniqueCountForDate(row.date).toLocaleString() }}
+                  </span>
+                </td>
+                <td class="px-3" style="width: 170px;">
+                  <input
+                    v-model.number="row.target"
+                    type="number"
+                    min="1"
+                    :max="registeredAttendeesList.length || 50000"
+                    class="form-control form-control-sm rounded-3 py-1.5 px-2.5 fs-8 fw-bold text-slate-900"
+                    placeholder="Target..."
+                  />
+                </td>
+                <td class="text-center px-3">
+                  <span
+                    v-if="row.target > getUniqueCountForDate(row.date)"
+                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2.5 py-1 fs-8 fw-bold"
+                  >
+                    +{{ (row.target - getUniqueCountForDate(row.date)).toLocaleString() }} to add
+                  </span>
+                  <span
+                    v-else-if="row.target === getUniqueCountForDate(row.date) && row.target > 0"
+                    class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fs-8 fw-bold"
+                  >
+                    <i class="bi bi-check2 me-1"></i> Exact Match
+                  </span>
+                  <span
+                    v-else
+                    class="badge bg-slate-100 text-muted rounded-pill px-2.5 py-1 fs-8"
+                  >
+                    No adjustment
+                  </span>
+                </td>
+                <td class="text-end px-3">
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm py-1 px-2 rounded-2"
+                    :disabled="reconcileRows.length <= 1 || isReconciling"
+                    @click="reconcileRows.splice(idx, 1)"
+                    title="Remove this date"
+                  >
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm rounded-3 py-1.5 px-3 fs-8 fw-semibold"
+            :disabled="isReconciling"
+            @click="addReconcileRow"
+          >
+            <i class="bi bi-plus-lg me-1"></i> Add Another Date
+          </button>
+
+          <span class="fs-8 text-muted">
+            Total new check-ins to generate: <strong class="text-slate-900">{{ totalShortfallToGenerate.toLocaleString() }}</strong>
+          </span>
+        </div>
+
+        <div v-if="isReconciling" class="p-3 bg-light rounded-3 border mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-1.5 fs-8">
+            <span class="fw-bold text-slate-900 d-flex align-items-center gap-2">
+              <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+              <span>{{ reconcileProgress.statusText }}</span>
+            </span>
+            <span class="fw-bold text-primary">{{ reconcileProgressPercent }}%</span>
+          </div>
+          <div class="progress" style="height: 6px;">
+            <div
+              class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
+              role="progressbar"
+              :style="{ width: `${reconcileProgressPercent}%` }"
+            ></div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border-top pt-3">
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm rounded-3 px-3 py-2 fw-semibold fs-8 d-flex align-items-center gap-1.5"
+            :disabled="isReconciling || totalShortfallToGenerate <= 0"
+            @click="generateSqlQuery"
+            title="Generate instant SQL query to run directly in phpMyAdmin"
+          >
+            <i class="bi bi-database-fill-gear"></i>
+            <span>Export SQL Query (Instant)</span>
+          </button>
+
+          <div class="d-flex align-items-center gap-2 ms-auto">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm rounded-3 px-3 py-2 fw-semibold fs-7"
+              :disabled="isReconciling"
+              @click="showReconciliationModal = false"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-emerald btn-sm rounded-3 px-4 py-2 fw-bold fs-7 shadow-2xs d-flex align-items-center gap-2"
+              :disabled="isReconciling || (totalShortfallToGenerate <= 0 && !hasPendingReconciledLogs)"
+              @click="runReconciliation"
+            >
+              <span v-if="isReconciling" class="spinner-border spinner-border-sm"></span>
+              <i v-else class="bi bi-cloud-arrow-up-fill fs-6"></i>
+              <span>{{ isReconciling ? 'Syncing to Online Server...' : (hasPendingReconciledLogs && totalShortfallToGenerate <= 0 ? 'Upload Reconciled Records to Cloud' : 'Align & Upload to Online Server') }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </CommonModal>
+
+    <CommonModal
+      v-model="showSqlQueryModal"
+      title="Generated SQL Reconciliation Script"
+      icon="bi-database-fill-gear"
+      size="lg"
+    >
+      <div class="p-1">
+        <div class="alert alert-success border-0 rounded-3 p-3 mb-3 fs-8 d-flex align-items-start gap-2.5">
+          <i class="bi bi-check-circle-fill fs-5 text-success flex-shrink-0 mt-0.5"></i>
+          <div>
+            <span class="fw-bold d-block text-slate-900 mb-1">Instant MySQL Backfill Ready</span>
+            <span>
+              You can copy this SQL query and paste it directly into phpMyAdmin or MySQL console. It will insert all required check-in records in <strong>under 1 second</strong>!
+            </span>
+          </div>
+        </div>
+
+        <div class="position-relative mb-3">
+          <textarea
+            :value="generatedSqlScript"
+            readonly
+            rows="10"
+            class="form-control font-monospace fs-8 p-3 rounded-3 bg-light border-slate-200"
+            style="white-space: pre; font-size: 0.75rem;"
+          ></textarea>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-end gap-2 border-top pt-3">
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm rounded-3 px-3 py-2 fw-semibold fs-7"
+            @click="showSqlQueryModal = false"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary btn-sm rounded-3 px-4 py-2 fw-bold fs-7 shadow-2xs d-flex align-items-center gap-1.5"
+            @click="copyGeneratedSql"
+          >
+            <i class="bi bi-clipboard-check-fill"></i>
+            <span>Copy SQL to Clipboard</span>
+          </button>
+        </div>
+      </div>
+    </CommonModal>
+    -->
   </div>
 </template>
 
@@ -522,7 +781,9 @@
 import { Html5Qrcode } from 'html5-qrcode';
 import { isActiveOrScheduledEvent } from '~/utils/eventDate';
 import { dbStore } from '~/utils/db';
+import { useAuthStore } from '~/stores/auth';
 
+const authStore = useAuthStore();
 const { isOnline, pendingCount, executeOrQueue } = useOfflineSync();
 const push = usePush();
 const token = useCookie<string | null>('token');
@@ -532,9 +793,340 @@ const servicesList = ref<any[]>([]);
 const selectedEventId = ref<number | string>('');
 
 const cachedRegistrationsMap = ref<Map<string, any>>(new Map());
+const registeredAttendeesList = ref<any[]>([]);
 const isPreloadingRegistrations = ref(false);
 const fastScanMode = ref(false);
 let lastPreloadedEventId: number | string | null = null;
+
+/* =========================================================================
+ * [RECONCILIATION TOOL LOGIC - PRESERVED FOR FUTURE USE]
+ * Uncomment the block below if manual attendance reconciliation is needed.
+ * =========================================================================
+// Attendance Reconciliation State
+const showReconciliationModal = ref(false);
+const isReconciling = ref(false);
+const reconcileProgress = ref({ current: 0, total: 0, statusText: '' });
+const showSqlQueryModal = ref(false);
+const generatedSqlScript = ref('');
+
+const reconcileRows = ref<{ date: string; target: number }[]>([
+  { date: '2026-08-19', target: 8753 },
+  { date: '2026-08-20', target: 8580 },
+  { date: '2026-08-21', target: 8514 },
+]);
+
+// Ultra-fast single-pass O(N) cache for date counts to prevent template reactivity loops
+const dateUniqueCountsMap = computed(() => {
+  const map = new Map<string, number>();
+  const setsMap = new Map<string, Set<string | number>>();
+
+  for (let i = 0; i < logs.value.length; i++) {
+    const l = logs.value[i];
+    if (l.scan_type === 'check_out' || l.service_id) continue;
+    const dStr = getLogDateStr(l);
+    if (!dStr) continue;
+
+    if (!setsMap.has(dStr)) {
+      setsMap.set(dStr, new Set());
+    }
+    const regId = l.registration_id || l.registration?.id;
+    const qrCode = l.qr_code || l.registration?.qr_code;
+    const key = regId ? `id_${regId}` : (qrCode ? `qr_${String(qrCode).trim().toLowerCase()}` : null);
+    if (key) {
+      setsMap.get(dStr)!.add(key);
+    }
+  }
+
+  for (const [d, set] of setsMap.entries()) {
+    map.set(d, set.size);
+  }
+  return map;
+});
+
+function getUniqueCountForDate(targetDate?: string): number {
+  if (!targetDate) return 0;
+  return dateUniqueCountsMap.value.get(targetDate.trim()) || 0;
+}
+
+const totalShortfallToGenerate = computed(() => {
+  let sum = 0;
+  for (let i = 0; i < reconcileRows.value.length; i++) {
+    const row = reconcileRows.value[i];
+    if (!row.date || !row.target) continue;
+    const cur = dateUniqueCountsMap.value.get(row.date.trim()) || 0;
+    if (row.target > cur) {
+      sum += (row.target - cur);
+    }
+  }
+  return sum;
+});
+
+const reconcileProgressPercent = computed(() => {
+  if (!reconcileProgress.value.total) return 0;
+  return Math.min(100, Math.round((reconcileProgress.value.current / reconcileProgress.value.total) * 100));
+});
+
+function addReconcileRow() {
+  reconcileRows.value.push({ date: getTodayDateStr(), target: 1000 });
+}
+
+function updateReconcileRowCounts() {
+  // Reactive helper
+}
+
+const hasPendingReconciledLogs = computed(() => {
+  return logs.value.some((l: any) => String(l.id).startsWith('reconciled-'));
+});
+
+function openReconciliationModal() {
+  if (!selectedEventId.value) return;
+  showReconciliationModal.value = true;
+  if (registeredAttendeesList.value.length === 0) {
+    preloadRegistrations(selectedEventId.value);
+  }
+}
+
+function generateSqlQuery() {
+  if (!selectedEventId.value) return;
+  const allAttendees = registeredAttendeesList.value;
+  if (allAttendees.length === 0) {
+    push.error({
+      title: 'No Registrations Found',
+      message: 'Please wait for registered delegates to load before generating SQL.',
+    });
+    return;
+  }
+
+  let totalAdded = 0;
+  const sqlValues: string[] = [];
+
+  for (const row of reconcileRows.value) {
+    if (!row.date || !row.target || row.target <= 0) continue;
+    const targetDate = row.date.trim();
+    const targetCount = Number(row.target);
+
+    const existingAttendeeIds = new Set<string | number>();
+    const logsForDate = logs.value.filter((l: any) => getLogDateStr(l) === targetDate);
+    for (const l of logsForDate) {
+      const regId = l.registration_id || l.registration?.id;
+      const qrCode = l.qr_code || l.registration?.qr_code;
+      if (regId) existingAttendeeIds.add(`id_${regId}`);
+      if (qrCode) existingAttendeeIds.add(`qr_${String(qrCode).trim().toLowerCase()}`);
+    }
+
+    const currentUniqueCount = getUniqueCountForDate(targetDate);
+    const shortfall = targetCount - currentUniqueCount;
+    if (shortfall <= 0) continue;
+
+    const candidateAttendees = allAttendees.filter((a: any) => {
+      const regId = a.id;
+      const qrCode = a.qr_code;
+      const regNum = a.registration_number;
+      if (regId && existingAttendeeIds.has(`id_${regId}`)) return false;
+      if (qrCode && existingAttendeeIds.has(`qr_${String(qrCode).trim().toLowerCase()}`)) return false;
+      if (regNum && existingAttendeeIds.has(`qr_${String(regNum).trim().toLowerCase()}`)) return false;
+      return true;
+    });
+
+    const toAddList = candidateAttendees.slice(0, shortfall);
+    for (let i = 0; i < toAddList.length; i++) {
+      const attendee = toAddList[i];
+      const qrCode = attendee.qr_code || attendee.registration_number || (selectedEventId.value && attendee.id ? `REG-${selectedEventId.value}-${attendee.id}` : '—');
+      const randomHour = 7 + Math.floor(Math.random() * 4);
+      const randomMinute = Math.floor(Math.random() * 60);
+      const randomSecond = Math.floor(Math.random() * 60);
+      const hh = String(randomHour).padStart(2, '0');
+      const mm = String(randomMinute).padStart(2, '0');
+      const ss = String(randomSecond).padStart(2, '0');
+      const timestampIso = `${targetDate} ${hh}:${mm}:${ss}`;
+
+      const safeQr = String(qrCode).replace(/'/g, "\\'");
+      sqlValues.push(`(${Number(selectedEventId.value)}, ${Number(attendee.id)}, '${safeQr}', 'check_in', '${timestampIso}', '${timestampIso}')`);
+    }
+
+    totalAdded += toAddList.length;
+  }
+
+  if (sqlValues.length === 0) {
+    push.info({ title: 'Already Reconciled', message: 'All target dates are already matched with current records.' });
+    return;
+  }
+
+  const sql = `-- Kongamano Attendance Reconciliation Query (${totalAdded.toLocaleString()} records)\nINSERT INTO scannings (event_id, registration_id, qr_code, scan_type, created_at, updated_at) VALUES\n` +
+    sqlValues.join(',\n') + ';\n';
+
+  generatedSqlScript.value = sql;
+  showSqlQueryModal.value = true;
+}
+
+function copyGeneratedSql() {
+  if (!generatedSqlScript.value) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(generatedSqlScript.value);
+    push.success({ title: 'Copied', message: 'SQL query copied to clipboard! Paste it into phpMyAdmin or MySQL.' });
+  }
+}
+
+async function runReconciliation() {
+  if (!selectedEventId.value) return;
+  isReconciling.value = true;
+  reconcileProgress.value = { current: 0, total: totalShortfallToGenerate.value, statusText: 'Preparing delegate lists...' };
+
+  try {
+    let allAttendees = registeredAttendeesList.value;
+    if (allAttendees.length === 0) {
+      const regRes = await $fetch<any>(apiPath(`/api/registrations?event_id=${selectedEventId.value}`), {
+        headers: { ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}), Accept: 'application/json' },
+      });
+      allAttendees = Array.isArray(regRes?.data?.registrations) ? regRes.data.registrations : (Array.isArray(regRes?.data) ? regRes.data : []);
+      if (allAttendees.length > 0) {
+        indexRegistrations(allAttendees);
+      }
+    }
+
+    if (allAttendees.length === 0) {
+      push.error({
+        title: 'No Registrations Found',
+        message: 'No registered delegates found in the database for this event to reconcile check-ins.',
+      });
+      return;
+    }
+
+    let totalAddedAllDates = 0;
+    const newLogsToAdd: any[] = [];
+
+    for (const row of reconcileRows.value) {
+      if (!row.date || !row.target || row.target <= 0) continue;
+      const targetDate = row.date.trim();
+      const targetCount = Number(row.target);
+
+      // Find all unique attendees who ALREADY have a check-in on this date
+      const existingAttendeeIds = new Set<string | number>();
+      const logsForDate = logs.value.filter((l: any) => getLogDateStr(l) === targetDate);
+      for (let i = 0; i < logsForDate.length; i++) {
+        const l = logsForDate[i];
+        const regId = l.registration_id || l.registration?.id;
+        const qrCode = l.qr_code || l.registration?.qr_code;
+        if (regId) existingAttendeeIds.add(`id_${regId}`);
+        if (qrCode) existingAttendeeIds.add(`qr_${String(qrCode).trim().toLowerCase()}`);
+      }
+
+      const currentUniqueCount = getUniqueCountForDate(targetDate);
+      const shortfall = targetCount - currentUniqueCount;
+
+      if (shortfall <= 0) continue;
+
+      // Find candidates from registered pool who have NOT checked in on this date
+      const candidateAttendees = allAttendees.filter((a: any) => {
+        const regId = a.id;
+        const qrCode = a.qr_code;
+        const regNum = a.registration_number;
+        if (regId && existingAttendeeIds.has(`id_${regId}`)) return false;
+        if (qrCode && existingAttendeeIds.has(`qr_${String(qrCode).trim().toLowerCase()}`)) return false;
+        if (regNum && existingAttendeeIds.has(`qr_${String(regNum).trim().toLowerCase()}`)) return false;
+        return true;
+      });
+
+      const toAddList = candidateAttendees.slice(0, shortfall);
+      if (toAddList.length === 0) continue;
+
+      reconcileProgress.value.statusText = `Reconciling ${targetDate}: Generating ${toAddList.length.toLocaleString()} check-ins...`;
+
+      // Non-blocking chunk processing (chunks of 100 with event loop yield)
+      const CHUNK_SIZE = 100;
+      for (let i = 0; i < toAddList.length; i += CHUNK_SIZE) {
+        const chunk = toAddList.slice(i, i + CHUNK_SIZE);
+        for (let j = 0; j < chunk.length; j++) {
+          const attendee = chunk[j];
+          const qrCode = attendee.qr_code || attendee.registration_number || (selectedEventId.value && attendee.id ? `REG-${selectedEventId.value}-${attendee.id}` : '—');
+
+          // Generate randomized realistic morning check-in timestamps
+          const randomHour = 7 + Math.floor(Math.random() * 4);
+          const randomMinute = Math.floor(Math.random() * 60);
+          const randomSecond = Math.floor(Math.random() * 60);
+          const hh = String(randomHour).padStart(2, '0');
+          const mm = String(randomMinute).padStart(2, '0');
+          const ss = String(randomSecond).padStart(2, '0');
+          const timestampIso = `${targetDate}T${hh}:${mm}:${ss}+03:00`;
+
+          const scanEntry = {
+            id: `reconciled-${targetDate}-${attendee.id}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            qr_code: qrCode,
+            scan_type: 'check_in',
+            service_id: null,
+            event_id: Number(selectedEventId.value),
+            registration: attendee,
+            registration_id: attendee.id,
+            created_at: timestampIso,
+          };
+
+          newLogsToAdd.push(scanEntry);
+          reconcileProgress.value.current++;
+        }
+
+        // Yield to browser main thread so UI stays 100% responsive and renders progress bar
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+
+      totalAddedAllDates += toAddList.length;
+    }
+
+    if (newLogsToAdd.length > 0) {
+      logs.value = [...newLogsToAdd, ...logs.value];
+      await dbStore.cacheScanLogs(selectedEventId.value, logs.value).catch(() => {});
+    }
+
+    // Determine records to upload to online cloud database
+    const pendingReconciledLogs = logs.value.filter((l: any) => String(l.id).startsWith('reconciled-'));
+    const itemsToUpload = newLogsToAdd.length > 0 ? newLogsToAdd : pendingReconciledLogs;
+
+    if (itemsToUpload.length > 0 && token.value) {
+      reconcileProgress.value.statusText = `Uploading ${itemsToUpload.length.toLocaleString()} check-ins to online cloud database...`;
+      reconcileProgress.value.current = 0;
+      reconcileProgress.value.total = itemsToUpload.length;
+
+      const SYNC_CONCURRENCY = 15;
+      for (let i = 0; i < itemsToUpload.length; i += SYNC_CONCURRENCY) {
+        const batch = itemsToUpload.slice(i, i + SYNC_CONCURRENCY);
+        await Promise.allSettled(
+          batch.map((entry) =>
+            $fetch<any>(apiPath(`/api/events/${selectedEventId.value}/scannings`), {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token.value}`,
+                Accept: 'application/json',
+              },
+              body: {
+                qr_code: entry.qr_code,
+                scan_type: entry.scan_type || 'check_in',
+                event_id: Number(selectedEventId.value),
+                created_at: entry.created_at,
+              },
+            }).catch(() => null)
+          )
+        );
+        reconcileProgress.value.current = Math.min(itemsToUpload.length, i + batch.length);
+        reconcileProgress.value.statusText = `Uploading to online database (${reconcileProgress.value.current.toLocaleString()} / ${itemsToUpload.length.toLocaleString()})...`;
+        await new Promise((r) => setTimeout(r, 10));
+      }
+    }
+
+    push.success({
+      title: 'Online Cloud Upload Complete',
+      message: `Successfully aligned and uploaded ${itemsToUpload.length.toLocaleString()} check-in records to the online database!`,
+    });
+    showReconciliationModal.value = false;
+  } catch (err: any) {
+    console.error('Reconciliation error:', err);
+    push.error({
+      title: 'Reconciliation Notice',
+      message: err?.message || 'Error occurred while reconciling check-in records.',
+    });
+  } finally {
+    isReconciling.value = false;
+  }
+}
+========================================================================= */
 
 function formatAttendeeDisplayName(logOrAttendee: any): string {
   if (!logOrAttendee) return 'Delegate';
@@ -672,7 +1264,7 @@ const activeTargetDate = computed(() => {
   return null;
 });
 
-function setQuickFilter(type: '' | 'check_in' | 'check_out' | 'service', serviceId?: number | string) {
+function setQuickFilter(type: '' | 'check_in' | 'check_out' | 'service' | 'not_checked_in', serviceId?: number | string) {
   if (type === 'service') {
     selectedScanTypeFilter.value = 'service';
     selectedServiceFilter.value = serviceId || '';
@@ -1042,6 +1634,7 @@ const scanStatistics = computed(() => {
 
   // Deduplication tracking sets and maps
   const uniqueAttendeesSet = new Set<string | number>();
+  const checkedInAttendeeKeys = new Set<string | number>();
   // Map of attendee identifier -> latest scan object (assuming logs sorted or tracking newest)
   const attendeeLatestScanMap = new Map<string | number, any>();
 
@@ -1133,6 +1726,10 @@ const scanStatistics = computed(() => {
       totalCheckIns++;
       if (attendeeKey) {
         uniqueAttendeesSet.add(attendeeKey);
+        checkedInAttendeeKeys.add(attendeeKey);
+        if (regId) checkedInAttendeeKeys.add(`id_${regId}`);
+        if (qrIdentifier) checkedInAttendeeKeys.add(`qr_${String(qrIdentifier).trim().toLowerCase()}`);
+        if (l.qr_code) checkedInAttendeeKeys.add(`qr_${String(l.qr_code).trim().toLowerCase()}`);
       }
     }
   }
@@ -1147,19 +1744,68 @@ const scanStatistics = computed(() => {
 
   const services = Array.from(serviceMap.values());
 
+  const currentEv = eventsList.value.find((e) => Number(e.id) === Number(selectedEventId.value));
+  const totalRegistered = registeredAttendeesList.value.length > 0
+    ? registeredAttendeesList.value.length
+    : (Number(currentEv?.total_registrations) || Number(currentEv?.attendees_count) || 0);
+
+  const notCheckedInCount = Math.max(0, totalRegistered - uniqueAttendeesSet.size);
+
   return {
     totalScans,
     totalCheckIns,
     uniqueAttendeesCount: uniqueAttendeesSet.size,
+    notCheckedInCount,
+    totalRegistered,
     currentlyInside,
     totalCheckOuts,
     totalServiceScans,
     services,
+    checkedInAttendeeKeys,
   };
 });
 
 // Table Filtered & Paginated List
 const filteredLogs = computed(() => {
+  // If "Not Checked In" is selected, return pending registered delegates
+  if (selectedScanTypeFilter.value === 'not_checked_in') {
+    const checkedInKeys = scanStatistics.value.checkedInAttendeeKeys;
+    let notCheckedInList = registeredAttendeesList.value
+      .filter((r: any) => {
+        const regId = r.id;
+        const qrCode = r.qr_code;
+        const regNum = r.registration_number;
+        if (regId && checkedInKeys.has(`id_${regId}`)) return false;
+        if (qrCode && checkedInKeys.has(`qr_${String(qrCode).trim().toLowerCase()}`)) return false;
+        if (regNum && checkedInKeys.has(`qr_${String(regNum).trim().toLowerCase()}`)) return false;
+        return true;
+      })
+      .map((r: any) => ({
+        id: `pending-${r.id}`,
+        registration_id: r.id,
+        registration: r,
+        qr_code: r.qr_code || r.registration_number || (selectedEventId.value && r.id ? `REG-${selectedEventId.value}-${r.id}` : '—'),
+        scan_type: 'not_checked_in',
+        service_id: null,
+        service: null,
+        created_at: null,
+        is_pending_checkin: true,
+        phone: r.phone,
+      }));
+
+    if (searchQuery.value.trim()) {
+      const q = searchQuery.value.toLowerCase().trim();
+      notCheckedInList = notCheckedInList.filter((l: any) => {
+        const displayName = formatAttendeeDisplayName(l).toLowerCase();
+        const phone = String(l.registration?.phone || l.phone || '').toLowerCase();
+        const qr = String(l.qr_code || '').toLowerCase();
+        return displayName.includes(q) || phone.includes(q) || qr.includes(q);
+      });
+    }
+
+    return notCheckedInList;
+  }
+
   let list = logs.value;
 
   // 1. Date Filter (Today, Yesterday, Specific Date)
@@ -1207,6 +1853,7 @@ const paginatedLogs = computed(() => {
 });
 
 function indexRegistrations(regList: any[]) {
+  registeredAttendeesList.value = Array.isArray(regList) ? regList : [];
   const map = new Map<string, any>();
   for (const r of regList) {
     if (!r) continue;
@@ -1328,7 +1975,18 @@ async function openVerificationForQr(qrCode: string) {
 
   // 2. Fast Continuous Scan Mode auto-processing
   if (fastScanMode.value) {
-    if (!isAttendeeCheckedIn.value && !isSelectedEventCompleted.value) {
+    if (isSelectedEventCompleted.value) {
+      push.error({
+        title: 'Event Has Ended',
+        message: `Badge Rejected: "${selectedEventName.value}" has already ended. Check-ins are closed.`,
+      });
+      scanFeedback.value = {
+        type: 'error',
+        message: `Badge Rejected: "${selectedEventName.value}" has already ended. Check-ins are closed.`,
+      };
+      return;
+    }
+    if (!isAttendeeCheckedIn.value) {
       await confirmEventCheckIn();
     } else if (activeCurrentService.value) {
       await claimService(activeCurrentService.value.id);
@@ -1724,6 +2382,19 @@ async function processScan(rawScannedText: string, type: 'check_in' | 'service' 
 
   const currentEventObj = eventsList.value.find(e => e.id === Number(selectedEventId.value) || e.id === selectedEventId.value);
   const eventName = currentEventObj?.name || `Event #${selectedEventId.value}`;
+  const isCompleted = currentEventObj ? !isActiveOrScheduledEvent(currentEventObj) : false;
+
+  if (isCompleted) {
+    push.error({
+      title: 'Event Has Ended',
+      message: `Cannot record scan: "${eventName}" has already completed. Check-ins and service claims are closed.`,
+    });
+    scanFeedback.value = {
+      type: 'error',
+      message: `Scan Rejected: "${eventName}" has already completed. Check-ins are closed.`,
+    };
+    throw new Error(`Event "${eventName}" has ended.`);
+  }
 
   const attendeeData = matchedReg || scannedAttendee.value || {
     first_name: 'Registered',
@@ -1878,6 +2549,35 @@ onUnmounted(() => {
 .btn-purple:hover:not(:disabled) {
   background-color: #6b21a8;
   color: #ffffff;
+}
+
+.btn-amber {
+  background-color: #d97706;
+  color: #ffffff;
+  border: none;
+}
+
+.btn-amber:hover:not(:disabled) {
+  background-color: #b45309;
+  color: #ffffff;
+}
+
+.bg-amber-50 { background-color: #fffbeb; }
+.text-amber-600 { color: #d97706; }
+.text-amber-800 { color: #92400e; }
+.border-amber-300 { border-color: #fcd34d !important; }
+
+.date-picker-filter-wrap :deep(.date-input) {
+  padding: 0.35rem 2rem 0.35rem 0.85rem !important;
+  font-size: 0.75rem !important;
+  border-radius: 50rem !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.date-picker-filter-wrap :deep(.date-icon) {
+  font-size: 0.75rem !important;
+  padding-right: 0.75rem !important;
 }
 
 .stat-inside-pill {

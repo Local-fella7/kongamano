@@ -108,10 +108,15 @@ describe('Scannings Analytics & Service Breakdown Unit Tests', () => {
       }
     }
 
+    const totalRegistered = 10
+    const notCheckedInCount = Math.max(0, totalRegistered - uniqueAttendeesSet.size)
+
     return {
       totalScans,
       totalCheckIns,
       uniqueAttendeesCount: uniqueAttendeesSet.size,
+      notCheckedInCount,
+      totalRegistered,
       currentlyInside,
       totalCheckOuts,
       totalServiceScans,
@@ -222,6 +227,7 @@ describe('Scannings Analytics & Service Breakdown Unit Tests', () => {
       expect(stats.totalScans).toBe(6)
       expect(stats.totalCheckIns).toBe(2)
       expect(stats.uniqueAttendeesCount).toBe(2)
+      expect(stats.notCheckedInCount).toBe(8) // 10 total registered - 2 checked in
       expect(stats.currentlyInside).toBe(1) // REG-1-001 checked out, REG-1-002 still inside
       expect(stats.totalCheckOuts).toBe(1)
       expect(stats.totalServiceScans).toBe(3)
